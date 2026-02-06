@@ -470,7 +470,7 @@ export default function DailySummary() {
             </div>
 
             {/* Formula Explanation */}
-            <Collapsible>
+            <Collapsible className="group">
               <Card className="border-muted">
                 <CollapsibleTrigger className="w-full">
                   <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
