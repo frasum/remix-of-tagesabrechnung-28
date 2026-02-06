@@ -1,89 +1,94 @@
 
-# Ergänzung der fehlenden Felder aus der Excel
+# Plan: Trennung von Kellner-Umsatz und abzugebendem Betrag
 
-## Identifizierte fehlende Felder
+## Problem-Analyse
 
-Nach dem Vergleich der Excel-Datei mit der aktuellen App-Implementierung fehlen folgende Felder:
+Die aktuelle App berechnet das erwartete Bargeld basierend auf dem **POS-Umsatz** des Kellners. In der Gastronomie können jedoch Tische zwischen Kellnern transferiert werden:
 
-| Excel-Feld | Status | Beschreibung |
-|------------|--------|--------------|
-| **take away gesamt** | FEHLT | Summe aller Take-Away-Umsätze (aus Excel Zeile 131) |
-| **KK GL** (Kreditkarten Gesamtliste) | FEHLT | Gesamtübersicht der Kartentransaktionen mit Aufschlüsselung |
-| **gl** (Gesamtumsatz vom Spicery-System) | TEILWEISE | Existiert als `spicery_counter`, wird aber anders verwendet |
-| **transaktionen** | FEHLT | Anzahl der Transaktionen vom Spicery-System |
+| Situation | Kellner A | Kellner B |
+|-----------|-----------|-----------|
+| Umsatz gemacht | €500 (POS) | €0 (POS) |
+| Tisch transferiert | → | ← |
+| Abkassiert | €0 | €500 |
+| **Erwartet (aktuell)** | €500 ❌ | €0 ❌ |
+| **Erwartet (korrekt)** | €0 ✓ | €500 ✓ |
 
 ---
 
-## Geplante Umsetzung
+## Lösung
 
-### 1. Datenbank-Migration
+### Neues Feld: "Kassiert" (kassiert_brutto)
 
-Neue Spalten in der `sessions`-Tabelle hinzufügen:
+Ein zusätzliches Eingabefeld, das den **tatsächlich kassierten Bruttobetrag** erfasst - unabhängig davon, wer den POS-Umsatz gemacht hat.
+
+### Formel-Anpassung
 
 ```text
-takeaway_total        NUMERIC DEFAULT 0  -- Take-Away Gesamtumsatz
-spicery_transactions  NUMERIC DEFAULT 0  -- Anzahl Spicery-Transaktionen  
-card_total_gl         NUMERIC DEFAULT 0  -- KK Gesamtliste (zum Abgleich)
+BISHERIG:
+Erwartet = POS Umsatz + HilfMahl - Offene Rg. - Karten
+
+NEU:
+Erwartet = Kassiert Brutto + HilfMahl - Offene Rg. - Karten
+
+(POS Umsatz bleibt für Statistiken und Küchen-Trinkgeld erhalten)
 ```
 
-### 2. UI-Anpassungen
+---
 
-**Manager Dashboard** (`src/pages/ManagerDashboard.tsx`):
-- Neues Eingabefeld "Take-Away Gesamt" in der Lieferplattformen-Karte
-- Neues Eingabefeld "Spicery Transaktionen" in der POS & Terminal-Karte
-- Neues Eingabefeld "KK Gesamtliste" in der POS & Terminal-Karte (zum Abgleich mit Kellner-Kartensummen)
+## Umsetzungs-Schritte
 
-**Tagesabrechnung** (`src/pages/DailySummary.tsx`):
-- Take-Away Gesamt in der Einnahmen-Übersicht anzeigen
-- KK GL als Abgleichswert bei den Kartenzahlungen anzeigen
-- Spicery Transaktionen in der Übersicht anzeigen
+### 1. Datenbank-Erweiterung
+Neue Spalte in `waiter_shifts`:
+- `kassiert_brutto` (NUMERIC, DEFAULT 0) - Brutto-Betrag, den der Kellner kassiert hat
 
-### 3. Betroffene Dateien
+### 2. UI-Anpassungen (Kellner-Abrechnung)
+
+**Eingabeformular erweitern:**
+| Feld | Beschreibung |
+|------|--------------|
+| POS Umsatz | Umsatz laut Kasse (für Statistiken/Küchen-TG) |
+| **Kassiert Brutto** | Was der Kellner tatsächlich kassiert hat |
+| Kartenzahlung | Kartenzahlungen |
+| HilfMahl | Personalessen |
+| Offene Rechnungen | Unbezahlte Rechnungen |
+| Bargeld abgegeben | Tatsächlich abgegebenes Bargeld |
+
+**Neue Berechnungslogik:**
+```text
+Erwartet = Kassiert Brutto + HilfMahl - Offene Rg. - Karten
+Abweichung = Bargeld abgegeben - Erwartet
+```
+
+### 3. Tabellen-Übersicht anpassen
+
+| Name | POS | Kassiert | Karte | HilfM | Offen | Erwartet | Abgegeben | Abweich. | K.TG | W.TG |
+|------|-----|----------|-------|-------|-------|----------|-----------|----------|------|------|
+
+### 4. Küchen-Trinkgeld Logik
+Das Küchen-Trinkgeld bleibt bei **2% vom POS-Umsatz**, da dieser den tatsächlichen Verkauf widerspiegelt.
+
+---
+
+## Betroffene Dateien
 
 | Datei | Änderung |
 |-------|----------|
-| `supabase/migrations/...` | Neue Spalten hinzufügen |
-| `src/types/database.ts` | Session-Interface erweitern |
-| `src/pages/ManagerDashboard.tsx` | 3 neue Eingabefelder |
-| `src/pages/DailySummary.tsx` | Neue Werte in Übersichten anzeigen |
-| `src/hooks/useSession.ts` | Neue Felder im Update-Hook |
-| `src/utils/pdfExport.ts` | PDF-Export mit neuen Feldern |
+| Datenbank-Migration | Neue Spalte `kassiert_brutto` |
+| `src/types/database.ts` | WaiterShift-Interface erweitern |
+| `src/pages/WaiterCashUp.tsx` | Neues Eingabefeld + Formel-Anpassung |
+| `src/hooks/useSession.ts` | Hook-Typen anpassen |
+| `src/pages/DailySummary.tsx` | Aggregation anpassen |
+| `src/utils/pdfExport.ts` | PDF mit neuem Feld |
 
 ---
 
-## Technische Details
+## Beispiel nach der Änderung
 
-### Datenbank-Migration SQL
+**Szenario:** Tisch-Transfer von Frank zu Max
 
-```sql
-ALTER TABLE public.sessions
-ADD COLUMN takeaway_total NUMERIC DEFAULT 0,
-ADD COLUMN spicery_transactions NUMERIC DEFAULT 0,
-ADD COLUMN card_total_gl NUMERIC DEFAULT 0;
-```
+| Kellner | POS Umsatz | Kassiert | Karten | Erwartet | Abgegeben | Abweichung |
+|---------|------------|----------|--------|----------|-----------|------------|
+| Frank | €500 | €0 | €0 | €0 | €0 | ±0 ✓ |
+| Max | €0 | €500 | €100 | €400 | €400 | ±0 ✓ |
 
-### TypeScript-Interface Erweiterung
-
-```typescript
-export interface Session {
-  // ... bestehende Felder ...
-  takeaway_total: number;
-  spicery_transactions: number;
-  card_total_gl: number;
-}
-```
-
-### BARGELD-Formel Anpassung
-
-Die Take-Away-Umsätze werden als Teil der Lieferplattformen behandelt und in die Abzüge einbezogen:
-
-```text
-BARGELD = Kellner Umsatz + Gutschein VK + Sonstige Einnahmen + Hilf Mahl
-        - Terminal 1 - Terminal 2 - OpenTabs - Gutschein EL 
-        - Vorschuss - Einladung - Offene Rechnungen - Ausgaben
-        - Lieferplattformen - FineDine - Take-Away Gesamt
-```
-
-### Neue Validierung
-
-KK GL kann mit der Summe der Kellner-Kartenzahlungen verglichen werden, um Differenzen anzuzeigen (ähnlich wie bei POS/Terminal-Differenz).
+**Küchen-TG:** Frank = €10 (2% von €500), Max = €0
