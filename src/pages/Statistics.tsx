@@ -8,7 +8,9 @@ import {
   Users, 
   Truck, 
   Receipt,
-  Calendar
+  Calendar,
+  ArrowUpRight,
+  ArrowDownRight,
 } from 'lucide-react';
 import { 
   LineChart, 
@@ -32,8 +34,10 @@ import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useStatistics } from '@/hooks/useStatistics';
+import { useStatisticsComparison } from '@/hooks/useStatisticsComparison';
 import { WaiterTipChart } from '@/components/statistics/WaiterTipChart';
 import { KitchenTipChart } from '@/components/statistics/KitchenTipChart';
+import { PeriodComparison } from '@/components/statistics/PeriodComparison';
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -77,6 +81,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 export default function Statistics() {
   const [timeRange, setTimeRange] = useState<'week' | 'month' | '3months'>('month');
   const { data, isLoading } = useStatistics(timeRange);
+  const { data: comparisonData, isLoading: comparisonLoading } = useStatisticsComparison(timeRange);
 
   if (isLoading) {
     return (
@@ -154,31 +159,52 @@ export default function Statistics() {
 
         {dailyStats.length > 0 && (
           <>
-            {/* Summary Cards */}
+            {/* Summary Cards with Comparison */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 label="Gesamtumsatz"
                 value={summary?.totalRevenue || 0}
                 icon={<Euro className="w-5 h-5" />}
                 variant="success"
+                trend={comparisonData ? {
+                  value: comparisonData.changes.revenuePercent,
+                  label: comparisonData.previousPeriodLabel,
+                } : undefined}
               />
               <StatCard
                 label="Ø Tagesumsatz"
                 value={summary?.avgDailyRevenue || 0}
                 icon={<TrendingUp className="w-5 h-5" />}
+                trend={comparisonData ? {
+                  value: comparisonData.changes.avgDailyRevenuePercent,
+                  label: comparisonData.previousPeriodLabel,
+                } : undefined}
               />
               <StatCard
                 label="Gesamt Trinkgeld"
                 value={(summary?.totalKitchenTip || 0) + (summary?.totalWaiterTip || 0)}
                 icon={<Users className="w-5 h-5" />}
                 variant="success"
+                trend={comparisonData ? {
+                  value: ((comparisonData.changes.kitchenTipPercent + comparisonData.changes.waiterTipPercent) / 2),
+                  label: comparisonData.previousPeriodLabel,
+                } : undefined}
               />
               <StatCard
                 label="Lieferumsatz"
                 value={summary?.totalDelivery || 0}
                 icon={<Truck className="w-5 h-5" />}
+                trend={comparisonData ? {
+                  value: comparisonData.changes.deliveryPercent,
+                  label: comparisonData.previousPeriodLabel,
+                } : undefined}
               />
             </div>
+
+            {/* Period Comparison Card */}
+            {comparisonData && !comparisonLoading && (
+              <PeriodComparison data={comparisonData} />
+            )}
 
             {/* Revenue Trend Chart */}
             <Card>

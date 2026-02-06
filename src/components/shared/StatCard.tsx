@@ -1,5 +1,11 @@
 import { ReactNode } from 'react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+interface TrendData {
+  value: number;
+  label: string;
+}
 
 interface StatCardProps {
   label: string;
@@ -7,9 +13,10 @@ interface StatCardProps {
   icon?: ReactNode;
   variant?: 'default' | 'success' | 'warning' | 'error';
   className?: string;
+  trend?: TrendData;
 }
 
-export function StatCard({ label, value, icon, variant = 'default', className }: StatCardProps) {
+export function StatCard({ label, value, icon, variant = 'default', className, trend }: StatCardProps) {
   const formatValue = (val: string | number) => {
     if (typeof val === 'number') {
       return new Intl.NumberFormat('de-DE', {
@@ -18,6 +25,11 @@ export function StatCard({ label, value, icon, variant = 'default', className }:
       }).format(val);
     }
     return val;
+  };
+
+  const formatPercent = (val: number) => {
+    const sign = val > 0 ? '+' : '';
+    return `${sign}${val.toFixed(1)}%`;
   };
 
   return (
@@ -31,7 +43,7 @@ export function StatCard({ label, value, icon, variant = 'default', className }:
       )}
     >
       <div className="flex items-start justify-between">
-        <div>
+        <div className="flex-1">
           <p className="text-sm text-muted-foreground mb-1">{label}</p>
           <p
             className={cn(
@@ -43,11 +55,25 @@ export function StatCard({ label, value, icon, variant = 'default', className }:
           >
             {formatValue(value)}
           </p>
+          {trend && (
+            <div className={cn(
+              "flex items-center gap-1 mt-1 text-xs",
+              trend.value > 0 ? "text-success" : trend.value < 0 ? "text-destructive" : "text-muted-foreground"
+            )}>
+              {trend.value > 0 ? (
+                <TrendingUp className="w-3 h-3" />
+              ) : trend.value < 0 ? (
+                <TrendingDown className="w-3 h-3" />
+              ) : null}
+              <span className="tabular-nums font-medium">{formatPercent(trend.value)}</span>
+              <span className="text-muted-foreground">vs. {trend.label}</span>
+            </div>
+          )}
         </div>
         {icon && (
           <div
             className={cn(
-              "w-10 h-10 rounded-lg flex items-center justify-center",
+              "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
               variant === 'default' && "bg-primary/10 text-primary",
               variant === 'success' && "bg-success/15 text-success",
               variant === 'warning' && "bg-warning/15 text-warning",
