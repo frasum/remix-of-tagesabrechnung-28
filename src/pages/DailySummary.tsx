@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { Plus, AlertTriangle, CheckCircle, FileText, Euro, CreditCard, Truck, Receipt, Download, HelpCircle, ChevronDown } from 'lucide-react';
+import { Plus, FileText, Euro, CreditCard, Truck, Receipt, Download, HelpCircle, ChevronDown, CheckCircle, AlertTriangle } from 'lucide-react';
 import { generateDailySummaryPDF } from '@/utils/pdfExport';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DateSelector } from '@/components/shared/DateSelector';
@@ -80,15 +80,12 @@ export default function DailySummary() {
       (session.finedine_vouchers || 0)
     : 0;
 
-  // POS Mismatch: Check if POS total matches sum of waiter POS sales
+  // POS Mismatch: Check if POS total matches sum of waiter POS sales (kept for PDF export)
   const posMismatch = session ? (session.pos_total || 0) - kellnerUmsatz : 0;
 
-  // Card Terminal Mismatch: Check if terminals match waiter card totals
+  // Card Terminal Mismatch: Check if terminals match waiter card totals (kept for PDF export)
   const terminalTotal = session ? (session.terminal_1_total || 0) + (session.terminal_2_total || 0) : 0;
   const cardTerminalMismatch = terminalTotal - totalCardTotal;
-
-  // KK GL Mismatch: Check if card_total_gl matches waiter card totals
-  const cardGLMismatch = session ? (session.card_total_gl || 0) - totalCardTotal : 0;
 
   const handleCreateSession = async () => {
     try {
@@ -200,60 +197,6 @@ export default function DailySummary() {
         {/* Session Content */}
         {session && (
           <div className="space-y-6">
-            {/* Alert Cards */}
-            {(posMismatch !== 0 || cardTerminalMismatch !== 0 || cardGLMismatch !== 0) && (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {posMismatch !== 0 && (
-                  <Card className="border-destructive/30 bg-destructive/5">
-                    <CardContent className="py-4 flex items-center gap-3">
-                      <AlertTriangle className="w-5 h-5 text-destructive" />
-                      <div>
-                        <p className="font-medium text-destructive">POS Differenz</p>
-                        <p className="text-sm text-muted-foreground">
-                          POS Total ({formatCurrency(session.pos_total || 0)}) stimmt nicht mit Kellner-Umsätzen ({formatCurrency(kellnerUmsatz)}) überein.
-                        </p>
-                        <p className="text-sm font-semibold text-destructive mt-1">
-                          Differenz: {formatCurrency(posMismatch)}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                {cardTerminalMismatch !== 0 && (
-                  <Card className="border-destructive/30 bg-destructive/5">
-                    <CardContent className="py-4 flex items-center gap-3">
-                      <AlertTriangle className="w-5 h-5 text-destructive" />
-                      <div>
-                        <p className="font-medium text-destructive">Terminal Differenz</p>
-                        <p className="text-sm text-muted-foreground">
-                          Terminals ({formatCurrency(terminalTotal)}) stimmen nicht mit Kellner-Karten ({formatCurrency(totalCardTotal)}) überein.
-                        </p>
-                        <p className="text-sm font-semibold text-destructive mt-1">
-                          Differenz: {formatCurrency(cardTerminalMismatch)}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-                {cardGLMismatch !== 0 && (session.card_total_gl || 0) > 0 && (
-                  <Card className="border-destructive/30 bg-destructive/5">
-                    <CardContent className="py-4 flex items-center gap-3">
-                      <AlertTriangle className="w-5 h-5 text-destructive" />
-                      <div>
-                        <p className="font-medium text-destructive">KK GL Differenz</p>
-                        <p className="text-sm text-muted-foreground">
-                          KK Gesamtliste ({formatCurrency(session.card_total_gl || 0)}) stimmt nicht mit Kellner-Karten ({formatCurrency(totalCardTotal)}) überein.
-                        </p>
-                        <p className="text-sm font-semibold text-destructive mt-1">
-                          Differenz: {formatCurrency(cardGLMismatch)}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
-
             {/* Main Stats */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
