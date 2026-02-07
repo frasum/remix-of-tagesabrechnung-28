@@ -174,13 +174,6 @@ export default function WaiterCashUp() {
 
         {/* Session Content */}
         {session && <div className="space-y-6">
-            {/* Pool Stats */}
-            {waiterShifts.length > 0 && <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard label="Kellner TG Pool" value={totalPool} icon={<Users className="w-5 h-5" />} variant={totalPool >= 0 ? 'success' : 'error'} />
-                <StatCard label={`Pro Kellner (${waiterCount})`} value={tipPerWaiter} icon={<User className="w-5 h-5" />} variant={tipPerWaiter >= 0 ? 'success' : 'error'} />
-                <StatCard label="Küchen TG Pool" value={totalKitchenTip} icon={<Users className="w-5 h-5" />} variant="success" />
-                <StatCard label="Trinkgeld %" value={`${tipPercentage.toFixed(1)} %`} icon={<Percent className="w-5 h-5" />} variant="success" />
-              </div>}
 
             <div className="grid lg:grid-cols-2 gap-6">
             {/* Add Waiter Form */}
@@ -276,24 +269,12 @@ export default function WaiterCashUp() {
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    {/* Pool Summary */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="bg-muted rounded-lg p-3 text-center">
-                        <p className="text-xs text-muted-foreground">Kellner</p>
-                        <p className="text-lg font-semibold">{waiterCount}</p>
-                      </div>
-                      <div className="bg-muted rounded-lg p-3 text-center">
-                        <p className="text-xs text-muted-foreground">Gesamtpool</p>
-                        <p className={`text-lg font-semibold tabular-nums ${totalPool >= 0 ? 'text-success' : 'text-destructive'}`}>
-                          {formatCurrency(totalPool)}
-                        </p>
-                      </div>
-                      <div className="bg-muted rounded-lg p-3 text-center">
-                        <p className="text-xs text-muted-foreground">Pro Kellner</p>
-                        <p className={`text-lg font-semibold tabular-nums ${tipPerWaiter >= 0 ? 'text-success' : 'text-destructive'}`}>
-                          {formatCurrency(tipPerWaiter)}
-                        </p>
-                      </div>
+                    {/* Pool Summary - 4 colored StatCards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <StatCard label="Kellner TG Pool" value={totalPool} icon={<Users className="w-5 h-5" />} variant={totalPool >= 0 ? 'success' : 'error'} />
+                      <StatCard label={`Pro Kellner (${waiterCount})`} value={tipPerWaiter} icon={<User className="w-5 h-5" />} variant={tipPerWaiter >= 0 ? 'success' : 'error'} />
+                      <StatCard label="Küchen TG Pool" value={totalKitchenTip} icon={<Users className="w-5 h-5" />} variant="success" />
+                      <StatCard label="Trinkgeld %" value={`${tipPercentage.toFixed(1)} %`} icon={<Percent className="w-5 h-5" />} variant="success" />
                     </div>
 
                     {/* Pool Breakdown Table */}
