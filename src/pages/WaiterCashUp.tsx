@@ -278,6 +278,7 @@ export default function WaiterCashUp() {
                     </div>
 
                     {/* Pool Breakdown Table */}
+                    <div className="min-h-[280px]">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -312,6 +313,7 @@ export default function WaiterCashUp() {
                         </TableRow>
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 )}
               </CardContent>
