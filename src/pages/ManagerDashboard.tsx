@@ -612,7 +612,7 @@ export default function ManagerDashboard() {
                     {/* Formula */}
                     <div className="p-4 bg-muted/50 rounded-lg font-mono text-sm">
                       <p className="font-semibold text-foreground mb-2">Formel:</p>
-                      <p className="text-success">+ Kellner Umsatz</p>
+                      <p className="text-success">+ Tagesumsatz</p>
                       <p className="text-success">+ Gutschein VK</p>
                       <p className="text-success">+ Sonstige Einnahmen</p>
                       <p className="text-success">+ Hilf Mahl</p>
@@ -634,7 +634,7 @@ export default function ManagerDashboard() {
                       <Table>
                         <TableBody>
                           <TableRow>
-                            <TableCell className="text-success">+ Kellner Umsatz</TableCell>
+                            <TableCell className="text-success">+ Tagesumsatz</TableCell>
                             <TableCell className="text-right tabular-nums text-success">{formatCurrency(kellnerUmsatz)}</TableCell>
                           </TableRow>
                           <TableRow>

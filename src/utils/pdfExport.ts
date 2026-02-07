@@ -135,7 +135,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): void => {
     margin: { left: margin, right: margin },
     head: [['Kennzahl', 'Betrag']],
     body: [
-      ['Kellner Umsatz', formatCurrency(data.totals.kellnerUmsatz)],
+       ['Tagesumsatz', formatCurrency(data.totals.kellnerUmsatz)],
       ['Kartenzahlungen', formatCurrency(data.totals.totalCardTotal)],
        ['Take Away', formatCurrency(data.totals.totalDeliveryRevenue)],
       ['Hilf Mahl', formatCurrency(data.totals.totalHilfMahl)],
@@ -210,7 +210,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): void => {
   yPos += 6;
 
   const revenueData = [
-    ['Kellner Umsatz', formatCurrency(data.totals.kellnerUmsatz)],
+    ['Tagesumsatz', formatCurrency(data.totals.kellnerUmsatz)],
     ['Gutschein Verkauf', formatCurrency(data.session.vouchers_sold || 0)],
     ['Sonstige Einnahmen', formatCurrency(data.session.sonstige_einnahme || 0)],
     ['Hilf Mahl', formatCurrency(data.totals.totalHilfMahl)],
@@ -439,7 +439,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): void => {
 
   // Formula breakdown table
   const formulaData = [
-    ['+ Kellner Umsatz', formatCurrency(data.totals.kellnerUmsatz)],
+    ['+ Tagesumsatz', formatCurrency(data.totals.kellnerUmsatz)],
     ['+ Gutschein Verkauf', formatCurrency(data.session.vouchers_sold || 0)],
     ['+ Sonstige Einnahmen', formatCurrency(data.session.sonstige_einnahme || 0)],
     ['+ Hilf Mahl', formatCurrency(data.totals.totalHilfMahl)],

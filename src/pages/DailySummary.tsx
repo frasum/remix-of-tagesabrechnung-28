@@ -202,7 +202,7 @@ export default function DailySummary() {
                 variant={bargeld >= 0 ? 'success' : 'error'}
               />
               <StatCard
-                label="Kellner Umsatz"
+                label="Tagesumsatz"
                 value={kellnerUmsatz}
                 icon={<FileText className="w-5 h-5" />}
               />
@@ -232,7 +232,7 @@ export default function DailySummary() {
                   <Table>
                     <TableBody>
                       <TableRow>
-                        <TableCell>Kellner Umsatz</TableCell>
+                        <TableCell>Tagesumsatz</TableCell>
                         <TableCell className="text-right tabular-nums font-medium">{formatCurrency(kellnerUmsatz)}</TableCell>
                       </TableRow>
                       <TableRow>
@@ -450,7 +450,7 @@ export default function DailySummary() {
                     {/* Formula */}
                     <div className="p-4 bg-muted/50 rounded-lg font-mono text-sm">
                       <p className="font-semibold text-foreground mb-2">Formel:</p>
-                      <p className="text-success">+ Kellner Umsatz</p>
+                      <p className="text-success">+ Tagesumsatz</p>
                       <p className="text-success">+ Gutschein VK</p>
                       <p className="text-success">+ Sonstige Einnahmen</p>
                       <p className="text-success">+ Hilf Mahl</p>
@@ -472,7 +472,7 @@ export default function DailySummary() {
                       <Table>
                         <TableBody>
                           <TableRow>
-                            <TableCell className="text-success">+ Kellner Umsatz</TableCell>
+                            <TableCell className="text-success">+ Tagesumsatz</TableCell>
                             <TableCell className="text-right tabular-nums text-success">{formatCurrency(kellnerUmsatz)}</TableCell>
                           </TableRow>
                           <TableRow>
