@@ -96,6 +96,17 @@ export default function WaiterCashUp() {
       });
       return;
     }
+
+    // Validate: second waiter cannot be the same as primary waiter
+    if (newSecondWaiterName !== 'none' && newSecondWaiterName === newWaiterName.trim()) {
+      toast({
+        title: 'Fehler',
+        description: 'Der zweite Kellner kann nicht die gleiche Person sein.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
     try {
       if (editingShiftId) {
         // Update existing
