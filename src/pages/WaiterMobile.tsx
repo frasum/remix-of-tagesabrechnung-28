@@ -40,14 +40,15 @@ export default function WaiterMobile() {
   const { data: tipAverages = {}, isLoading: averagesLoading } = useWaiterTipAverages();
   const { data: rankings = [], isLoading: rankingsLoading } = useWaiterRanking();
 
-  // Find current user's shift
+  // Find current user's shift (case-insensitive comparison)
   const myShift = useMemo(() => {
-    return waiterShifts.find(s => s.waiter_name.toLowerCase() === staffName.toLowerCase());
+    if (!staffName || waiterShifts.length === 0) return undefined;
+    return waiterShifts.find(s => s.waiter_name.toLowerCase().trim() === staffName.toLowerCase().trim());
   }, [waiterShifts, staffName]);
 
-  // Sync form data with existing shift
+  // Sync form data with existing shift when data loads
   useEffect(() => {
-    if (myShift) {
+    if (myShift && !shiftsLoading) {
       setFormData({
         pos_sales: myShift.pos_sales || 0,
         kassiert_brutto: myShift.kassiert_brutto || 0,
@@ -57,7 +58,7 @@ export default function WaiterMobile() {
         cash_handed_in: myShift.cash_handed_in || 0,
       });
     }
-  }, [myShift]);
+  }, [myShift, shiftsLoading]);
 
   // Calculate expected cash
   const expectedCash = useMemo(() => {
