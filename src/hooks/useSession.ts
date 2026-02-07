@@ -447,3 +447,32 @@ export function useWaiterTipAverages() {
     },
   });
 }
+
+export function useDeleteAllSessions() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: async () => {
+      // Delete all dependent tables first (order matters due to foreign keys)
+      const { error: cardError } = await supabase.from('card_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (cardError) throw cardError;
+      
+      const { error: expenseError } = await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (expenseError) throw expenseError;
+      
+      const { error: kitchenError } = await supabase.from('kitchen_shifts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (kitchenError) throw kitchenError;
+      
+      const { error: waiterError } = await supabase.from('waiter_shifts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (waiterError) throw waiterError;
+      
+      // Finally delete all sessions
+      const { error } = await supabase.from('sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['session-history'] });
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+    },
+  });
+}

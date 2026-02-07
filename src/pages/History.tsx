@@ -1,19 +1,36 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { History as HistoryIcon, Calendar, Euro, CheckCircle, XCircle, Eye } from 'lucide-react';
+import { History as HistoryIcon, Calendar, CheckCircle, XCircle, Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { useSessionHistory } from '@/hooks/useSession';
+import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { useSessionHistory, useDeleteAllSessions } from '@/hooks/useSession';
+import { useToast } from '@/hooks/use-toast';
 
 export default function History() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
   const { data: sessions = [], isLoading } = useSessionHistory();
+  const deleteAllSessions = useDeleteAllSessions();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
@@ -27,6 +44,26 @@ export default function History() {
   // Calculate quick stats
   const totalSessions = sessions.length;
   const finalizedSessions = sessions.filter(s => s.is_finalized).length;
+
+  const isConfirmValid = confirmText.toLowerCase() === 'löschen';
+
+  const handleDeleteAll = async () => {
+    try {
+      await deleteAllSessions.mutateAsync();
+      setDeleteDialogOpen(false);
+      setConfirmText('');
+      toast({
+        title: 'Erfolgreich gelöscht',
+        description: `${totalSessions} Sessions wurden unwiderruflich gelöscht.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Fehler beim Löschen',
+        description: 'Die Sessions konnten nicht gelöscht werden.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -42,14 +79,61 @@ export default function History() {
     <AppLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div>
-          <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground flex items-center gap-3">
-            <HistoryIcon className="w-8 h-8" />
-            Verlauf
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Vergangene Tagesabrechnungen durchsuchen
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-display font-bold text-foreground flex items-center gap-3">
+              <HistoryIcon className="w-8 h-8" />
+              Verlauf
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Vergangene Tagesabrechnungen durchsuchen
+            </p>
+          </div>
+
+          {totalSessions > 0 && (
+            <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+              setDeleteDialogOpen(open);
+              if (!open) setConfirmText('');
+            }}>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Alle löschen
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Alle Sessions löschen?</AlertDialogTitle>
+                  <AlertDialogDescription className="space-y-3">
+                    <p>
+                      ⚠️ Diese Aktion kann nicht rückgängig gemacht werden! Es werden{' '}
+                      <strong>{totalSessions} Sessions</strong> unwiderruflich gelöscht.
+                    </p>
+                    <p>
+                      Tippe <strong>"LÖSCHEN"</strong> ein, um zu bestätigen:
+                    </p>
+                    <Input
+                      value={confirmText}
+                      onChange={(e) => setConfirmText(e.target.value)}
+                      placeholder="LÖSCHEN"
+                      className="mt-2"
+                      autoComplete="off"
+                    />
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteAll}
+                    disabled={!isConfirmValid || deleteAllSessions.isPending}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {deleteAllSessions.isPending ? 'Löschen...' : 'Endgültig löschen'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
 
         {/* Quick Stats */}
