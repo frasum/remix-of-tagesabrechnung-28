@@ -1,0 +1,199 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { startOfMonth, endOfMonth, format, subMonths } from 'date-fns';
+import { de } from 'date-fns/locale';
+
+export interface MonthlyStaffTip {
+  name: string;
+  hours: number;
+  tip: number;
+}
+
+export interface MonthlyTipData {
+  month: string; // "YYYY-MM"
+  monthLabel: string; // "Februar 2026"
+  waiterTips: MonthlyStaffTip[];
+  kitchenTips: MonthlyStaffTip[];
+  totalWaiterTip: number;
+  totalKitchenTip: number;
+  totalKitchenHours: number;
+}
+
+async function fetchMonthlyStaffTips(monthsBack: number = 12): Promise<MonthlyTipData[]> {
+  const now = new Date();
+  const monthsData: MonthlyTipData[] = [];
+
+  // Fetch all sessions from the last N months
+  const startDate = startOfMonth(subMonths(now, monthsBack - 1));
+  const endDate = endOfMonth(now);
+
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('sessions')
+    .select('id, session_date')
+    .gte('session_date', format(startDate, 'yyyy-MM-dd'))
+    .lte('session_date', format(endDate, 'yyyy-MM-dd'))
+    .order('session_date', { ascending: true });
+
+  if (sessionsError) throw sessionsError;
+  if (!sessions || sessions.length === 0) return [];
+
+  const sessionIds = sessions.map(s => s.id);
+
+  // Fetch all waiter shifts and kitchen shifts for these sessions
+  const [waiterShiftsResult, kitchenShiftsResult] = await Promise.all([
+    supabase
+      .from('waiter_shifts')
+      .select('*')
+      .in('session_id', sessionIds),
+    supabase
+      .from('kitchen_shifts')
+      .select('*')
+      .in('session_id', sessionIds),
+  ]);
+
+  if (waiterShiftsResult.error) throw waiterShiftsResult.error;
+  if (kitchenShiftsResult.error) throw kitchenShiftsResult.error;
+
+  const waiterShifts = waiterShiftsResult.data || [];
+  const kitchenShifts = kitchenShiftsResult.data || [];
+
+  // Group sessions by month
+  const sessionsByMonth: Record<string, typeof sessions> = {};
+  sessions.forEach(session => {
+    const monthKey = session.session_date.substring(0, 7); // "YYYY-MM"
+    if (!sessionsByMonth[monthKey]) {
+      sessionsByMonth[monthKey] = [];
+    }
+    sessionsByMonth[monthKey].push(session);
+  });
+
+  // Process each month
+  for (const [monthKey, monthSessions] of Object.entries(sessionsByMonth)) {
+    const sessionIdsInMonth = monthSessions.map(s => s.id);
+    
+    // Get waiter shifts for this month
+    const monthWaiterShifts = waiterShifts.filter(ws => sessionIdsInMonth.includes(ws.session_id));
+    const monthKitchenShifts = kitchenShifts.filter(ks => sessionIdsInMonth.includes(ks.session_id));
+
+    // Calculate waiter tips per session, then aggregate per waiter
+    const waiterTipsMap: Record<string, number> = {};
+    
+    // Group waiter shifts by session to calculate pool per session
+    const waiterShiftsBySession: Record<string, typeof monthWaiterShifts> = {};
+    monthWaiterShifts.forEach(ws => {
+      if (!waiterShiftsBySession[ws.session_id]) {
+        waiterShiftsBySession[ws.session_id] = [];
+      }
+      waiterShiftsBySession[ws.session_id].push(ws);
+    });
+
+    // For each session, calculate the pool and distribute equally
+    for (const [sessionId, shiftsInSession] of Object.entries(waiterShiftsBySession)) {
+      // Calculate session pool: sum of all differenz values (tip contributions)
+      const sessionPool = shiftsInSession.reduce((sum, s) => sum + (s.differenz || 0), 0);
+      const waiterCount = shiftsInSession.length;
+      
+      if (waiterCount > 0 && sessionPool > 0) {
+        const tipPerWaiter = sessionPool / waiterCount;
+        shiftsInSession.forEach(ws => {
+          if (!waiterTipsMap[ws.waiter_name]) {
+            waiterTipsMap[ws.waiter_name] = 0;
+          }
+          waiterTipsMap[ws.waiter_name] += tipPerWaiter;
+        });
+      }
+    }
+
+    // Calculate kitchen tips proportionally by hours
+    const kitchenTipsMap: Record<string, { hours: number; tip: number }> = {};
+    
+    // Group kitchen shifts by session
+    const kitchenShiftsBySession: Record<string, typeof monthKitchenShifts> = {};
+    monthKitchenShifts.forEach(ks => {
+      if (!kitchenShiftsBySession[ks.session_id]) {
+        kitchenShiftsBySession[ks.session_id] = [];
+      }
+      kitchenShiftsBySession[ks.session_id].push(ks);
+    });
+
+    // For each session, calculate kitchen pool and distribute by hours
+    for (const [sessionId, kitchenShiftsInSession] of Object.entries(kitchenShiftsBySession)) {
+      // Get total kitchen tip for this session from waiter shifts
+      const sessionWaiterShifts = waiterShiftsBySession[sessionId] || [];
+      const sessionKitchenPool = sessionWaiterShifts.reduce((sum, ws) => sum + (ws.kitchen_tip || 0), 0);
+      
+      // Calculate total hours in this session
+      const totalHours = kitchenShiftsInSession.reduce((sum, ks) => sum + (ks.hours_worked || 0), 0);
+      
+      if (totalHours > 0 && sessionKitchenPool > 0) {
+        kitchenShiftsInSession.forEach(ks => {
+          const staffName = ks.staff_name;
+          const hours = ks.hours_worked || 0;
+          const tipShare = (hours / totalHours) * sessionKitchenPool;
+          
+          if (!kitchenTipsMap[staffName]) {
+            kitchenTipsMap[staffName] = { hours: 0, tip: 0 };
+          }
+          kitchenTipsMap[staffName].hours += hours;
+          kitchenTipsMap[staffName].tip += tipShare;
+        });
+      } else {
+        // Even if no tips, track hours
+        kitchenShiftsInSession.forEach(ks => {
+          const staffName = ks.staff_name;
+          if (!kitchenTipsMap[staffName]) {
+            kitchenTipsMap[staffName] = { hours: 0, tip: 0 };
+          }
+          kitchenTipsMap[staffName].hours += ks.hours_worked || 0;
+        });
+      }
+    }
+
+    // Convert maps to arrays sorted by tip amount
+    const waiterTips: MonthlyStaffTip[] = Object.entries(waiterTipsMap)
+      .map(([name, tip]) => ({ name, hours: 0, tip }))
+      .sort((a, b) => b.tip - a.tip);
+
+    const kitchenTips: MonthlyStaffTip[] = Object.entries(kitchenTipsMap)
+      .map(([name, data]) => ({ name, hours: data.hours, tip: data.tip }))
+      .sort((a, b) => b.tip - a.tip);
+
+    // Parse month for label
+    const [year, month] = monthKey.split('-');
+    const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const monthLabel = format(monthDate, 'MMMM yyyy', { locale: de });
+
+    monthsData.push({
+      month: monthKey,
+      monthLabel,
+      waiterTips,
+      kitchenTips,
+      totalWaiterTip: waiterTips.reduce((sum, w) => sum + w.tip, 0),
+      totalKitchenTip: kitchenTips.reduce((sum, k) => sum + k.tip, 0),
+      totalKitchenHours: kitchenTips.reduce((sum, k) => sum + k.hours, 0),
+    });
+  }
+
+  // Sort by month descending (most recent first)
+  return monthsData.sort((a, b) => b.month.localeCompare(a.month));
+}
+
+export function useMonthlyStaffTips(monthsBack: number = 12) {
+  return useQuery({
+    queryKey: ['monthly-staff-tips', monthsBack],
+    queryFn: () => fetchMonthlyStaffTips(monthsBack),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+}
+
+// Helper hook to get current month data only
+export function useCurrentMonthTips() {
+  const { data, ...rest } = useMonthlyStaffTips(1);
+  const currentMonth = format(new Date(), 'yyyy-MM');
+  const currentMonthData = data?.find(m => m.month === currentMonth);
+  
+  return {
+    data: currentMonthData,
+    ...rest,
+  };
+}

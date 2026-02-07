@@ -38,6 +38,7 @@ import { WaiterTipChart } from '@/components/statistics/WaiterTipChart';
 import { KitchenTipChart } from '@/components/statistics/KitchenTipChart';
 import { PeriodComparison } from '@/components/statistics/PeriodComparison';
 import { DateRangePicker } from '@/components/statistics/DateRangePicker';
+import { MonthlyTipBreakdown } from '@/components/statistics/MonthlyTipBreakdown';
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -410,6 +411,9 @@ export default function Statistics() {
               <WaiterTipChart data={waiterTipStats} />
               <KitchenTipChart data={kitchenTipStats} />
             </div>
+
+            {/* Monthly Tip Breakdown */}
+            <MonthlyTipBreakdown />
 
             {/* Expenses & Delivery Trend */}
             <Card>
