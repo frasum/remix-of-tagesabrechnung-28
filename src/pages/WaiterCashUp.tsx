@@ -290,7 +290,7 @@ export default function WaiterCashUp() {
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Kellner Trinkgeld:</span>
+                    <span className="text-muted-foreground">Trinkgeld:</span>
                     <span className="font-medium tabular-nums">
                       {formatCurrency(newCashHandedIn - (newKassiertBrutto + newHilfMahl - newOpenInvoices - newCardTotal) - newPosSales * 0.02)}
                     </span>
