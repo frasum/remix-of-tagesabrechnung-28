@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getBusinessDate } from '@/utils/businessDate';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -25,10 +26,11 @@ export function DateSelector({ date, onDateChange }: DateSelectorProps) {
   };
 
   const goToToday = () => {
-    onDateChange(new Date());
+    onDateChange(getBusinessDate());
   };
 
-  const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+  const businessToday = getBusinessDate();
+  const isToday = format(date, 'yyyy-MM-dd') === format(businessToday, 'yyyy-MM-dd');
 
   return (
     <div className="flex items-center gap-2">
