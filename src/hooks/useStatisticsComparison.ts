@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { startOfMonth, endOfMonth, subMonths, format, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
 import type { StatsSummary } from './useStatistics';
 
-type TimeRange = 'week' | 'month' | '3months';
+import type { TimeRange, CustomDateRange } from './useStatistics';
 
 interface ComparisonResult {
   current: StatsSummary;
@@ -97,9 +97,9 @@ function calculatePercentChange(current: number, previous: number): number {
   return ((current - previous) / Math.abs(previous)) * 100;
 }
 
-export function useStatisticsComparison(timeRange: TimeRange = 'month') {
+export function useStatisticsComparison(timeRange: TimeRange = 'month', customRange?: CustomDateRange) {
   return useQuery({
-    queryKey: ['statistics-comparison', timeRange],
+    queryKey: ['statistics-comparison', timeRange, customRange?.from?.toISOString(), customRange?.to?.toISOString()],
     queryFn: async (): Promise<ComparisonResult> => {
       const now = new Date();
       let currentStart: Date;
@@ -109,32 +109,43 @@ export function useStatisticsComparison(timeRange: TimeRange = 'month') {
       let currentLabel: string;
       let previousLabel: string;
 
-      switch (timeRange) {
-        case 'week':
-          currentStart = startOfWeek(now, { weekStartsOn: 1 });
-          currentEnd = endOfWeek(now, { weekStartsOn: 1 });
-          previousStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-          previousEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-          currentLabel = 'Diese Woche';
-          previousLabel = 'Letzte Woche';
-          break;
-        case '3months':
-          currentStart = startOfMonth(subMonths(now, 2));
-          currentEnd = endOfMonth(now);
-          previousStart = startOfMonth(subMonths(now, 5));
-          previousEnd = endOfMonth(subMonths(now, 3));
-          currentLabel = 'Letzte 3 Monate';
-          previousLabel = 'Vorherige 3 Monate';
-          break;
-        case 'month':
-        default:
-          currentStart = startOfMonth(now);
-          currentEnd = endOfMonth(now);
-          previousStart = startOfMonth(subMonths(now, 1));
-          previousEnd = endOfMonth(subMonths(now, 1));
-          currentLabel = 'Dieser Monat';
-          previousLabel = 'Letzter Monat';
-          break;
+      if (timeRange === 'custom' && customRange?.from && customRange?.to) {
+        // Custom range: compare with same duration before
+        currentStart = customRange.from;
+        currentEnd = customRange.to;
+        const durationMs = currentEnd.getTime() - currentStart.getTime();
+        previousEnd = new Date(currentStart.getTime() - 1); // day before current start
+        previousStart = new Date(previousEnd.getTime() - durationMs);
+        currentLabel = 'Gewählter Zeitraum';
+        previousLabel = 'Vorheriger Zeitraum';
+      } else {
+        switch (timeRange) {
+          case 'week':
+            currentStart = startOfWeek(now, { weekStartsOn: 1 });
+            currentEnd = endOfWeek(now, { weekStartsOn: 1 });
+            previousStart = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+            previousEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+            currentLabel = 'Diese Woche';
+            previousLabel = 'Letzte Woche';
+            break;
+          case '3months':
+            currentStart = startOfMonth(subMonths(now, 2));
+            currentEnd = endOfMonth(now);
+            previousStart = startOfMonth(subMonths(now, 5));
+            previousEnd = endOfMonth(subMonths(now, 3));
+            currentLabel = 'Letzte 3 Monate';
+            previousLabel = 'Vorherige 3 Monate';
+            break;
+          case 'month':
+          default:
+            currentStart = startOfMonth(now);
+            currentEnd = endOfMonth(now);
+            previousStart = startOfMonth(subMonths(now, 1));
+            previousEnd = endOfMonth(subMonths(now, 1));
+            currentLabel = 'Dieser Monat';
+            previousLabel = 'Letzter Monat';
+            break;
+        }
       }
 
       const [current, previous] = await Promise.all([

@@ -41,30 +41,40 @@ export interface KitchenTipStats {
   avgTipPerHour: number;
 }
 
-type TimeRange = 'week' | 'month' | '3months';
+export type TimeRange = 'week' | 'month' | '3months' | 'custom';
 
-export function useStatistics(timeRange: TimeRange = 'month') {
+export interface CustomDateRange {
+  from: Date;
+  to: Date;
+}
+
+export function useStatistics(timeRange: TimeRange = 'month', customRange?: CustomDateRange) {
   return useQuery({
-    queryKey: ['statistics', timeRange],
+    queryKey: ['statistics', timeRange, customRange?.from?.toISOString(), customRange?.to?.toISOString()],
     queryFn: async () => {
       const now = new Date();
       let startDate: Date;
       let endDate: Date = now;
 
-      switch (timeRange) {
-        case 'week':
-          startDate = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
-          endDate = endOfWeek(now, { weekStartsOn: 1 });
-          break;
-        case '3months':
-          startDate = startOfMonth(subMonths(now, 2));
-          endDate = endOfMonth(now);
-          break;
-        case 'month':
-        default:
-          startDate = startOfMonth(subMonths(now, 0));
-          endDate = endOfMonth(now);
-          break;
+      if (timeRange === 'custom' && customRange?.from && customRange?.to) {
+        startDate = customRange.from;
+        endDate = customRange.to;
+      } else {
+        switch (timeRange) {
+          case 'week':
+            startDate = startOfWeek(subWeeks(now, 1), { weekStartsOn: 1 });
+            endDate = endOfWeek(now, { weekStartsOn: 1 });
+            break;
+          case '3months':
+            startDate = startOfMonth(subMonths(now, 2));
+            endDate = endOfMonth(now);
+            break;
+          case 'month':
+          default:
+            startDate = startOfMonth(subMonths(now, 0));
+            endDate = endOfMonth(now);
+            break;
+        }
       }
 
       // Fetch sessions in the date range

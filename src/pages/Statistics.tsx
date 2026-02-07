@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { DateRange } from 'react-day-picker';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -9,12 +10,8 @@ import {
   Truck, 
   Receipt,
   Calendar,
-  ArrowUpRight,
-  ArrowDownRight,
 } from 'lucide-react';
 import { 
-  LineChart, 
-  Line, 
   BarChart, 
   Bar, 
   PieChart, 
@@ -26,18 +23,21 @@ import {
   Tooltip, 
   Legend, 
   ResponsiveContainer,
-  Area,
   AreaChart,
+  Area,
+  LineChart,
+  Line,
 } from 'recharts';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { StatCard } from '@/components/shared/StatCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useStatistics } from '@/hooks/useStatistics';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useStatistics, TimeRange } from '@/hooks/useStatistics';
 import { useStatisticsComparison } from '@/hooks/useStatisticsComparison';
 import { WaiterTipChart } from '@/components/statistics/WaiterTipChart';
 import { KitchenTipChart } from '@/components/statistics/KitchenTipChart';
 import { PeriodComparison } from '@/components/statistics/PeriodComparison';
+import { DateRangePicker } from '@/components/statistics/DateRangePicker';
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -79,9 +79,32 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export default function Statistics() {
-  const [timeRange, setTimeRange] = useState<'week' | 'month' | '3months'>('month');
-  const { data, isLoading } = useStatistics(timeRange);
-  const { data: comparisonData, isLoading: comparisonLoading } = useStatisticsComparison(timeRange);
+  const [timeRange, setTimeRange] = useState<TimeRange>('month');
+  const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
+  
+  // Determine if we should use custom range
+  const customRange = timeRange === 'custom' && customDateRange?.from && customDateRange?.to
+    ? { from: customDateRange.from, to: customDateRange.to }
+    : undefined;
+
+  const { data, isLoading } = useStatistics(timeRange, customRange);
+  const { data: comparisonData, isLoading: comparisonLoading } = useStatisticsComparison(timeRange, customRange);
+
+  const handleTimeRangeChange = (value: string) => {
+    const newRange = value as TimeRange;
+    setTimeRange(newRange);
+    // Clear custom date range when switching to preset
+    if (newRange !== 'custom') {
+      setCustomDateRange(undefined);
+    }
+  };
+
+  const handleCustomDateRangeChange = (range: DateRange | undefined) => {
+    setCustomDateRange(range);
+    if (range?.from && range?.to) {
+      setTimeRange('custom');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -124,22 +147,35 @@ export default function Statistics() {
             </p>
           </div>
           
-          <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as typeof timeRange)}>
-            <TabsList>
-              <TabsTrigger value="week" className="gap-2">
-                <Calendar className="w-4 h-4" />
-                Woche
-              </TabsTrigger>
-              <TabsTrigger value="month" className="gap-2">
-                <Calendar className="w-4 h-4" />
-                Monat
-              </TabsTrigger>
-              <TabsTrigger value="3months" className="gap-2">
-                <Calendar className="w-4 h-4" />
-                3 Monate
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Tabs value={timeRange} onValueChange={handleTimeRangeChange}>
+              <TabsList>
+                <TabsTrigger value="week" className="gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Woche
+                </TabsTrigger>
+                <TabsTrigger value="month" className="gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Monat
+                </TabsTrigger>
+                <TabsTrigger value="3months" className="gap-2">
+                  <Calendar className="w-4 h-4" />
+                  3 Monate
+                </TabsTrigger>
+                <TabsTrigger value="custom" className="gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Benutzerdefiniert
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+            
+            {timeRange === 'custom' && (
+              <DateRangePicker
+                dateRange={customDateRange}
+                onDateRangeChange={handleCustomDateRangeChange}
+              />
+            )}
+          </div>
         </div>
 
         {/* No Data State */}
