@@ -351,7 +351,7 @@ export default function ManagerDashboard() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label>Spicery Zählerstand</Label>
+                    <Label>Kellner Abzugebender Betrag</Label>
                     <CurrencyInput
                       value={formData.spicery_counter}
                       onChange={(v) => updateField('spicery_counter', v)}
