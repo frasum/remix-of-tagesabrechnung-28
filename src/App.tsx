@@ -15,6 +15,7 @@ import Statistics from "./pages/Statistics";
 import History from "./pages/History";
 import StaffManagement from "./pages/StaffManagement";
 import WaiterQRPoster from "./pages/WaiterQRPoster";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/install" element={<Install />} />
             <Route path="/" element={<ProtectedRoute><WaiterCashUp /></ProtectedRoute>} />
             <Route path="/waiter" element={<ProtectedRoute><WaiterMobile /></ProtectedRoute>} />
             <Route path="/manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
