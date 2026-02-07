@@ -405,8 +405,8 @@ export default function ManagerDashboard() {
                   <div>
                     <Label>Takeaway GL</Label>
                     <CurrencyInput
-                      value={formData.card_total_gl}
-                      onChange={(v) => updateField('card_total_gl', v)}
+                      value={formData.takeaway_total}
+                      onChange={(v) => updateField('takeaway_total', v)}
                     />
                   </div>
                   <div>
@@ -427,7 +427,7 @@ export default function ManagerDashboard() {
                     <Label>Take-Away Gesamt</Label>
                     <div className="h-10 px-3 flex items-center justify-end rounded-md border bg-muted text-right tabular-nums font-medium">
                       {new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
-                        formData.card_total_gl + formData.ordersmart_revenue + formData.wolt_revenue
+                        formData.takeaway_total + formData.ordersmart_revenue + formData.wolt_revenue
                       )} €
                     </div>
                   </div>
