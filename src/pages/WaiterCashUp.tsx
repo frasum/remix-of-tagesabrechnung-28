@@ -357,11 +357,15 @@ export default function WaiterCashUp() {
                           <TableHead>Name</TableHead>
                           <TableHead className="text-right">Beitrag</TableHead>
                           <TableHead className="text-right">Anteil</TableHead>
+                          <TableHead className="text-right">TG %</TableHead>
+                          <TableHead className="text-right">Ø TG %</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {waiterShifts.map(shift => {
                           const contribution = calculateContribution(shift);
+                          const currentTipPercent = shift.pos_sales > 0 ? (tipPerWaiter / shift.pos_sales) * 100 : 0;
+                          const avgData = waiterTipAverages[shift.waiter_name];
                           return (
                             <TableRow key={shift.id}>
                               <TableCell className="font-medium">{shift.waiter_name}</TableCell>
@@ -370,6 +374,12 @@ export default function WaiterCashUp() {
                               </TableCell>
                               <TableCell className={`text-right tabular-nums ${tipPerWaiter >= 0 ? 'text-success' : 'text-destructive'}`}>
                                 {formatCurrency(tipPerWaiter)}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums">
+                                {shift.pos_sales > 0 ? `${currentTipPercent.toFixed(1)} %` : '-'}
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">
+                                {avgData?.shiftsCount > 1 ? `${avgData.avgTipPercent.toFixed(1)} %` : '-'}
                               </TableCell>
                             </TableRow>
                           );
@@ -382,6 +392,8 @@ export default function WaiterCashUp() {
                           <TableCell className={`text-right tabular-nums ${totalPool >= 0 ? 'text-success' : 'text-destructive'}`}>
                             {formatCurrency(totalPool)}
                           </TableCell>
+                          <TableCell></TableCell>
+                          <TableCell></TableCell>
                         </TableRow>
                       </TableBody>
                     </Table>
@@ -415,8 +427,6 @@ export default function WaiterCashUp() {
                           <TableHead className="text-right">an die Küche</TableHead>
                           <TableHead className="text-right">Beitrag</TableHead>
                           <TableHead className="text-right">Anteil</TableHead>
-                          <TableHead className="text-right">TG %</TableHead>
-                          <TableHead className="text-right">Ø TG %</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
@@ -447,14 +457,6 @@ export default function WaiterCashUp() {
                               </TableCell>
                               <TableCell className={`text-right tabular-nums font-semibold ${tipPerWaiter >= 0 ? 'text-success' : 'text-destructive'}`}>
                                 {formatCurrency(tipPerWaiter)}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {shift.pos_sales > 0 ? `${((tipPerWaiter / shift.pos_sales) * 100).toFixed(1)} %` : '-'}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums text-muted-foreground">
-                                {waiterTipAverages[shift.waiter_name]?.shiftsCount > 1 
-                                  ? `${waiterTipAverages[shift.waiter_name].avgTipPercent.toFixed(1)} %` 
-                                  : '-'}
                               </TableCell>
                               <TableCell>
                                 <Button variant="ghost" size="icon" onClick={e => {
@@ -502,8 +504,6 @@ export default function WaiterCashUp() {
                             <TableCell className={`text-right tabular-nums ${totalPool >= 0 ? 'text-success' : 'text-destructive'}`}>
                               {formatCurrency(totalPool)}
                             </TableCell>
-                            <TableCell></TableCell>
-                            <TableCell></TableCell>
                             <TableCell></TableCell>
                           </TableRow>}
                       </TableBody>
