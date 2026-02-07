@@ -421,7 +421,7 @@ export default function ManagerDashboard() {
                     />
                   </div>
                   <div>
-                    <Label>Gutschein EL (eingelöst)</Label>
+                    <Label>Gutschein Eingelöst (eingelöst)</Label>
                     <CurrencyInput
                       value={formData.vouchers_redeemed}
                       onChange={(v) => updateField('vouchers_redeemed', v)}
@@ -660,7 +660,7 @@ export default function ManagerDashboard() {
                             <TableCell className="text-right tabular-nums text-destructive">{formatCurrency(formData.terminal_1_total + formData.terminal_2_total)}</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="text-destructive">− Gutschein EL + FineDine</TableCell>
+                            <TableCell className="text-destructive">− Gutschein Eingelöst + FineDine</TableCell>
                             <TableCell className="text-right tabular-nums text-destructive">{formatCurrency(formData.vouchers_redeemed + formData.finedine_vouchers)}</TableCell>
                           </TableRow>
                           <TableRow>

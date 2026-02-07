@@ -246,7 +246,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): void => {
   const deductionsData = [
     ['KK Terminal 1', formatCurrency(data.session.terminal_1_total || 0)],
     ['KK Terminal 2', formatCurrency(data.session.terminal_2_total || 0)],
-    ['Gutschein EL', formatCurrency(data.session.vouchers_redeemed || 0)],
+    ['Gutschein Eingelöst', formatCurrency(data.session.vouchers_redeemed || 0)],
     ['FineDine Gutscheine', formatCurrency(data.session.finedine_vouchers || 0)],
     ['Vorschuss', formatCurrency(data.session.vorschuss || 0)],
     ['Einladung', formatCurrency(data.session.einladung || 0)],
@@ -446,7 +446,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): void => {
     ['= Summe Einnahmen', formatCurrency(totalRevenue)],
     ['', ''],
     ['− Terminals (1+2)', formatCurrency((data.session.terminal_1_total || 0) + (data.session.terminal_2_total || 0))],
-    ['− Gutschein EL + FineDine', formatCurrency((data.session.vouchers_redeemed || 0) + (data.session.finedine_vouchers || 0))],
+    ['− Gutschein Eingelöst + FineDine', formatCurrency((data.session.vouchers_redeemed || 0) + (data.session.finedine_vouchers || 0))],
     ['− Vorschuss + Einladung', formatCurrency((data.session.vorschuss || 0) + (data.session.einladung || 0))],
     ['− Offene Rechnungen', formatCurrency(data.totals.totalOpenInvoices)],
     ['− Ausgaben', formatCurrency(data.totals.totalExpenses)],

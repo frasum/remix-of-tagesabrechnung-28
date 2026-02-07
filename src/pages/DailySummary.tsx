@@ -278,7 +278,7 @@ export default function DailySummary() {
                         <TableCell className="text-right tabular-nums">{formatCurrency(session.terminal_2_total || 0)}</TableCell>
                       </TableRow>
                       <TableRow>
-                        <TableCell>Gutschein EL</TableCell>
+                        <TableCell>Gutschein Eingelöst</TableCell>
                         <TableCell className="text-right tabular-nums">{formatCurrency(session.vouchers_redeemed || 0)}</TableCell>
                       </TableRow>
                       <TableRow>
@@ -498,7 +498,7 @@ export default function DailySummary() {
                             <TableCell className="text-right tabular-nums text-destructive">{formatCurrency((session?.terminal_1_total || 0) + (session?.terminal_2_total || 0))}</TableCell>
                           </TableRow>
                           <TableRow>
-                            <TableCell className="text-destructive">− Gutschein EL + FineDine</TableCell>
+                            <TableCell className="text-destructive">− Gutschein Eingelöst + FineDine</TableCell>
                             <TableCell className="text-right tabular-nums text-destructive">{formatCurrency((session?.vouchers_redeemed || 0) + (session?.finedine_vouchers || 0))}</TableCell>
                           </TableRow>
                           <TableRow>
