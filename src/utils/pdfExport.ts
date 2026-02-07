@@ -245,7 +245,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): void => {
 
   const deductionsData = [
     ['KK Terminal 1', formatCurrency(data.session.terminal_1_total || 0)],
-    ['Terminal 2', formatCurrency(data.session.terminal_2_total || 0)],
+    ['KK Terminal 2', formatCurrency(data.session.terminal_2_total || 0)],
     ['Gutschein EL', formatCurrency(data.session.vouchers_redeemed || 0)],
     ['FineDine Gutscheine', formatCurrency(data.session.finedine_vouchers || 0)],
     ['Vorschuss', formatCurrency(data.session.vorschuss || 0)],

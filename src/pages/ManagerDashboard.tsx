@@ -347,7 +347,7 @@ export default function ManagerDashboard() {
                     />
                   </div>
                   <div>
-                    <Label>Terminal 2</Label>
+                    <Label>KK Terminal 2</Label>
                     <CurrencyInput
                       value={formData.terminal_2_total}
                       onChange={(v) => updateField('terminal_2_total', v)}
