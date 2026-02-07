@@ -19,6 +19,7 @@ import {
   useCreateKitchenShift,
   useDeleteKitchenShift,
 } from '@/hooks/useSession';
+import { MonthlyKitchenTipCard } from '@/components/kitchen/MonthlyKitchenTipCard';
 
 export default function KitchenTipSplit() {
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -283,6 +284,9 @@ export default function KitchenTipSplit() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Monthly Overview Card */}
+            <MonthlyKitchenTipCard />
 
             {/* Info Box */}
             {waiterShifts.length === 0 && (
