@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
+import { getBusinessDate } from '@/utils/businessDate';
 import { de } from 'date-fns/locale';
 import { Check, Loader2, CalendarDays } from 'lucide-react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
@@ -16,7 +17,7 @@ import { useSession, useCreateSession, useWaiterShifts, useCreateWaiterShift, us
 import { useWaiterRanking } from '@/hooks/useWaiterRanking';
 
 export default function WaiterMobile() {
-  const today = new Date();
+  const today = getBusinessDate();
   const { user } = useAuth();
   const staffName = user?.name || '';
   const { toast } = useToast();

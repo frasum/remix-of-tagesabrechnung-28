@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
+import { getBusinessDate } from '@/utils/businessDate';
 import { Pencil, Percent, Plus, Trash2, User, Users, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DateSelector } from '@/components/shared/DateSelector';
@@ -16,7 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useSession, useCreateSession, useWaiterShifts, useCreateWaiterShift, useDeleteWaiterShift, useUpdateWaiterShift, useWaiterTipAverages } from '@/hooks/useSession';
 import type { WaiterShift } from '@/types/database';
 export default function WaiterCashUp() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(getBusinessDate());
   const { toast } = useToast();
 
   // Form state for new waiter
