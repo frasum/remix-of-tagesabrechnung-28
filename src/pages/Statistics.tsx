@@ -281,7 +281,7 @@ export default function Statistics() {
                       <Area 
                         type="monotone" 
                         dataKey="kellnerUmsatz" 
-                        name="Kellner Umsatz"
+                        name="Tagesumsatz"
                         stroke="hsl(var(--chart-1))" 
                         fill="url(#colorUmsatz)"
                         strokeWidth={2}
