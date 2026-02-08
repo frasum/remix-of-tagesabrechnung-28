@@ -1,180 +1,61 @@
 
-# Fix: OAuth-Login zeigt falsche Berechtigungsstufe (Staff statt Admin)
+## Inaktivitäts-Logout auf 30 Minuten erhöhen
 
-## Problem-Analyse
+### Analyse
+Das Inaktivitäts-Timeout-Feature wurde noch nicht implementiert. Der geplante Ansatz war, folgende Komponenten zu erstellen:
+- `useInactivityTimeout` Hook für Aktivitäts-Tracking
+- `SessionLockScreen` Komponente für PIN-Bestätigung
+- Erweiterung von `AuthContext.tsx` mit `isLocked` und `lockSession()` Methoden
 
-Frank hat sein Apple- und Google-Konto mit seinem Staff-Account verknüpft und ist als **Admin** konfiguriert. Trotzdem wird bei OAuth-Login `permissionLevel: 'staff'` gesetzt.
+Der Nutzer möchte das Timeout auf **30 Minuten** (statt initial geplant 5 Minuten) setzen.
 
-### Ursache (Console-Logs zeigen das Problem)
+### Implementierungsplan
 
-```
-⚠️ OAuth fallback user created: {
-  "permissionLevel": "staff",
-  "staffId": undefined
-}
-```
+#### 1. Neue Hook: `src/hooks/useInactivityTimeout.ts`
+- Überwacht Benutzeraktivitäten (`mousedown`, `keydown`, `touchstart`, `scroll`)
+- Speichert letzten Aktivitätszeitpunkt
+- Triggert `lockSession()` nach 30 Minuten Inaktivität
+- Setzt Timer nur wenn Benutzer angemeldet und nicht gesperrt ist
 
-Der `convertOAuthUserWithTimeout` wirft einen Timeout (nach 5 Sekunden), und der Fallback-Code setzt:
-- `permissionLevel: 'staff'` (Standard-Fallback)
-- `staffId: undefined` (weil localStorage leer oder veraltet ist)
+#### 2. AuthContext erweitern: `src/contexts/AuthContext.tsx`
+- Neue Properties: `isLocked: boolean` und `lastActivity: number`
+- Neue Methoden:
+  - `lockSession()`: Sperrt Session (zeigt Lock Screen)
+  - `unlockSession(pin: string)`: Verifiziert PIN via neuer Edge Function
+- Timeout-Konstante: `30 * 60 * 1000` (30 Minuten)
 
-### Warum schlägt `convertOAuthUser` fehl?
+#### 3. SessionLockScreen Komponente: `src/components/auth/SessionLockScreen.tsx`
+- Zeigt angemeldeten Benutzer
+- PIN-Eingabefeld mit Ziffern
+- Button "Bestätigen" (ruft `unlockSession()` auf)
+- Button "Anderer Benutzer" (navigiert zu Login, setzt Logout)
+- Styled mit bestehenden Components (Input, Button, Card)
 
-Die Supabase-Anfrage für das Profil funktioniert (`staff_id` wird korrekt aus der DB geholt), aber der gesamte Prozess braucht manchmal länger als 5 Sekunden, weil:
-1. Profile-Query via RLS
-2. Staff-Daten abrufen
-3. Edge-Function für `permission_level` aufrufen
+#### 4. App.tsx anpassen
+- Prüft `isLocked` und rendert `SessionLockScreen` wenn `true`
+- Lock Screen wird über allen anderen Komponenten angezeigt
 
----
+#### 5. Neue Edge Function: `supabase/functions/verify-session-pin/index.ts`
+- POST Endpoint
+- Body: `{ staff_id: string, pin_code: string }`
+- Verifiziert PIN gegen `staff_pins` Tabelle ohne Name-Parameter
+- Returns: `{ valid: boolean }`
 
-## Lösung
+### Dateiänderungen im Überblick
 
-### 1. Edge Function erweitern: `manage-user-role` mit user_id Parameter
+| Datei | Typ | Beschreibung |
+|-------|-----|-------------|
+| `src/hooks/useInactivityTimeout.ts` | NEU | Hook für 30-Min Inaktivitäts-Tracking |
+| `src/contexts/AuthContext.tsx` | EDIT | `isLocked`, `lockSession`, `unlockSession` hinzufügen |
+| `src/components/auth/SessionLockScreen.tsx` | NEU | Lock Screen Komponente mit PIN-Eingabe |
+| `src/App.tsx` | EDIT | SessionLockScreen conditional rendern |
+| `supabase/functions/verify-session-pin/index.ts` | NEU | Edge Function zur PIN-Verifizierung |
 
-Statt über `staff_id` die Berechtigung abzufragen, sollte die Edge Function auch einen Lookup via `user_id` (OAuth-Supabase-ID) unterstützen:
+### Sicherheitsmerkmale
+- **30 Minuten Timeout**: Praktisch für Restaurant-Alltag, genug Zeit ohne OAuth-Neuanmeldung
+- **PIN-Bestätigung**: Verhindert unbefugte Nutzung geteilter Geräte
+- **Schneller Benutzerwechsel**: "Anderer Benutzer" Button ohne vollständigen Logout
+- **Eventbasiertes Tracking**: Timer wird bei jeder Aktivität zurückgesetzt
 
-**Datei:** `supabase/functions/manage-user-role/index.ts`
-
-```typescript
-// GET: Lookup by staff_id OR auth_user_id
-if (req.method === 'GET') {
-  const url = new URL(req.url);
-  const staffId = url.searchParams.get('staff_id');
-  const authUserId = url.searchParams.get('auth_user_id');
-  
-  // If auth_user_id is provided, first find the staff_id via profiles
-  let resolvedStaffId = staffId;
-  if (authUserId && !staffId) {
-    const { data: profile } = await supabaseAdmin
-      .from('profiles')
-      .select('staff_id')
-      .eq('user_id', authUserId)
-      .single();
-    resolvedStaffId = profile?.staff_id;
-  }
-  
-  if (!resolvedStaffId) {
-    return new Response(JSON.stringify({ 
-      staff_id: null, 
-      permission_level: 'staff' 
-    }), ...);
-  }
-  
-  // Fetch staff data and permission level in one call
-  const [staffResult, roleResult] = await Promise.all([
-    supabaseAdmin.from('staff').select('id, name, role').eq('id', resolvedStaffId).single(),
-    supabaseAdmin.from('user_roles').select('permission_level').eq('staff_id', resolvedStaffId).single()
-  ]);
-  
-  return new Response(JSON.stringify({
-    staff_id: resolvedStaffId,
-    staff_name: staffResult.data?.name,
-    staff_role: staffResult.data?.role,
-    permission_level: roleResult.data?.permission_level || 'staff'
-  }), ...);
-}
-```
-
-### 2. AuthContext vereinfachen: Ein Edge-Function-Call statt mehrerer DB-Queries
-
-**Datei:** `src/contexts/AuthContext.tsx`
-
-Ersetze den komplexen `convertOAuthUser` Flow durch einen einzelnen Edge-Function-Aufruf:
-
-```typescript
-const convertOAuthUser = async (supabaseUser: User): Promise<AuthUser> => {
-  const name = supabaseUser.user_metadata?.full_name 
-    || supabaseUser.email?.split('@')[0] 
-    || 'Benutzer';
-
-  // Single API call to get all user data including permission level
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-user-role?auth_user_id=${supabaseUser.id}`,
-    {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-      },
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error('Failed to fetch user role');
-  }
-
-  const roleData = await response.json();
-
-  return {
-    id: roleData.staff_id || supabaseUser.id,
-    name: roleData.staff_name || name,
-    role: roleData.staff_role || 'waiter',
-    permissionLevel: roleData.permission_level || 'staff',
-    isOAuthUser: true,
-    staffId: roleData.staff_id || undefined,
-    needsLinking: !roleData.staff_id,
-  };
-};
-```
-
-### 3. Timeout erhöhen oder entfernen
-
-Das aktuelle Timeout von 5 Sekunden ist zu kurz. Erhöhe auf 10 Sekunden oder entferne den Timeout komplett und zeige stattdessen einen Loading-State.
-
-### 4. Edge Function `link-account` für Multi-Account anpassen
-
-**Datei:** `supabase/functions/link-account/index.ts`
-
-Die Prüfung auf "bereits verknüpft" muss angepasst werden, um mehrere OAuth-Konten pro Mitarbeiter zu erlauben (Zeile 82-93 entfernen/anpassen):
-
-```typescript
-// Erlaube mehrere OAuth-Konten pro Staff
-// ALTE Logik:
-// if (existingLink && existingLink.user_id !== user.id) { ERROR }
-
-// NEUE Logik: Nur prüfen ob DIESER User bereits mit einem ANDEREN Staff verknüpft ist
-const { data: currentUserProfile } = await supabaseAdmin
-  .from('profiles')
-  .select('staff_id')
-  .eq('user_id', user.id)
-  .single();
-
-if (currentUserProfile?.staff_id && currentUserProfile.staff_id !== staff.id) {
-  return new Response(
-    JSON.stringify({ error: 'Dein Konto ist bereits mit einem anderen Mitarbeiter verknüpft' }),
-    { status: 409, ... }
-  );
-}
-```
-
----
-
-## Zusammenfassung der Dateiänderungen
-
-| Datei | Änderung |
-|-------|----------|
-| `supabase/functions/manage-user-role/index.ts` | `auth_user_id` Parameter hinzufügen, Profile-Lookup integrieren |
-| `supabase/functions/link-account/index.ts` | Multi-OAuth-Konten pro Staff erlauben |
-| `src/contexts/AuthContext.tsx` | `convertOAuthUser` vereinfachen (1 API-Call statt 3 DB-Queries), Timeout erhöhen |
-
----
-
-## Test-Plan
-
-1. localStorage leeren
-2. Mit Google als Frank anmelden
-3. Console-Log prüfen: `permissionLevel` sollte "admin" sein
-4. Navigation prüfen: Alle Admin-Menüpunkte sollten sichtbar sein
-5. Ausloggen
-6. Mit Apple als Frank anmelden
-7. Gleiche Prüfungen wie oben
-
----
-
-## Warum diese Lösung besser ist
-
-| Vorher | Nachher |
-|--------|---------|
-| 3 separate DB/API-Aufrufe (Profile → Staff → Role) | 1 Edge-Function-Aufruf |
-| 5 Sekunden Timeout reicht nicht | Edge Function ist schneller (ca. 1-2s) |
-| Fallback setzt immer `staff` | Fallback nutzt Cache mit korrektem Level |
-| Mehrere OAuth-Konten blockiert | Mehrere OAuth-Konten unterstützt |
+### Konfigurierbarkeit
+Die 30 Minuten sind leicht anpassbar durch Änderung der Konstante in `useInactivityTimeout.ts`.
