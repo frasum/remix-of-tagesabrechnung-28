@@ -553,7 +553,7 @@ interface CashBalancePDFData {
   year: number;
 }
 
-export const generateCashBalancePDF = (data: CashBalancePDFData): void => {
+export const generateCashBalancePDF = (data: CashBalancePDFData, options?: { preview?: boolean }): { blobUrl: string; fileName: string } | void => {
   const doc = new jsPDF('landscape');
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 14;
@@ -697,8 +697,16 @@ export const generateCashBalancePDF = (data: CashBalancePDFData): void => {
     );
   }
 
-  // Save
+  // Generate filename
   const monthStr = String(data.month + 1).padStart(2, '0');
   const fileName = `Bargeldbestand_${data.year}-${monthStr}.pdf`;
+
+  // Return blob URL for preview or save directly
+  if (options?.preview) {
+    const blob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(blob);
+    return { blobUrl, fileName };
+  }
+
   doc.save(fileName);
 };
