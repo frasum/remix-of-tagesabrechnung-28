@@ -1,120 +1,158 @@
 
 
-## Kassenstand-Logik: Vereinfachung auf Tagesbasis + Transfers
+## Vortages-Kassenbestand im Manager-Dashboard anzeigen
 
-### Dein Szenario verstanden
-**Ausgangssituation pro Tag:**
-- Restaurant-Kasse startet mit **1.000 €** (Anfangsbestand)
-- Vault startet mit **1.000 €** (Anfangsbestand)
-- **Bargeld des Tages** wird berechnet (können positiv oder negativ sein)
-- **Kassenstand Ende des Tages** = 1.000 € + Bargeld des Tages + ggf. Transfers vom Tresor
+### Übersicht
+Der Manager soll im Dashboard den **Kassenbestand vom Ende des Vortages** sehen, um zu wissen, mit welchem Betrag die Restaurant-Kasse heute gestartet ist.
 
-**Wenn Kassenstand < 1.000 € geht (also Bargeld < 0):**
-- Manager sieht Transfer-Button "Transfer vom Tresor"
-- Manager kann Betrag eingeben und Transfer erfassen
-- Dieser Transfer wird in `register_transfers` mit `direction = 'to_restaurant'` gespeichert
-- Der neue Kassenstand wird sofort aktualisiert
+### Berechnung
+Der Kassenbestand vom Vortag ergibt sich aus:
 
-### Was ändert sich in DailySummary.tsx
+```
+Vortages-Kassenbestand = 1.000 € (Anfangsbestand) + Bargeld des Vortages + Transfers vom Tresor am Vortag
+```
 
-**Zeile 100-132 (Cumulative cash balance calculations) - ENTFERNEN:**
-- Die komplexe Logik mit `previousDayCumulativeCash` ist nicht mehr nötig
-- Die Berechnung mit `registerBalanceBeforeToday` ist nicht mehr nötig
-- `hadDeficitBefore`, `deficitWasCleared`, `amountCleared`, `isPartialClearance` sind nicht mehr nötig
+### Technische Umsetzung
 
-**Neue vereinfachte Logik (Zeile 99-120 ersetzen):**
+**Datei: `src/pages/ManagerDashboard.tsx`**
+
+| Änderung | Beschreibung |
+|----------|--------------|
+| Neue Berechnung | `previousDayRegisterBalance` berechnen |
+| Session-Hook erweitern | Vortags-Session laden |
+| UI hinzufügen | Neue Info-Zeile in der Bargeld-Kachel |
+
+**Neue Logik (nach Zeile 246):**
 ```typescript
-// Vereinfacht: Nur heutiger Tag
-const initialRestaurantBalance = balances.initialRestaurant; // 1.000 €
-const todaysVaultTransfers = useMemo(() => {
+// Vortags-Datum berechnen
+const previousDayStr = useMemo(() => {
+  const prevDate = new Date(selectedDate);
+  prevDate.setDate(prevDate.getDate() - 1);
+  return format(prevDate, 'yyyy-MM-dd');
+}, [selectedDate]);
+
+// Vortags-Session laden (für Bargeld-Berechnung)
+const { data: previousSession } = useSession(
+  new Date(previousDayStr), 
+  restaurantId
+);
+const { data: previousWaiterShifts = [] } = useWaiterShifts(previousSession?.id);
+const { data: previousExpenses = [] } = useExpenses(previousSession?.id);
+
+// Vortags-Bargeld berechnen (gleiche Formel wie in DailySummary)
+const previousDayBargeld = useMemo(() => {
+  if (!previousSession) return 0;
+  
+  const prevKellnerUmsatz = previousWaiterShifts.reduce((sum, w) => sum + (w.pos_sales || 0), 0);
+  const prevHilfMahl = previousWaiterShifts.reduce((sum, w) => sum + (w.hilf_mahl || 0), 0);
+  const prevOpenInvoices = previousWaiterShifts.reduce((sum, w) => sum + (w.open_invoices || 0), 0);
+  const prevTotalExpenses = previousExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const prevDeliveryRevenue = (previousSession.ordersmart_revenue || 0) + 
+                               (previousSession.wolt_revenue || 0) + 
+                               (previousSession.takeaway_total || 0);
+
+  return prevKellnerUmsatz +
+    (previousSession.vouchers_sold || 0) +
+    (previousSession.sonstige_einnahme || 0) -
+    (previousSession.terminal_1_total || 0) -
+    (previousSession.terminal_2_total || 0) -
+    (previousSession.vouchers_redeemed || 0) -
+    (previousSession.vorschuss || 0) -
+    (previousSession.einladung || 0) -
+    prevOpenInvoices -
+    prevTotalExpenses +
+    prevHilfMahl -
+    prevDeliveryRevenue -
+    (previousSession.finedine_vouchers || 0);
+}, [previousSession, previousWaiterShifts, previousExpenses]);
+
+// Vortags-Transfers vom Tresor
+const previousDayVaultTransfers = useMemo(() => {
   return transfers
-    .filter(t => t.direction === 'to_restaurant' && t.transfer_date === selectedDateStr)
+    .filter(t => t.direction === 'to_restaurant' && t.transfer_date === previousDayStr)
     .reduce((sum, t) => sum + t.amount, 0);
-}, [transfers, selectedDateStr]);
+}, [transfers, previousDayStr]);
 
-const todaysRegisterBalance = initialRestaurantBalance + bargeld + todaysVaultTransfers;
-const showCashBalanceCard = todaysRegisterBalance < initialRestaurantBalance; // nur zeigen wenn < 1.000 €
+// Kassenbestand vom Vortag (= Startbestand heute)
+const previousDayRegisterBalance = balances.initialRestaurant + previousDayBargeld + previousDayVaultTransfers;
 ```
 
-**Zeile 284-334 (Kassenstand Card) - VEREINFACHEN:**
-```tsx
-{showCashBalanceCard && (
-  <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
-    <CardHeader className="pb-2">
-      <CardTitle className="flex items-center gap-2 text-lg">
-        <Banknote className="w-5 h-5" />
-        Kassenstand
-      </CardTitle>
-    </CardHeader>
-    <CardContent className="space-y-3">
-      {/* Anfangsbestand */}
-      <div className="flex justify-between items-center">
-        <span className="text-sm text-muted-foreground">Anfangsbestand</span>
-        <span className="font-semibold tabular-nums">
-          {formatCurrency(initialRestaurantBalance)}
-        </span>
-      </div>
+**UI in der Bargeld-Kachel (Zeile 364-392):**
 
-      {/* Bargeld heute */}
-      <div className="flex justify-between items-center">
-        <span className="text-sm text-muted-foreground">Bargeld heute</span>
-        <span className={`font-semibold tabular-nums ${bargeld >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-          {formatCurrency(bargeld)}
-        </span>
-      </div>
+```jsx
+<Card className="border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 lg:col-start-3 md:col-span-2 lg:col-span-1">
+  <CardHeader className="pb-2">
+    <CardTitle className="flex items-center gap-2 text-lg">
+      <Banknote className="w-5 h-5" />
+      Kassenstand
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-3">
+    {/* NEU: Kassenbestand Vortag (= Startbestand heute) */}
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-muted-foreground">Kassenbestand Vortag</span>
+      <span className="font-semibold tabular-nums">
+        {formatCurrency(previousDayRegisterBalance)}
+      </span>
+    </div>
 
-      {/* Transfer vom Tresor heute */}
-      {todaysVaultTransfers > 0 && (
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Transfer Tresor</span>
-          <span className="font-semibold tabular-nums text-blue-600">
-            +{formatCurrency(todaysVaultTransfers)}
-          </span>
-        </div>
-      )}
+    {/* Bargeld heute (Vorschau) */}
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-muted-foreground">Bargeld heute (Vorschau)</span>
+      <span className={`font-semibold tabular-nums ${bargeldPreview >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+        {formatCurrency(bargeldPreview)}
+      </span>
+    </div>
+    
+    <Separator />
 
-      <Separator />
+    {/* Kassenstand nach heute */}
+    <div className="flex justify-between items-center">
+      <span className="text-sm font-medium">Kassenstand nach heute</span>
+      <span className={`text-lg font-bold tabular-nums ${(previousDayRegisterBalance + bargeldPreview) >= balances.initialRestaurant ? 'text-emerald-600' : 'text-destructive'}`}>
+        {formatCurrency(previousDayRegisterBalance + bargeldPreview)}
+      </span>
+    </div>
 
-      {/* Kassenstand Ende des Tages */}
-      <div className="flex justify-between items-center">
-        <span className="text-sm font-medium">Kassenstand</span>
-        <span className={`text-lg font-bold tabular-nums ${todaysRegisterBalance >= initialRestaurantBalance ? 'text-emerald-600' : 'text-destructive'}`}>
-          {formatCurrency(todaysRegisterBalance)}
-        </span>
-      </div>
-
-      {/* Transfer-Button nur wenn noch unter 1.000 € */}
-      {todaysRegisterBalance < initialRestaurantBalance && (
-        <Button 
-          onClick={() => setShowTransferDialog(true)} 
-          variant="outline" 
-          className="w-full gap-2"
-        >
-          <Vault className="w-4 h-4" />
-          Transfer vom Tresor
-        </Button>
-      )}
-    </CardContent>
-  </Card>
-)}
+    {/* Transfer-Button wenn Kassenstand < 1.000 € */}
+    {(previousDayRegisterBalance + bargeldPreview) < balances.initialRestaurant && (
+      <Button onClick={() => setShowTransferDialog(true)} variant="outline" className="w-full gap-2">
+        <Vault className="w-4 h-4" />
+        Transfer vom Tresor
+      </Button>
+    )}
+  </CardContent>
+</Card>
 ```
 
-**Imports - ANPASSEN (Zeile 1-26):**
-- Behalte: `useRegisterTransfers`, `TransferDialog`
-- Entfernen: `useCashBalanceData` (wird nicht mehr genutzt)
-- Entfernen: `CheckCircle2`, `AlertTriangle` (sind nicht mehr nötig)
+### Beispiel-Darstellung
 
-### Wie das in ManagerDashboard.tsx weiterlebt
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│  💵 KASSENSTAND                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│     Kassenbestand Vortag:            1.350,00 €  ← NEU              │
+│     Bargeld heute (Vorschau):         -200,00 €                     │
+│     ─────────────────────────────────────────────                   │
+│     Kassenstand nach heute:          1.150,00 €                     │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
 
-Die ManagerDashboard.tsx hat bereits die kumulierte Defizit-Ausgleich-Logik. Das bleibt dort wie es ist – das ist ein separates Konzept für den Manager-Überblick. Nur in der DailySummary.tsx wird es vereinfacht auf Tagesbasis.
+### Wann wird die Kachel angezeigt?
 
-### Zusammenfassung der Änderungen
+Die Kachel-Sichtbarkeit wird angepasst:
+- Vorher: `currentRegisterBalance < 0` (kumuliert)
+- Nachher: `(previousDayRegisterBalance + bargeldPreview) < balances.initialRestaurant` (unter 1.000 €)
 
-| Was | Vorher | Nachher |
-|-----|--------|---------|
-| **DailySummary Kassenstand** | Kumuliert über alle Tage | Nur heutiger Tag (1.000 € + Bargeld + Transfers) |
-| **Wann wird Kachel angezeigt** | Immer (wenn Session existiert) | Nur wenn Kassenstand < 1.000 € |
-| **Defizit-Ausgleich-Logik** | Komplexe Berechnung (`hadDeficitBefore`, etc.) | Einfach: nur heute's Transfers zeigen |
-| **Transfer-Button** | Nur bei kumuliertem Defizit | Nur wenn heute's Kassenstand < 1.000 € |
-| **useCashBalanceData Hook** | Wird importiert und genutzt | Wird nicht mehr genutzt (entfernen) |
+### Zusammenfassung
+
+| Bereich | Änderung |
+|---------|----------|
+| Neue Hooks | `previousSession`, `previousWaiterShifts`, `previousExpenses` |
+| Neue Berechnungen | `previousDayBargeld`, `previousDayVaultTransfers`, `previousDayRegisterBalance` |
+| UI | Neue Zeile "Kassenbestand Vortag" in Bargeld-Kachel |
+| Kachel-Sichtbarkeit | Basiert auf `previousDayRegisterBalance + bargeldPreview < 1.000 €` |
+| Entfernen | `useCashBalanceData` Hook (kumulierte Logik nicht mehr nötig) |
 
