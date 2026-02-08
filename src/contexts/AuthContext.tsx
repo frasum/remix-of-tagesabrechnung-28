@@ -24,7 +24,7 @@ interface AuthContextType {
   hasPermission: (requiredLevel: PermissionLevel) => boolean;
   refreshPermissions: () => Promise<void>;
   lockSession: () => void;
-  unlockSession: (pin: string) => Promise<boolean>;
+  unlockSession: (pin: string, bypassPin?: boolean) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -327,9 +327,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Unlock session with PIN verification
-  const unlockSession = async (pin: string): Promise<boolean> => {
+  // Unlock session with PIN verification or bypass (for QR unlock)
+  const unlockSession = async (pin: string, bypassPin = false): Promise<boolean> => {
     if (!user?.staffId) return false;
+
+    // Allow QR-based unlock to bypass PIN
+    if (bypassPin) {
+      setIsLocked(false);
+      return true;
+    }
 
     try {
       const response = await fetch(
