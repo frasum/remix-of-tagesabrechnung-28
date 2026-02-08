@@ -22,7 +22,11 @@ export default function Login() {
   // Redirect if already logged in (including OAuth users)
   useEffect(() => {
     if (user) {
-      navigate(isMobile ? '/spicery/waiter' : '/spicery', { replace: true });
+      // Prüfen ob ein gespeicherter Restaurant-Slug existiert (von OAuth-Redirect)
+      const savedRestaurant = localStorage.getItem('oauth_redirect_restaurant');
+      localStorage.removeItem('oauth_redirect_restaurant');
+      const restaurant = savedRestaurant || 'spicery';
+      navigate(isMobile ? `/${restaurant}/waiter` : `/${restaurant}`, { replace: true });
     }
   }, [user, isMobile, navigate]);
 
@@ -65,6 +69,12 @@ export default function Login() {
   };
 
   const handleGoogleSignIn = async () => {
+    // Restaurant-Slug aus URL extrahieren falls vorhanden (für Redirect nach OAuth)
+    const pathMatch = window.location.pathname.match(/^\/([^/]+)/);
+    if (pathMatch && pathMatch[1] !== 'login') {
+      localStorage.setItem('oauth_redirect_restaurant', pathMatch[1]);
+    }
+    
     setIsLoading(true);
     const result = await lovable.auth.signInWithOAuth('google', {
       redirect_uri: window.location.origin,
@@ -81,6 +91,12 @@ export default function Login() {
   };
 
   const handleAppleSignIn = async () => {
+    // Restaurant-Slug aus URL extrahieren falls vorhanden (für Redirect nach OAuth)
+    const pathMatch = window.location.pathname.match(/^\/([^/]+)/);
+    if (pathMatch && pathMatch[1] !== 'login') {
+      localStorage.setItem('oauth_redirect_restaurant', pathMatch[1]);
+    }
+    
     setIsLoading(true);
     const result = await lovable.auth.signInWithOAuth('apple', {
       redirect_uri: window.location.origin,
