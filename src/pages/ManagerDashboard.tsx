@@ -17,7 +17,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useRegisterTransfers } from '@/hooks/useRegisterTransfers';
-import { useCashBalanceData } from '@/hooks/useCashBalanceData';
 import { TransferDialog } from '@/components/register/TransferDialog';
 import {
   useSession,
@@ -241,29 +240,63 @@ export default function ManagerDashboard() {
     formData.finedine_vouchers;
 
   // Cash balance hooks
-  const { data: cashBalanceData = [] } = useCashBalanceData(restaurantId);
   const { transfers, balances, createTransfer, isCreating } = useRegisterTransfers(restaurantId);
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
 
-  // Cumulative cash balance calculations
-  const cumulativeCashUntilDate = useMemo(() => {
-    return cashBalanceData
-      .filter(row => row.date <= selectedDateStr)
-      .reduce((sum, row) => sum + row.bargeld, 0);
-  }, [cashBalanceData, selectedDateStr]);
+  // Previous day calculation
+  const previousDayStr = useMemo(() => {
+    const prevDate = new Date(selectedDate);
+    prevDate.setDate(prevDate.getDate() - 1);
+    return format(prevDate, 'yyyy-MM-dd');
+  }, [selectedDate]);
 
-  const transfersToRestaurantUntilDate = useMemo(() => {
-    const toRestaurant = transfers
-      .filter(t => t.direction === 'to_restaurant' && t.transfer_date <= selectedDateStr)
-      .reduce((sum, t) => sum + t.amount, 0);
-    const toSafe = transfers
-      .filter(t => t.direction === 'to_safe' && t.transfer_date <= selectedDateStr)
-      .reduce((sum, t) => sum + t.amount, 0);
-    return toRestaurant - toSafe;
-  }, [transfers, selectedDateStr]);
+  // Load previous day's session and data
+  const { data: previousSession } = useSession(new Date(previousDayStr), restaurantId);
+  const { data: previousWaiterShifts = [] } = useWaiterShifts(previousSession?.id);
+  const { data: previousExpenses = [] } = useExpenses(previousSession?.id);
 
-  // Current register balance (cumulative)
-  const currentRegisterBalance = balances.initialRestaurant + cumulativeCashUntilDate + transfersToRestaurantUntilDate;
+  // Previous day's cash calculation (same formula as DailySummary)
+  const previousDayBargeld = useMemo(() => {
+    if (!previousSession) return 0;
+    
+    const prevKellnerUmsatz = previousWaiterShifts.reduce((sum, w) => sum + (w.pos_sales || 0), 0);
+    const prevHilfMahl = previousWaiterShifts.reduce((sum, w) => sum + (w.hilf_mahl || 0), 0);
+    const prevOpenInvoices = previousWaiterShifts.reduce((sum, w) => sum + (w.open_invoices || 0), 0);
+    const prevTotalExpenses = previousExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const prevDeliveryRevenue = (previousSession.ordersmart_revenue || 0) + 
+                                 (previousSession.wolt_revenue || 0) + 
+                                 (previousSession.takeaway_total || 0);
+
+    return prevKellnerUmsatz +
+      (previousSession.vouchers_sold || 0) +
+      (previousSession.sonstige_einnahme || 0) -
+      (previousSession.terminal_1_total || 0) -
+      (previousSession.terminal_2_total || 0) -
+      (previousSession.vouchers_redeemed || 0) -
+      (previousSession.vorschuss || 0) -
+      (previousSession.einladung || 0) -
+      prevOpenInvoices -
+      prevTotalExpenses +
+      prevHilfMahl -
+      prevDeliveryRevenue -
+      (previousSession.finedine_vouchers || 0);
+  }, [previousSession, previousWaiterShifts, previousExpenses]);
+
+  // Previous day's vault transfers
+  const previousDayVaultTransfers = useMemo(() => {
+    return transfers
+      .filter(t => t.direction === 'to_restaurant' && t.transfer_date === previousDayStr)
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [transfers, previousDayStr]);
+
+  // Previous day's register balance (= today's starting balance)
+  const previousDayRegisterBalance = balances.initialRestaurant + previousDayBargeld + previousDayVaultTransfers;
+
+  // Projected balance after today
+  const projectedRegisterBalance = previousDayRegisterBalance + bargeldPreview;
+
+  // Show card only when projected balance falls below initial (1.000 €)
+  const showCashBalanceCard = projectedRegisterBalance < balances.initialRestaurant;
 
   const handleTransferSubmit = (data: {
     transfer_date: string;
@@ -360,33 +393,49 @@ export default function ManagerDashboard() {
         {session && (
           <div className="space-y-6">
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {/* Bargeld - moved to right with lg:col-start-3 */}
-              {currentRegisterBalance < 0 && (
+              {/* Kassenstand Card - only when projected balance is below initial */}
+              {showCashBalanceCard && (
                 <Card className="border-amber-500 bg-amber-50/50 dark:bg-amber-950/20 lg:col-start-3 md:col-span-2 lg:col-span-1">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <Banknote className="w-5 h-5" />
-                      Bargeld
+                      Kassenstand
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
+                    {/* Previous day register balance (= today's starting balance) */}
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Heute Vorschau</span>
+                      <span className="text-sm text-muted-foreground">Kassenbestand Vortag</span>
+                      <span className="font-semibold tabular-nums">
+                        {formatCurrency(previousDayRegisterBalance)}
+                      </span>
+                    </div>
+
+                    {/* Today's cash preview */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Bargeld heute (Vorschau)</span>
                       <span className={`font-semibold tabular-nums ${bargeldPreview >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
                         {formatCurrency(bargeldPreview)}
                       </span>
                     </div>
+                    
                     <Separator />
+
+                    {/* Projected register balance after today */}
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">Kassenstand nach heute</span>
-                      <span className={`text-lg font-bold tabular-nums ${currentRegisterBalance >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
-                        {formatCurrency(currentRegisterBalance)}
+                      <span className={`text-lg font-bold tabular-nums ${projectedRegisterBalance >= balances.initialRestaurant ? 'text-emerald-600' : 'text-destructive'}`}>
+                        {formatCurrency(projectedRegisterBalance)}
                       </span>
                     </div>
-                    <Button onClick={() => setShowTransferDialog(true)} variant="outline" className="w-full gap-2">
-                      <Vault className="w-4 h-4" />
-                      Transfer vom Tresor
-                    </Button>
+
+                    {/* Transfer button when balance is below initial */}
+                    {projectedRegisterBalance < balances.initialRestaurant && (
+                      <Button onClick={() => setShowTransferDialog(true)} variant="outline" className="w-full gap-2">
+                        <Vault className="w-4 h-4" />
+                        Transfer vom Tresor
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -601,7 +650,7 @@ export default function ManagerDashboard() {
               </Card>
 
               {/* Bargeld Card */}
-              <Card className={currentRegisterBalance < 0 ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20" : ""}>
+              <Card className={showCashBalanceCard ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20" : ""}>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Banknote className="w-5 h-5" />
@@ -609,31 +658,41 @@ export default function ManagerDashboard() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                  {/* Previous day register balance */}
                   <div>
-                    <Label>Bargeld des Tages</Label>
+                    <Label className="text-muted-foreground">Kassenbestand Vortag</Label>
+                    <div className="text-lg font-semibold tabular-nums">
+                      {formatCurrency(previousDayRegisterBalance)}
+                    </div>
+                  </div>
+                  
+                  {/* Today's cash */}
+                  <div>
+                    <Label>Bargeld heute</Label>
                     <div className={`text-2xl font-bold tabular-nums ${bargeldPreview >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
                       {formatCurrency(bargeldPreview)}
                     </div>
                   </div>
                   
-                  {currentRegisterBalance < 0 && (
-                    <>
-                      <Separator />
-                      <div>
-                        <Label className="text-muted-foreground">Kumuliertes Defizit</Label>
-                        <div className="text-xl font-semibold tabular-nums text-destructive">
-                          {formatCurrency(currentRegisterBalance)}
-                        </div>
-                      </div>
-                      <Button 
-                        onClick={() => setShowTransferDialog(true)}
-                        variant="outline"
-                        className="w-full gap-2"
-                      >
-                        <Vault className="w-4 h-4" />
-                        Transfer vom Tresor
-                      </Button>
-                    </>
+                  <Separator />
+                  
+                  {/* Projected balance */}
+                  <div>
+                    <Label>Kassenstand nach heute</Label>
+                    <div className={`text-xl font-bold tabular-nums ${projectedRegisterBalance >= balances.initialRestaurant ? 'text-emerald-600' : 'text-destructive'}`}>
+                      {formatCurrency(projectedRegisterBalance)}
+                    </div>
+                  </div>
+                  
+                  {showCashBalanceCard && (
+                    <Button 
+                      onClick={() => setShowTransferDialog(true)}
+                      variant="outline"
+                      className="w-full gap-2"
+                    >
+                      <Vault className="w-4 h-4" />
+                      Transfer vom Tresor
+                    </Button>
                   )}
                 </CardContent>
               </Card>
