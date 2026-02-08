@@ -15,16 +15,23 @@ export function SessionLockScreen() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState('');
   const [qrToken, setQrToken] = useState<string | null>(null);
-  const [showQr, setShowQr] = useState(false);
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
   const [isQrConfirmed, setIsQrConfirmed] = useState(false);
   const [pollingActive, setPollingActive] = useState(false);
 
+  const isAdmin = user?.permissionLevel === 'admin';
   const confirmUrl = qrToken ? `${window.location.origin}/confirm-login/${qrToken}` : '';
+
+  // Auto-generate QR for admin on mount
+  useEffect(() => {
+    if (isAdmin && !qrToken && !isGeneratingQr) {
+      handleGenerateQr();
+    }
+  }, [isAdmin]);
 
   // Poll for QR confirmation
   useEffect(() => {
-    if (!showQr || !qrToken || isQrConfirmed) {
+    if (!qrToken || isQrConfirmed) {
       setPollingActive(false);
       return;
     }
@@ -49,12 +56,12 @@ export function SessionLockScreen() {
           if (result.valid) {
             setIsQrConfirmed(true);
             toast.success('QR bestätigt!');
-            setTimeout(() => {
-              // Trigger unlock without PIN
-              setShowQr(false);
+            setTimeout(async () => {
+              // Unlock session for admin
+              await unlockSession('', true); // bypass PIN for QR unlock
               setQrToken(null);
               setIsQrConfirmed(false);
-            }, 2000);
+            }, 1500);
           }
         }
       } catch (error) {
@@ -66,7 +73,7 @@ export function SessionLockScreen() {
       clearInterval(pollInterval);
       setPollingActive(false);
     };
-  }, [showQr, qrToken, isQrConfirmed]);
+  }, [qrToken, isQrConfirmed, unlockSession]);
 
   const handleVerify = async () => {
     if (pin.length !== 4) {
@@ -121,7 +128,6 @@ export function SessionLockScreen() {
 
       const result = await response.json();
       setQrToken(result.token);
-      setShowQr(true);
     } catch (error) {
       console.error('Error generating QR:', error);
       setError('QR-Code konnte nicht generiert werden');
@@ -130,23 +136,23 @@ export function SessionLockScreen() {
     }
   };
 
-  // QR Code confirmation screen
-  if (showQr && qrToken) {
+  // QR Code confirmation screen (for admin or when QR is active)
+  if (qrToken) {
     if (isQrConfirmed) {
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
           <Card className="w-full max-w-md mx-4 shadow-lg">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-20 h-20 rounded-full bg-green-600/20 flex items-center justify-center animate-pulse">
-              <CheckCircle2 className="w-10 h-10 text-green-600" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl text-green-600">Bestätigt!</CardTitle>
-              <CardDescription className="mt-2">
-                QR-Code erfolgreich gescannt
-              </CardDescription>
-            </div>
-          </CardHeader>
+            <CardHeader className="text-center space-y-4">
+              <div className="mx-auto w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center animate-pulse">
+                <CheckCircle2 className="w-10 h-10 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-2xl text-primary">Bestätigt!</CardTitle>
+                <CardDescription className="mt-2">
+                  QR-Code erfolgreich gescannt
+                </CardDescription>
+              </div>
+            </CardHeader>
 
             <CardContent className="space-y-4 text-center">
               <p className="text-sm text-muted-foreground">
@@ -194,15 +200,26 @@ export function SessionLockScreen() {
               </div>
             </div>
 
+            {!isAdmin && (
+              <Button
+                variant="ghost"
+                onClick={() => setQrToken(null)}
+                className="w-full"
+              >
+                Zurück zur PIN-Eingabe
+              </Button>
+            )}
+
             <Button
               variant="ghost"
-              onClick={() => {
-                setShowQr(false);
-                setQrToken(null);
+              onClick={async () => {
+                await logout();
+                navigate('/login');
               }}
               className="w-full"
             >
-              Abbrechen
+              <LogOut className="mr-2 h-4 w-4" />
+              Anderer Benutzer
             </Button>
           </CardContent>
         </Card>
@@ -210,7 +227,7 @@ export function SessionLockScreen() {
     );
   }
 
-  // Main lock screen
+  // Main lock screen (Staff only - Admins always show QR)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
       <Card className="w-full max-w-md mx-4 shadow-lg">
@@ -282,26 +299,24 @@ export function SessionLockScreen() {
               )}
             </Button>
 
-            {user?.permissionLevel === 'admin' && (
-              <Button
-                variant="outline"
-                onClick={handleGenerateQr}
-                disabled={isGeneratingQr}
-                className="w-full"
-              >
-                {isGeneratingQr ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    QR generiert...
-                  </>
-                ) : (
-                  <>
-                    <Smartphone className="mr-2 h-4 w-4" />
-                    Mit Handy bestätigen
-                  </>
-                )}
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              onClick={handleGenerateQr}
+              disabled={isGeneratingQr}
+              className="w-full"
+            >
+              {isGeneratingQr ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  QR generiert...
+                </>
+              ) : (
+                <>
+                  <Smartphone className="mr-2 h-4 w-4" />
+                  Mit Handy bestätigen
+                </>
+              )}
+            </Button>
 
             <Button
               variant="ghost"
