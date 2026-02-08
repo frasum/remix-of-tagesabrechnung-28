@@ -288,11 +288,15 @@ export default function CashBalance() {
           </DialogHeader>
           <div className="flex-1 p-4 min-h-0">
             {pdfPreview && (
-              <iframe
-                src={pdfPreview.blobUrl}
+              <object
+                data={pdfPreview.blobUrl}
+                type="application/pdf"
                 className="w-full h-full rounded-md border"
-                title="PDF Preview"
-              />
+              >
+                <p className="text-center text-muted-foreground p-4">
+                  PDF konnte nicht angezeigt werden. Bitte laden Sie die Datei herunter.
+                </p>
+              </object>
             )}
           </div>
           <DialogFooter className="px-6 py-4 border-t gap-2">
