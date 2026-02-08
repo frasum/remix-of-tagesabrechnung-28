@@ -12,6 +12,7 @@ import {
   Euro,
   BarChart3,
   LogOut,
+  ArrowUpDown,
   Wallet,
   ChevronDown,
   LucideIcon,
@@ -50,6 +51,7 @@ const allNavItems: NavItem[] = [
   { path: 'statistics', label: 'Statistiken', icon: BarChart3, minLevel: 'manager' },
   { path: 'history', label: 'Verlauf', icon: History, minLevel: 'manager' },
   { path: 'cash-balance', label: 'Bargeldbestand', icon: Wallet, minLevel: 'manager' },
+  { path: 'register-balance', label: 'Wechselgeldbestand', icon: ArrowUpDown, minLevel: 'manager' },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -72,7 +74,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const hasCustomPermissions = isManager && managerPaths.length > 0;
   
   // Paths that managers ALWAYS see (core functionality)
-  const alwaysVisibleForManager = ['', 'manager', 'kitchen', 'summary'];
+  const alwaysVisibleForManager = ['', 'manager', 'kitchen', 'summary', 'register-balance'];
   
   // Filter nav items based on permission level and manager-specific permissions
   const navItems = useMemo(() => {

@@ -15,6 +15,7 @@ export const NAV_PERMISSIONS: Record<string, PermissionConfig> = {
   'statistics': { label: 'Statistiken', description: 'Statistiken einsehen', minLevel: 'manager' },
   'history': { label: 'Verlauf', description: 'Vergangene Abrechnungen', minLevel: 'manager' },
   'cash-balance': { label: 'Bargeldbestand', description: 'Bargeld verwalten', minLevel: 'manager' },
+  'register-balance': { label: 'Wechselgeldbestand', description: 'Kassentransfers verwalten', minLevel: 'manager' },
   'staff': { label: 'Mitarbeiter', description: 'Mitarbeiter verwalten', minLevel: 'admin' },
   'permissions': { label: 'Berechtigungen', description: 'Navigationszugriff verwalten', minLevel: 'admin' },
 };
