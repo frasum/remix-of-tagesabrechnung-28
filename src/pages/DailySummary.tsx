@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useSelectedDate } from '@/contexts/DateContext';
-import { Plus, FileText, Euro, CreditCard, Truck, Receipt, Download, Banknote, Vault, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, FileText, Euro, CreditCard, Truck, Receipt, Download, Banknote, Vault } from 'lucide-react';
 import { generateDailySummaryPDF } from '@/utils/pdfExport';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DateSelector } from '@/components/shared/DateSelector';
@@ -15,7 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegisterTransfers } from '@/hooks/useRegisterTransfers';
-import { useCashBalanceData } from '@/hooks/useCashBalanceData';
 import { TransferDialog } from '@/components/register/TransferDialog';
 import {
   useSession,
@@ -40,7 +39,6 @@ export default function DailySummary() {
   const { data: expenses = [] } = useExpenses(session?.id);
   
   // Cash balance hooks
-  const { data: cashBalanceData = [] } = useCashBalanceData(restaurantId);
   const { transfers, balances, createTransfer, isCreating } = useRegisterTransfers(restaurantId);
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   // Calculate totals
@@ -96,40 +94,17 @@ export default function DailySummary() {
   const terminalTotal = session ? (session.terminal_1_total || 0) + (session.terminal_2_total || 0) : 0;
   const cardTerminalMismatch = terminalTotal - totalCardTotal;
 
-  // Cumulative cash balance calculations
-  const previousDayCumulativeCash = useMemo(() => {
-    return cashBalanceData
-      .filter(row => row.date < selectedDateStr)
-      .reduce((sum, row) => sum + row.bargeld, 0);
-  }, [cashBalanceData, selectedDateStr]);
-
-  const transfersUntilDate = useMemo(() => {
-    const toRestaurant = transfers
-      .filter(t => t.direction === 'to_restaurant' && t.transfer_date <= selectedDateStr)
+  // Simplified daily cash balance calculation
+  const initialRestaurantBalance = balances.initialRestaurant; // 1.000 €
+  
+  const todaysVaultTransfers = useMemo(() => {
+    return transfers
+      .filter(t => t.direction === 'to_restaurant' && t.transfer_date === selectedDateStr)
       .reduce((sum, t) => sum + t.amount, 0);
-    const toSafe = transfers
-      .filter(t => t.direction === 'to_safe' && t.transfer_date <= selectedDateStr)
-      .reduce((sum, t) => sum + t.amount, 0);
-    return toRestaurant - toSafe;
   }, [transfers, selectedDateStr]);
 
-  // Register balance before today (includes initial float)
-  const registerBalanceBeforeToday = balances.initialRestaurant + previousDayCumulativeCash + transfersUntilDate;
-
-  // Register balance after today
-  const registerBalanceAfterToday = registerBalanceBeforeToday + bargeld;
-
-  // Was there a deficit before?
-  const hadDeficitBefore = registerBalanceBeforeToday < 0;
-
-  // Was the deficit cleared today?
-  const deficitWasCleared = hadDeficitBefore && registerBalanceAfterToday >= 0;
-
-  // How much was cleared?
-  const amountCleared = deficitWasCleared ? Math.abs(registerBalanceBeforeToday) : 0;
-
-  // Partial clearance scenario
-  const isPartialClearance = hadDeficitBefore && bargeld > 0 && registerBalanceAfterToday < 0;
+  const todaysRegisterBalance = initialRestaurantBalance + bargeld + todaysVaultTransfers;
+  const showCashBalanceCard = todaysRegisterBalance < initialRestaurantBalance; // nur zeigen wenn < 1.000 €
 
   const handleTransferSubmit = (data: {
     transfer_date: string;
@@ -281,57 +256,62 @@ export default function DailySummary() {
               />
             </div>
 
-            {/* Kassenstand Card */}
-            <Card className={registerBalanceAfterToday < 0 ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20" : ""}>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Banknote className="w-5 h-5" />
-                  Kassenstand
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Bargeld heute */}
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Bargeld heute</span>
-                  <span className={`font-semibold tabular-nums ${bargeld >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    {formatCurrency(bargeld)}
-                  </span>
-                </div>
-
-                {/* Ausgleich anzeigen - Defizit vollständig ausgeglichen */}
-                {deficitWasCleared && (
-                  <div className="flex items-center gap-2 p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-md">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span className="text-sm">Defizit ausgeglichen: {formatCurrency(amountCleared)}</span>
+            {/* Kassenstand Card - nur anzeigen wenn Kassenstand < 1.000 € */}
+            {showCashBalanceCard && (
+              <Card className="border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Banknote className="w-5 h-5" />
+                    Kassenstand
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Anfangsbestand */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Anfangsbestand</span>
+                    <span className="font-semibold tabular-nums">
+                      {formatCurrency(initialRestaurantBalance)}
+                    </span>
                   </div>
-                )}
 
-                {/* Teilweise ausgeglichen */}
-                {isPartialClearance && (
-                  <div className="flex items-center gap-2 p-2 bg-amber-100 dark:bg-amber-900/30 rounded-md">
-                    <AlertTriangle className="w-4 h-4 text-amber-600" />
-                    <span className="text-sm">Teilweise ausgeglichen, verbleibendes Defizit</span>
+                  {/* Bargeld heute */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Bargeld heute</span>
+                    <span className={`font-semibold tabular-nums ${bargeld >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {formatCurrency(bargeld)}
+                    </span>
                   </div>
-                )}
 
-                {/* Kumulierter Stand */}
-                <Separator />
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Kassenstand nach heute</span>
-                  <span className={`text-lg font-bold tabular-nums ${registerBalanceAfterToday >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
-                    {formatCurrency(registerBalanceAfterToday)}
-                  </span>
-                </div>
+                  {/* Transfer vom Tresor heute */}
+                  {todaysVaultTransfers > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Transfer Tresor</span>
+                      <span className="font-semibold tabular-nums text-blue-600">
+                        +{formatCurrency(todaysVaultTransfers)}
+                      </span>
+                    </div>
+                  )}
 
-                {/* Transfer-Button bei Defizit */}
-                {registerBalanceAfterToday < 0 && (
-                  <Button onClick={() => setShowTransferDialog(true)} variant="outline" className="w-full gap-2">
-                    <Vault className="w-4 h-4" />
-                    Transfer vom Tresor
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+                  <Separator />
+
+                  {/* Kassenstand Ende des Tages */}
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Kassenstand</span>
+                    <span className={`text-lg font-bold tabular-nums ${todaysRegisterBalance >= initialRestaurantBalance ? 'text-emerald-600' : 'text-destructive'}`}>
+                      {formatCurrency(todaysRegisterBalance)}
+                    </span>
+                  </div>
+
+                  {/* Transfer-Button nur wenn noch unter 1.000 € */}
+                  {todaysRegisterBalance < initialRestaurantBalance && (
+                    <Button onClick={() => setShowTransferDialog(true)} variant="outline" className="w-full gap-2">
+                      <Vault className="w-4 h-4" />
+                      Transfer vom Tresor
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Detailed Breakdown */}
             <div className="grid lg:grid-cols-2 gap-6">
