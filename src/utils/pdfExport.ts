@@ -703,7 +703,8 @@ export const generateCashBalancePDF = (data: CashBalancePDFData, options?: { pre
 
   // Return blob URL for preview or save directly
   if (options?.preview) {
-    const blob = doc.output('blob');
+    const pdfBlob = doc.output('blob');
+    const blob = new Blob([pdfBlob], { type: 'application/pdf' });
     const blobUrl = URL.createObjectURL(blob);
     return { blobUrl, fileName };
   }
