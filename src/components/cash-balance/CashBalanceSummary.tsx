@@ -4,6 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import { Landmark, Plus, TrendingDown, Wallet } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { PettyCashSetting } from './PettyCashSetting';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', {
@@ -15,6 +16,7 @@ const formatCurrency = (value: number) => {
 interface CashBalanceSummaryProps {
   totalCash: number;
   totalDeposits: number;
+  pettyCash: number;
   latestDeposit: { deposit_date: string; amount: number } | null;
   monthLabel?: string;
   onAddDeposit: () => void;
@@ -23,11 +25,12 @@ interface CashBalanceSummaryProps {
 export function CashBalanceSummary({
   totalCash,
   totalDeposits,
+  pettyCash,
   latestDeposit,
   monthLabel,
   onAddDeposit,
 }: CashBalanceSummaryProps) {
-  const remainingCash = totalCash - totalDeposits;
+  const remainingCash = pettyCash + totalCash - totalDeposits;
 
   return (
     <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
@@ -43,30 +46,34 @@ export function CashBalanceSummary({
                 <p className="text-sm text-muted-foreground">Bargeld abzüglich Bankeinzahlungen</p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    {monthLabel ? `Bargeld bis ${monthLabel}` : 'Bargeld gesamt'}
-                  </p>
-                  <p className="text-xl font-semibold tabular-nums text-foreground">
-                    {formatCurrency(totalCash)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    <Landmark className="h-3 w-3" />
-                    Bankeinzahlungen
-                  </p>
-                  <p className="text-xl font-semibold tabular-nums text-destructive">
-                    -{formatCurrency(totalDeposits)}
-                  </p>
-                </div>
-                <div>
-                  <Separator orientation="horizontal" className="sm:hidden mb-2" />
-                  <p className="text-sm text-muted-foreground font-medium">Verbleibendes Bargeld</p>
-                  <p className={`text-2xl font-bold tabular-nums ${remainingCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
-                    {formatCurrency(remainingCash)}
-                  </p>
+            <div className="space-y-3">
+                <PettyCashSetting />
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {monthLabel ? `Bargeld bis ${monthLabel}` : 'Bargeld gesamt'}
+                    </p>
+                    <p className="text-xl font-semibold tabular-nums text-foreground">
+                      {formatCurrency(totalCash)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Landmark className="h-3 w-3" />
+                      Bankeinzahlungen
+                    </p>
+                    <p className="text-xl font-semibold tabular-nums text-destructive">
+                      -{formatCurrency(totalDeposits)}
+                    </p>
+                  </div>
+                  <div>
+                    <Separator orientation="horizontal" className="sm:hidden mb-2" />
+                    <p className="text-sm text-muted-foreground font-medium">Verbleibendes Bargeld</p>
+                    <p className={`text-2xl font-bold tabular-nums ${remainingCash >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
+                      {formatCurrency(remainingCash)}
+                    </p>
+                  </div>
                 </div>
               </div>
 

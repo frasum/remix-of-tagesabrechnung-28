@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Wallet, FileDown, Download, X } from 'lucide-react';
 import { useCashBalanceData } from '@/hooks/useCashBalanceData';
 import { useBankDeposits } from '@/hooks/useBankDeposits';
+import { usePettyCash } from '@/hooks/useSettings';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ const formatDate = (dateStr: string) => {
 export default function CashBalance() {
   const { data, isLoading, error } = useCashBalanceData();
   const { deposits, totalDeposits, latestDeposit, createDeposit, deleteDeposit, isCreating, isDeleting } = useBankDeposits();
+  const { pettyCash } = usePettyCash();
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<{ blobUrl: string; fileName: string } | null>(null);
@@ -141,6 +143,7 @@ export default function CashBalance() {
         <CashBalanceSummary
           totalCash={cumulativeCash}
           totalDeposits={cumulativeDeposits}
+          pettyCash={pettyCash}
           latestDeposit={latestDeposit}
           monthLabel={selectedMonthLabel}
           onAddDeposit={() => setDepositDialogOpen(true)}
