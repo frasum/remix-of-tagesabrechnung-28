@@ -51,6 +51,11 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
+
+        // Wichtig: OAuth-Endpunkte dürfen NICHT durch die SPA-Navigation-Fallback
+        // (index.html) abgefangen werden, sonst gibt es eine "weiße Seite".
+        navigateFallbackDenylist: [/^\/~oauth\//],
+
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
