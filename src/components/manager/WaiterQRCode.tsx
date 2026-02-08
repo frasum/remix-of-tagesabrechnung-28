@@ -138,37 +138,17 @@ export function WaiterQRCode() {
         </div>
 
         {/* Actions */}
-        <div className="grid grid-cols-2 gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadQR}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            QR laden
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-          >
-            <a href={waiterUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Öffnen
-            </a>
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            asChild
-            className="col-span-2"
-          >
-            <Link to={`/${selectedSlug}/qr-poster`} target="_blank">
-              <Printer className="w-4 h-4 mr-2" />
-              Poster drucken
-            </Link>
-          </Button>
-        </div>
+        <Button
+          variant="default"
+          size="sm"
+          asChild
+          className="w-full"
+        >
+          <Link to={`/${selectedSlug}/qr-poster`} target="_blank">
+            <Printer className="w-4 h-4 mr-2" />
+            Poster drucken
+          </Link>
+        </Button>
 
         <p className="text-xs text-muted-foreground text-center">
           Kellner können diesen QR-Code scannen, um ihre Abrechnung für {selectedRestaurant?.name} einzugeben
