@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { RestaurantProvider } from "@/contexts/RestaurantContext";
+import { DateProvider } from "@/contexts/DateContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SessionLockScreen } from "@/components/auth/SessionLockScreen";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
@@ -31,6 +32,7 @@ const queryClient = new QueryClient();
 function RestaurantRoutes() {
   return (
     <RestaurantProvider>
+      <DateProvider>
       <Routes>
         <Route index element={<ProtectedRoute><WaiterCashUp /></ProtectedRoute>} />
         <Route path="waiter" element={<ProtectedRoute><WaiterMobile /></ProtectedRoute>} />
@@ -43,6 +45,7 @@ function RestaurantRoutes() {
         <Route path="register-balance" element={<ProtectedRoute requiredLevel="manager"><RegisterBalance /></ProtectedRoute>} />
         <Route path="qr-poster" element={<WaiterQRPoster />} />
       </Routes>
+      </DateProvider>
     </RestaurantProvider>
   );
 }

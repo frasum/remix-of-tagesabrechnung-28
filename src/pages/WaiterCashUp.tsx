@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { getBusinessDate } from '@/utils/businessDate';
+import { useSelectedDate } from '@/contexts/DateContext';
 import { Pencil, Percent, Plus, Trash2, User, Users, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DateSelector } from '@/components/shared/DateSelector';
@@ -20,7 +20,7 @@ import { useRestaurant } from '@/hooks/useRestaurant';
 import type { WaiterShift } from '@/types/database';
 
 export default function WaiterCashUp() {
-  const [selectedDate, setSelectedDate] = useState(getBusinessDate());
+  const { selectedDate, setSelectedDate } = useSelectedDate();
   const { toast } = useToast();
   const { restaurantId } = useRestaurant();
 

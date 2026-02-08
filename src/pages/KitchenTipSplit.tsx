@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
+import { useSelectedDate } from '@/contexts/DateContext';
 import { Plus, Trash2, ChefHat, Clock } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DateSelector } from '@/components/shared/DateSelector';
@@ -23,7 +24,7 @@ import {
 import { MonthlyKitchenTipCard } from '@/components/kitchen/MonthlyKitchenTipCard';
 
 export default function KitchenTipSplit() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { selectedDate, setSelectedDate } = useSelectedDate();
   const { toast } = useToast();
   const { restaurantId } = useRestaurant();
 
