@@ -97,10 +97,10 @@ export default function WaiterQRPoster() {
                 <div className="flex-1 pt-2">
                   <div className="flex items-center gap-2 mb-1">
                     <LogIn className="w-5 h-5 text-primary" />
-                    <span className="font-semibold text-foreground">Mit deinem Namen & Code anmelden</span>
+                    <span className="font-semibold text-foreground">Anmelden</span>
                   </div>
                   <p className="text-muted-foreground text-sm">
-                    Gib deinen Namen und den 4-stelligen PIN-Code ein
+                    Mit Google/Apple anmelden <strong>oder</strong> Name & PIN eingeben
                   </p>
                 </div>
               </div>

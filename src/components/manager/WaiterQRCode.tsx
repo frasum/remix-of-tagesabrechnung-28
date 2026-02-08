@@ -157,7 +157,7 @@ export function WaiterQRCode() {
         </Button>
 
         <p className="text-xs text-muted-foreground text-center">
-          Kellner können diesen QR-Code scannen, um ihre Abrechnung für {selectedRestaurant?.name} einzugeben
+          Kellner können diesen QR-Code scannen und sich mit Google/Apple oder PIN anmelden, um ihre Abrechnung für {selectedRestaurant?.name} einzugeben
         </p>
       </CardContent>
     </Card>
