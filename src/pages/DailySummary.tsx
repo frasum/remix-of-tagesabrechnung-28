@@ -196,6 +196,10 @@ export default function DailySummary() {
   
   // Keep totalWaiterTip for backward compatibility in calculations
   const totalWaiterTip = waiterTipPool;
+  
+  // Kitchen tip per person (average)
+  const uniqueKitchenStaff = new Set(kitchenShifts.map(k => k.staff_name)).size;
+  const tipPerKitchen = uniqueKitchenStaff > 0 ? totalKitchenTip / uniqueKitchenStaff : 0;
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   // Delivery revenue
@@ -854,6 +858,12 @@ export default function DailySummary() {
                           <TableCell className="py-2">Küche (2%)</TableCell>
                           <TableCell className="text-right tabular-nums font-medium text-success py-2">{formatCurrency(totalKitchenTip)}</TableCell>
                         </TableRow>
+                        {uniqueKitchenStaff > 0 && (
+                          <TableRow>
+                            <TableCell className="py-2 pl-6 text-muted-foreground">→ Pro Küche ({uniqueKitchenStaff})</TableCell>
+                            <TableCell className="text-right tabular-nums text-success py-2">{formatCurrency(tipPerKitchen)}</TableCell>
+                          </TableRow>
+                        )}
                         <TableRow>
                           <TableCell className="py-2">Kellner Pool</TableCell>
                           <TableCell className="text-right tabular-nums font-medium text-success py-2">{formatCurrency(waiterTipPool)}</TableCell>
