@@ -288,7 +288,7 @@ export default function CashBalance() {
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 p-4 min-h-0">
-            {pdfPreview && <PdfPreview blobUrl={pdfPreview.blobUrl} className="h-full" />}
+            {pdfPreview && <PdfPreview blobUrl={pdfPreview.blobUrl} fileName={pdfPreview.fileName} className="h-full" />}
           </div>
           <DialogFooter className="px-6 py-4 border-t gap-2">
             <Button variant="outline" onClick={handleClosePreview} className="gap-2">
