@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { useSelectedDate } from '@/contexts/DateContext';
 import { de } from 'date-fns/locale';
-import { Plus, Trash2, Settings, Truck, Receipt, Wallet, HelpCircle, ChevronDown, ClipboardList, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Settings, Truck, Receipt, Wallet, ClipboardList, Clock, CheckCircle2, AlertTriangle, Banknote, Vault } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { CurrencyInput } from '@/components/shared/CurrencyInput';
@@ -11,11 +11,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useRestaurant } from '@/hooks/useRestaurant';
+import { useRegisterTransfers } from '@/hooks/useRegisterTransfers';
+import { useCashBalanceData } from '@/hooks/useCashBalanceData';
+import { TransferDialog } from '@/components/register/TransferDialog';
 import {
   useSession,
   useCreateSession,
@@ -30,7 +33,7 @@ export default function ManagerDashboard() {
   const { selectedDate, setSelectedDate } = useSelectedDate();
   const { restaurantId } = useRestaurant();
   const { toast } = useToast();
-
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
   // Form state
   const [formData, setFormData] = useState({
     spicery_counter: 0,
@@ -236,6 +239,43 @@ export default function ManagerDashboard() {
     totalHilfMahl -
     totalDeliveryRevenue -
     formData.finedine_vouchers;
+
+  // Cash balance hooks
+  const { data: cashBalanceData = [] } = useCashBalanceData(restaurantId);
+  const { transfers, balances, createTransfer, isCreating } = useRegisterTransfers(restaurantId);
+  const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
+
+  // Cumulative cash balance calculations
+  const cumulativeCashUntilDate = useMemo(() => {
+    return cashBalanceData
+      .filter(row => row.date <= selectedDateStr)
+      .reduce((sum, row) => sum + row.bargeld, 0);
+  }, [cashBalanceData, selectedDateStr]);
+
+  const transfersToRestaurantUntilDate = useMemo(() => {
+    const toRestaurant = transfers
+      .filter(t => t.direction === 'to_restaurant' && t.transfer_date <= selectedDateStr)
+      .reduce((sum, t) => sum + t.amount, 0);
+    const toSafe = transfers
+      .filter(t => t.direction === 'to_safe' && t.transfer_date <= selectedDateStr)
+      .reduce((sum, t) => sum + t.amount, 0);
+    return toRestaurant - toSafe;
+  }, [transfers, selectedDateStr]);
+
+  // Current register balance (cumulative)
+  const currentRegisterBalance = balances.initialRestaurant + cumulativeCashUntilDate + transfersToRestaurantUntilDate;
+
+  const handleTransferSubmit = (data: {
+    transfer_date: string;
+    amount: number;
+    direction: 'to_restaurant' | 'to_safe';
+    reason: string | null;
+    restaurant_id: string;
+  }) => {
+    createTransfer(data);
+    setShowTransferDialog(false);
+    toast({ title: 'Transfer erfasst', description: 'Der Transfer wurde gespeichert.' });
+  };
 
   if (sessionLoading) {
     return (
@@ -470,6 +510,56 @@ export default function ManagerDashboard() {
                       onChange={(v) => updateField('sonstige_einnahme', v)}
                     />
                   </div>
+              </CardContent>
+              </Card>
+
+              {/* Bargeld Card */}
+              <Card className={currentRegisterBalance < 0 ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20" : ""}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Banknote className="w-5 h-5" />
+                    Bargeld
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Bargeld des Tages</Label>
+                    <div className={`text-2xl font-bold tabular-nums ${bargeldPreview >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {formatCurrency(bargeldPreview)}
+                    </div>
+                  </div>
+                  
+                  {currentRegisterBalance < 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <Label className="text-muted-foreground">Kumuliertes Defizit</Label>
+                        <div className="text-xl font-semibold tabular-nums text-destructive">
+                          {formatCurrency(currentRegisterBalance)}
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => setShowTransferDialog(true)}
+                        variant="outline"
+                        className="w-full gap-2"
+                      >
+                        <Vault className="w-4 h-4" />
+                        Transfer vom Tresor
+                      </Button>
+                    </>
+                  )}
+                  
+                  {currentRegisterBalance >= 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <Label className="text-muted-foreground">Kassenstand (kumuliert)</Label>
+                        <div className="text-xl font-semibold tabular-nums text-emerald-600">
+                          {formatCurrency(currentRegisterBalance)}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -610,6 +700,17 @@ export default function ManagerDashboard() {
           </div>
         )}
       </div>
+
+      {/* Transfer Dialog */}
+      {restaurantId && (
+        <TransferDialog
+          open={showTransferDialog}
+          onOpenChange={setShowTransferDialog}
+          onSubmit={handleTransferSubmit}
+          restaurantId={restaurantId}
+          isPending={isCreating}
+        />
+      )}
     </AppLayout>
   );
 }
