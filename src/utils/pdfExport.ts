@@ -547,10 +547,17 @@ interface CashBalanceRow {
   bargeld: number;
 }
 
+interface BankDeposit {
+  deposit_date: string;
+  amount: number;
+}
+
 interface CashBalancePDFData {
   rows: CashBalanceRow[];
+  deposits?: BankDeposit[];
   month: number; // 0-11
   year: number;
+  pettyCash?: number;
 }
 
 export const generateCashBalancePDF = (data: CashBalancePDFData, options?: { preview?: boolean }): { blobUrl: string; fileName: string } | void => {
@@ -573,6 +580,89 @@ export const generateCashBalancePDF = (data: CashBalancePDFData, options?: { pre
   doc.setTextColor(0);
 
   yPos += 10;
+
+  // Summary section with deposits and cash balance
+  const cumulativeCash = data.rows.reduce((sum, r) => sum + r.bargeld, 0);
+  const cumulativeDeposits = data.deposits?.reduce((sum, d) => sum + d.amount, 0) ?? 0;
+  const pettyCash = data.pettyCash ?? 0;
+  const remainingCash = pettyCash + cumulativeCash - cumulativeDeposits;
+
+  // Summary box
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Zusammenfassung', margin, yPos);
+  yPos += 6;
+
+  const summaryData = [
+    ['Wechselgeld', formatCurrency(pettyCash)],
+    ['Bargeld bis ' + monthName, formatCurrency(cumulativeCash)],
+    ['Bankeinzahlungen (gesamt)', '-' + formatCurrency(cumulativeDeposits)],
+    ['Verbleibendes Bargeld', formatCurrency(remainingCash)],
+  ];
+
+  autoTable(doc, {
+    startY: yPos,
+    margin: { left: margin, right: margin },
+    head: [['Position', 'Betrag']],
+    body: summaryData,
+    theme: 'striped',
+    headStyles: { fillColor: [51, 65, 85], fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    columnStyles: { 1: { halign: 'right' } },
+    didParseCell: function(cellHookData) {
+      // Bold the last row (Verbleibendes Bargeld)
+      if (cellHookData.section === 'body' && cellHookData.row.index === 3) {
+        cellHookData.cell.styles.fontStyle = 'bold';
+        cellHookData.cell.styles.fillColor = remainingCash >= 0 ? [220, 252, 231] : [254, 226, 226];
+      }
+    },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 10;
+
+  // Bank deposits section if there are any
+  if (data.deposits && data.deposits.length > 0) {
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Bankeinzahlungen', margin, yPos);
+    yPos += 6;
+
+    const depositTableBody = data.deposits
+      .filter(d => new Date(d.deposit_date) <= new Date(`${data.year}-${String(data.month + 1).padStart(2, '0')}-31`))
+      .map(deposit => {
+        const dateFormatted = format(new Date(deposit.deposit_date), 'dd.MM.yyyy', { locale: de });
+        return [dateFormatted, formatCurrency(deposit.amount)];
+      });
+
+    if (depositTableBody.length > 0) {
+      depositTableBody.push(['Gesamt', formatCurrency(cumulativeDeposits)]);
+
+      autoTable(doc, {
+        startY: yPos,
+        margin: { left: margin, right: margin },
+        head: [['Datum', 'Betrag']],
+        body: depositTableBody,
+        theme: 'striped',
+        headStyles: { fillColor: [51, 65, 85], fontSize: 9 },
+        bodyStyles: { fontSize: 9 },
+        columnStyles: { 1: { halign: 'right' } },
+        didParseCell: function(cellHookData) {
+          if (cellHookData.section === 'body' && cellHookData.row.index === depositTableBody.length - 1) {
+            cellHookData.cell.styles.fontStyle = 'bold';
+            cellHookData.cell.styles.fillColor = [254, 226, 226];
+          }
+        },
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY + 10;
+    }
+  }
+
+  // Add page break before main table
+  if (yPos > 160) {
+    doc.addPage();
+    yPos = 20;
+  }
 
   // Calculate totals
   const totals = {

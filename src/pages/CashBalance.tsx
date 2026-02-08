@@ -93,6 +93,8 @@ export default function CashBalance() {
     const [year, month] = selectedMonth.split('-').map(Number);
     const result = generateCashBalancePDF({
       rows: filteredData,
+      deposits: deposits,
+      pettyCash: pettyCash,
       month: month - 1,
       year,
     }, { preview: true });
@@ -101,7 +103,7 @@ export default function CashBalance() {
       setPdfPreview(result);
       setPreviewOpen(true);
     }
-  }, [filteredData, selectedMonth]);
+  }, [filteredData, selectedMonth, deposits, pettyCash]);
 
   // Handle download from preview
   const handleDownload = useCallback(() => {
