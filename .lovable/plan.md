@@ -1,182 +1,153 @@
 
-# Berechtigungssystem für Mitarbeiter
+# Fix: App bleibt bei "Laden..." hängen
 
-## Übersicht
+## Problem-Analyse
 
-Implementierung eines 3-stufigen Rollen-Systems:
+Die App zeigt dauerhaft "Laden..." an, weil der `AuthContext` nie `setIsLoading(false)` aufruft. 
 
-| Rolle | Zugriff | Typische Aufgaben |
-|-------|---------|-------------------|
-| **staff** | Nur eigene Abrechnung | Kellner-Abrechnung einreichen |
-| **manager** | Operatives Management | Dashboard, Trinkgeld, Statistiken, Tagesabrechnung |
-| **admin** | Vollzugriff | + Mitarbeiterverwaltung, Systemeinstellungen |
-
----
-
-## Navigationsstruktur nach Rolle
+**Ursache:** Die `initAuth()` Funktion hat fehlendes Error-Handling:
 
 ```text
-┌──────────────────────────────────────────────────────────────────────┐
-│                      NAVIGATION NACH ROLLE                           │
-├────────────────────┬─────────────────┬─────────────────┬─────────────┤
-│ Menüpunkt          │ staff           │ manager         │ admin       │
-├────────────────────┼─────────────────┼─────────────────┼─────────────┤
-│ Kellner Abrechnung │ ✅ (nur eigene) │ ✅              │ ✅          │
-│ Manager Dashboard  │ ❌              │ ✅              │ ✅          │
-│ Küchen Trinkgeld   │ ❌              │ ✅              │ ✅          │
-│ Tagesabrechnung    │ ❌              │ ✅              │ ✅          │
-│ Statistiken        │ ❌              │ ✅              │ ✅          │
-│ Verlauf            │ ❌              │ ✅              │ ✅          │
-│ Bargeldbestand     │ ❌              │ ✅              │ ✅          │
-│ Mitarbeiter        │ ❌              │ ❌              │ ✅          │
-└────────────────────┴─────────────────┴─────────────────┴─────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    FEHLER-FLOW IM AUTHCONTEXT                   │
+├─────────────────────────────────────────────────────────────────┤
+│  1. localStorage hat OAuth-User (isOAuthUser: true)             │
+│  2. getSession() gibt Session zurück                            │
+│  3. convertOAuthUser() wird aufgerufen                          │
+│  4. ❌ convertOAuthUser() hängt oder wirft Fehler               │
+│  5. catch-Block entfernt nur localStorage                       │
+│  6. ❌ setIsLoading(false) wird NICHT aufgerufen                │
+│  7. ➜ App bleibt ewig im Ladezustand                            │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Technische Implementierung
+## Lösung
 
-### 1. Datenbank-Änderungen
+### 1. Error-Handling in `initAuth()` verbessern
 
-#### Neue Tabelle: `user_roles`
-Gemäß Best Practice wird die Rolle in einer separaten Tabelle gespeichert (nicht in `staff` oder `profiles`):
+**Datei:** `src/contexts/AuthContext.tsx`
 
-```sql
--- Enum für App-Rollen
-CREATE TYPE public.app_permission_level AS ENUM ('staff', 'manager', 'admin');
-
--- Rollen-Tabelle
-CREATE TABLE public.user_roles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  staff_id UUID NOT NULL REFERENCES public.staff(id) ON DELETE CASCADE,
-  permission_level app_permission_level NOT NULL DEFAULT 'staff',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (staff_id)
-);
-
--- RLS aktivieren
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-```
-
-#### Security Definer Function
-```sql
-CREATE OR REPLACE FUNCTION public.get_staff_permission(p_staff_id UUID)
-RETURNS app_permission_level
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT COALESCE(
-    (SELECT permission_level FROM user_roles WHERE staff_id = p_staff_id),
-    'staff'::app_permission_level
-  )
-$$;
-```
-
-### 2. Edge Function: `get-user-role`
-
-Neue Edge Function, die beim Login die Berechtigungsstufe zurückgibt:
+Wrappen der gesamten `initAuth()` Funktion in try-catch mit garantiertem `setIsLoading(false)`:
 
 ```typescript
-// GET /functions/v1/get-user-role?staff_id=xxx
-// Gibt: { permission_level: 'staff' | 'manager' | 'admin' }
-```
-
-### 3. AuthContext erweitern
-
-```typescript
-interface AuthUser {
-  id: string;
-  name: string;
-  role: 'waiter' | 'kitchen';  // Job-Rolle (bleibt)
-  permissionLevel: 'staff' | 'manager' | 'admin';  // NEU: Berechtigungsstufe
-  // ...
-}
-```
-
-### 4. Navigation filtern
-
-```typescript
-// AppLayout.tsx
-const getVisibleNavItems = (permissionLevel: string) => {
-  const allItems = [
-    { path: '', label: 'Kellner Abrechnung', minLevel: 'staff' },
-    { path: 'manager', label: 'Manager Dashboard', minLevel: 'manager' },
-    { path: 'kitchen', label: 'Küchen Trinkgeld', minLevel: 'manager' },
-    // ...
-  ];
-  
-  return allItems.filter(item => 
-    hasPermission(permissionLevel, item.minLevel)
-  );
+const initAuth = async () => {
+  try {
+    // ... existing logic
+  } catch (error) {
+    console.error('Auth initialization failed:', error);
+  } finally {
+    // GARANTIERT dass Loading endet
+    setIsLoading(false);
+  }
 };
 ```
 
-### 5. ProtectedRoute erweitern
+### 2. Timeout für `convertOAuthUser()` hinzufügen
+
+Um zu verhindern, dass die Funktion ewig hängt:
 
 ```typescript
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requiredLevel?: 'staff' | 'manager' | 'admin';
-}
+const convertOAuthUserWithTimeout = async (user: User, timeoutMs = 5000) => {
+  const timeout = new Promise<AuthUser>((_, reject) => 
+    setTimeout(() => reject(new Error('Timeout')), timeoutMs)
+  );
+  return Promise.race([convertOAuthUser(user), timeout]);
+};
+```
 
-// Prüft ob User mindestens das erforderliche Level hat
+### 3. Fallback bei fehlgeschlagener Session-Verarbeitung
+
+Wenn OAuth-User im localStorage ist aber Session-Refresh fehlschlägt, den gespeicherten User nutzen (ohne Session-Validierung):
+
+```typescript
+if (parsed.isOAuthUser) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      const authUser = await convertOAuthUser(session.user);
+      setUser(authUser);
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+      return; // setIsLoading(false) in finally
+    }
+  } catch (e) {
+    console.error('OAuth session refresh failed, using cached user:', e);
+  }
+  // Fallback: Use cached user data
+  setUser(parsed);
+  return;
+}
 ```
 
 ---
 
-## Dateien, die geändert werden
+## Änderungen im Detail
 
 | Datei | Änderung |
 |-------|----------|
-| `supabase/migrations/...` | Neue Tabelle `user_roles` + Funktion |
-| `supabase/functions/get-user-role/index.ts` | Neue Edge Function |
-| `supabase/functions/validate-pin/index.ts` | Rolle mit zurückgeben |
-| `src/contexts/AuthContext.tsx` | `permissionLevel` hinzufügen |
-| `src/components/auth/ProtectedRoute.tsx` | Level-Prüfung |
-| `src/components/layout/AppLayout.tsx` | Navigation filtern |
-| `src/hooks/useUserRole.ts` | Neuer Hook |
-| `src/components/staff/StaffDialogNative.tsx` | Berechtigungsstufe auswählen |
-| `src/pages/StaffManagement.tsx` | Nur für Admins sichtbar |
+| `src/contexts/AuthContext.tsx` | `try/finally` Block um `initAuth()`, Timeout für `convertOAuthUser`, besseres Fallback-Handling |
 
 ---
 
-## UI: Berechtigungsstufe im Mitarbeiter-Dialog
+## Vorher/Nachher
 
-```text
-┌─────────────────────────────────────────────────┐
-│ Mitarbeiter bearbeiten                          │
-├─────────────────────────────────────────────────┤
-│ Name: [Frank                            ]       │
-│ Rolle: [○ Kellner  ● Küche             ]       │
-│                                                 │
-│ ─────────────────────────────────────────────   │
-│ Berechtigungsstufe:                             │
-│ ┌─────────────────────────────────────────────┐ │
-│ │ ○ Mitarbeiter                               │ │
-│ │   Nur eigene Abrechnung einsehen            │ │
-│ │ ○ Manager                                   │ │
-│ │   Dashboard, Statistiken, Trinkgeld         │ │
-│ │ ● Admin                                     │ │
-│ │   Vollzugriff inkl. Mitarbeiterverwaltung   │ │
-│ └─────────────────────────────────────────────┘ │
-│                                                 │
-│                    [Abbrechen] [Speichern]      │
-└─────────────────────────────────────────────────┘
+**Vorher (problematisch):**
+```typescript
+const initAuth = async () => {
+  if (storedUser) {
+    try {
+      if (parsed.isOAuthUser) {
+        // ❌ Wenn convertOAuthUser fehlschlägt...
+        const authUser = await convertOAuthUser(session.user);
+        setIsLoading(false); // ...wird das nie erreicht
+        return;
+      }
+    } catch {
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      // ❌ setIsLoading(false) fehlt hier!
+    }
+  }
+  // ... rest
+  setIsLoading(false); // ❌ Wird nur bei Erfolg erreicht
+};
+```
+
+**Nachher (robust):**
+```typescript
+const initAuth = async () => {
+  try {
+    if (storedUser) {
+      const parsed = JSON.parse(storedUser);
+      if (parsed.isOAuthUser) {
+        // Timeout verhindert endloses Hängen
+        const authUser = await Promise.race([
+          convertOAuthUser(session.user),
+          new Promise((_, reject) => setTimeout(() => reject('Timeout'), 5000))
+        ]).catch(() => parsed); // Fallback auf cached User
+        
+        setUser(authUser);
+        return;
+      }
+      setUser(parsed);
+      return;
+    }
+    // ... OAuth session check
+  } catch (error) {
+    console.error('Auth init failed:', error);
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+  } finally {
+    setIsLoading(false); // ✅ IMMER ausgeführt
+  }
+};
 ```
 
 ---
 
-## Sicherheitsaspekte
+## Ergebnis
 
-1. **Rollen in separater Tabelle**: Verhindert Privilege Escalation
-2. **Security Definer Function**: Umgeht RLS sicher für Rollenabfrage
-3. **Serverseitige Validierung**: Edge Functions prüfen Berechtigung
-4. **Kein Client-seitiges Trust**: Berechtigungen werden bei jedem Request geprüft
+Nach der Implementierung:
 
----
-
-## Migrations-Strategie
-
-Für bestehende Mitarbeiter wird standardmäßig `staff` als Berechtigungsstufe gesetzt. Du als Admin kannst dann im Mitarbeiter-Dialog die Berechtigungen anpassen.
+1. Die App wird nie mehr ewig bei "Laden..." hängen bleiben
+2. Auch bei Netzwerkfehlern oder Session-Problemen wird die Login-Seite gezeigt
+3. OAuth-User mit gültiger cached Session können die App weiter nutzen, auch wenn der Server temporär nicht erreichbar ist
