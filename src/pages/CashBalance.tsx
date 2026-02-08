@@ -1,11 +1,12 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Wallet, FileDown } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Wallet, FileDown, Download, X } from 'lucide-react';
 import { useCashBalanceData } from '@/hooks/useCashBalanceData';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
@@ -27,6 +28,8 @@ const formatDate = (dateStr: string) => {
 export default function CashBalance() {
   const { data, isLoading, error } = useCashBalanceData();
   const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<{ blobUrl: string; fileName: string } | null>(null);
 
   // Extract available months from data
   const availableMonths = useMemo(() => {
@@ -52,16 +55,42 @@ export default function CashBalance() {
     return data.filter((row) => row.date.startsWith(selectedMonth));
   }, [data, selectedMonth]);
 
-  // Handle PDF export
-  const handleExport = () => {
+  // Handle PDF preview
+  const handlePreview = useCallback(() => {
     if (!filteredData || filteredData.length === 0 || !selectedMonth) return;
     const [year, month] = selectedMonth.split('-').map(Number);
-    generateCashBalancePDF({
+    const result = generateCashBalancePDF({
       rows: filteredData,
       month: month - 1,
       year,
-    });
-  };
+    }, { preview: true });
+    
+    if (result) {
+      setPdfPreview(result);
+      setPreviewOpen(true);
+    }
+  }, [filteredData, selectedMonth]);
+
+  // Handle download from preview
+  const handleDownload = useCallback(() => {
+    if (pdfPreview) {
+      const link = document.createElement('a');
+      link.href = pdfPreview.blobUrl;
+      link.download = pdfPreview.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }, [pdfPreview]);
+
+  // Cleanup blob URL when dialog closes
+  const handleClosePreview = useCallback(() => {
+    if (pdfPreview?.blobUrl) {
+      URL.revokeObjectURL(pdfPreview.blobUrl);
+    }
+    setPdfPreview(null);
+    setPreviewOpen(false);
+  }, [pdfPreview]);
 
   return (
     <AppLayout>
@@ -91,7 +120,7 @@ export default function CashBalance() {
             </Select>
           </div>
           <Button
-            onClick={handleExport}
+            onClick={handlePreview}
             disabled={!filteredData || filteredData.length === 0}
             variant="outline"
             className="gap-2"
@@ -247,6 +276,37 @@ export default function CashBalance() {
           </CardContent>
         </Card>
       </div>
+
+      {/* PDF Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={(open) => !open && handleClosePreview()}>
+        <DialogContent className="max-w-5xl h-[85vh] flex flex-col p-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <FileDown className="h-5 w-5" />
+              PDF Vorschau - {pdfPreview?.fileName}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 p-4 min-h-0">
+            {pdfPreview && (
+              <iframe
+                src={pdfPreview.blobUrl}
+                className="w-full h-full rounded-md border"
+                title="PDF Preview"
+              />
+            )}
+          </div>
+          <DialogFooter className="px-6 py-4 border-t gap-2">
+            <Button variant="outline" onClick={handleClosePreview} className="gap-2">
+              <X className="h-4 w-4" />
+              Schließen
+            </Button>
+            <Button onClick={handleDownload} className="gap-2">
+              <Download className="h-4 w-4" />
+              Herunterladen
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
