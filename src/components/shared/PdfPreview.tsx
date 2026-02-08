@@ -21,7 +21,6 @@ export function PdfPreview({ blobUrl, className, fileName }: PdfPreviewProps) {
   const [scale, setScale] = useState(1.1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const printWindowRef = useRef<Window | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,12 +56,19 @@ export function PdfPreview({ blobUrl, className, fileName }: PdfPreviewProps) {
 
   const pages = useMemo(() => Array.from({ length: numPages }, (_, i) => i + 1), [numPages]);
 
-  const handlePrint = () => {
-    printWindowRef.current = window.open(blobUrl, "_blank");
-    if (printWindowRef.current) {
-      printWindowRef.current.addEventListener("load", () => {
-        printWindowRef.current?.print();
-      });
+  const handlePrint = async () => {
+    try {
+      const res = await fetch(blobUrl);
+      const blob = await res.blob();
+      const blobUrl2 = URL.createObjectURL(blob);
+      const printWindow = window.open(blobUrl2, "_blank");
+      if (printWindow) {
+        printWindow.addEventListener("load", () => {
+          setTimeout(() => printWindow.print(), 250);
+        });
+      }
+    } catch (e) {
+      console.error("Fehler beim Öffnen des Druckdialogs:", e);
     }
   };
 
