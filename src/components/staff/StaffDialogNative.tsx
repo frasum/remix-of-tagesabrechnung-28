@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import { Store } from 'lucide-react';
+import { Store, Link2, Unlink, Smartphone, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 import type { Staff, StaffInput, StaffRole } from '@/hooks/useStaff';
 import { useRestaurants } from '@/hooks/useRestaurant';
+import { useUnlinkedProfiles, useAdminLinkAccount } from '@/hooks/useProfiles';
 
 interface StaffDialogProps {
   open: boolean;
@@ -25,8 +27,11 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
   const [isActive, setIsActive] = useState(true);
   const [pinCode, setPinCode] = useState('');
   const [selectedRestaurants, setSelectedRestaurants] = useState<string[]>([]);
+  const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
   const { data: restaurants = [] } = useRestaurants();
+  const { data: unlinkedProfiles = [], isLoading: profilesLoading } = useUnlinkedProfiles();
+  const linkMutation = useAdminLinkAccount();
 
   const didInitRef = useRef(false);
 
@@ -34,6 +39,7 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
   useEffect(() => {
     if (!open) {
       didInitRef.current = false;
+      setSelectedProfileId(null);
     }
   }, [open]);
 
@@ -82,9 +88,30 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
     });
   };
 
+  const handleLink = () => {
+    if (!staff || !selectedProfileId) return;
+    linkMutation.mutate({
+      staff_id: staff.id,
+      profile_id: selectedProfileId,
+      action: 'link',
+    });
+    setSelectedProfileId(null);
+  };
+
+  const handleUnlink = () => {
+    if (!staff?.linked_profile) return;
+    linkMutation.mutate({
+      staff_id: staff.id,
+      profile_id: staff.linked_profile.id,
+      action: 'unlink',
+    });
+  };
+
+  const linkedProfile = staff?.linked_profile;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{staff ? 'Mitarbeiter bearbeiten' : 'Neuer Mitarbeiter'}</DialogTitle>
         </DialogHeader>
@@ -183,6 +210,124 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
             <Label htmlFor="staff-active">Aktiv</Label>
             <Switch id="staff-active" checked={isActive} onCheckedChange={setIsActive} />
           </div>
+
+          {/* OAuth Linking Section - only for existing staff */}
+          {staff && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-primary" />
+                  OAuth-Konto verknüpfen
+                </Label>
+
+                {linkedProfile ? (
+                  <div className="p-3 rounded-lg border-2 border-green-200 bg-green-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                          <Link2 className="w-4 h-4 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-green-800">
+                            Verknüpft mit:
+                          </p>
+                          <p className="text-sm text-green-700">
+                            {linkedProfile.email}
+                            {linkedProfile.full_name && ` (${linkedProfile.full_name})`}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleUnlink}
+                        disabled={linkMutation.isPending}
+                        className="text-destructive border-destructive hover:bg-destructive/10"
+                      >
+                        {linkMutation.isPending ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <Unlink className="w-4 h-4 mr-1" />
+                            Aufheben
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {profilesLoading ? (
+                      <div className="flex items-center gap-2 text-muted-foreground p-3">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Lade Profile...
+                      </div>
+                    ) : unlinkedProfiles.length === 0 ? (
+                      <p className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
+                        Keine nicht verknüpften OAuth-Benutzer verfügbar.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-sm text-muted-foreground">
+                          Wähle einen OAuth-Benutzer zum Verknüpfen:
+                        </p>
+                        <div className="max-h-40 overflow-y-auto space-y-1 border rounded-lg p-2">
+                          {unlinkedProfiles.map((profile) => (
+                            <label
+                              key={profile.id}
+                              className={`
+                                flex items-center gap-3 p-2 rounded-md cursor-pointer
+                                transition-all duration-200
+                                ${selectedProfileId === profile.id
+                                  ? 'bg-primary/10 border border-primary'
+                                  : 'hover:bg-muted'
+                                }
+                              `}
+                            >
+                              <input
+                                type="radio"
+                                name="profile-link"
+                                checked={selectedProfileId === profile.id}
+                                onChange={() => setSelectedProfileId(profile.id)}
+                                className="h-4 w-4 text-primary focus:ring-primary"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {profile.email}
+                                </p>
+                                {profile.full_name && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {profile.full_name}
+                                  </p>
+                                )}
+                              </div>
+                            </label>
+                          ))}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleLink}
+                          disabled={!selectedProfileId || linkMutation.isPending}
+                          className="w-full"
+                        >
+                          {linkMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          ) : (
+                            <Link2 className="w-4 h-4 mr-2" />
+                          )}
+                          Verknüpfen
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

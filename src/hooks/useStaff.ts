@@ -13,6 +13,14 @@ export interface StaffRestaurant {
   };
 }
 
+export interface LinkedProfile {
+  id: string;
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
 export interface Staff {
   id: string;
   name: string;
@@ -23,6 +31,7 @@ export interface Staff {
   created_at: string;
   updated_at: string;
   staff_restaurants?: StaffRestaurant[];
+  linked_profile?: LinkedProfile | null;
 }
 
 export interface StaffInput {
@@ -39,7 +48,7 @@ export function useStaff(role?: StaffRole) {
   return useQuery({
     queryKey: ['staff', role],
     queryFn: async () => {
-      // Query staff table directly (pin_code has been moved to separate protected table)
+      // Query staff table with profile join to get OAuth link status
       let query = supabase
         .from('staff')
         .select(`
@@ -51,6 +60,13 @@ export function useStaff(role?: StaffRole) {
               name,
               slug
             )
+          ),
+          profiles!profiles_staff_id_fkey (
+            id,
+            user_id,
+            email,
+            full_name,
+            avatar_url
           )
         `)
         .order('name', { ascending: true });
@@ -61,7 +77,13 @@ export function useStaff(role?: StaffRole) {
 
       const { data, error } = await query;
       if (error) throw error;
-      return data as Staff[];
+      
+      // Transform profiles array to single linked_profile
+      return (data || []).map((staff: any) => ({
+        ...staff,
+        linked_profile: staff.profiles?.[0] || null,
+        profiles: undefined, // Remove the raw profiles array
+      })) as Staff[];
     },
   });
 }

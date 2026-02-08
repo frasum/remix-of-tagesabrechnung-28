@@ -1,7 +1,8 @@
-import { Pencil, Trash2, ChefHat, UtensilsCrossed, Store } from 'lucide-react';
+import { Pencil, Trash2, ChefHat, UtensilsCrossed, Store, Smartphone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Staff } from '@/hooks/useStaff';
 
 interface StaffCardProps {
@@ -18,6 +19,10 @@ export function StaffCard({ staff, onEdit, onDelete }: StaffCardProps) {
   const restaurantNames = staff.staff_restaurants
     ?.map(sr => sr.restaurants?.name)
     .filter(Boolean) ?? [];
+
+  // OAuth link status
+  const isLinked = !!staff.linked_profile;
+  const linkedEmail = staff.linked_profile?.email;
 
   return (
     <Card className={`transition-all ${!staff.is_active ? 'opacity-60' : ''}`}>
@@ -44,6 +49,23 @@ export function StaffCard({ staff, onEdit, onDelete }: StaffCardProps) {
                   <RoleIcon className="w-3 h-3 mr-1" />
                   {roleLabel}
                 </Badge>
+                
+                {/* OAuth link status badge */}
+                {isLinked && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className="text-xs font-normal gap-1 bg-green-100 text-green-700 border-green-200 hover:bg-green-100">
+                          <Smartphone className="w-3 h-3" />
+                          OAuth
+                        </Badge>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Verknüpft mit: {linkedEmail}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
               
               {/* Restaurant badges */}
