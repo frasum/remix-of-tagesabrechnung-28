@@ -1,100 +1,90 @@
 
-# Plan: Druckfunktion mit Canvas-basiertem Ansatz
+# Plan: Bankeinzahlungen für Bargeldbestand
 
-## Problem
-Die aktuelle iframe-basierte Druckmethode zeigt ein leeres Blatt, weil:
-1. Das PDF im versteckten iframe nicht vollständig geladen wird bevor `print()` aufgerufen wird
-2. Blob-URLs in iframes haben Cross-Origin-Einschränkungen beim Drucken
-3. Der Browser-PDF-Viewer im iframe wird nicht richtig initialisiert
+## Übersicht
 
-## Lösung: Canvas-zu-Bild Druckansatz
+Wir fügen eine Funktion hinzu, um Bankeinzahlungen zu erfassen. Oben auf der Bargeldbestand-Seite wird eine Zusammenfassungs-Karte angezeigt, die den **aktuellen Kassenbestand** zeigt (Gesamtbargeld minus alle Bankeinzahlungen).
 
-Da wir das PDF bereits mit pdf.js auf Canvas-Elemente rendern, können wir diese Canvas-Bilder direkt zum Drucken verwenden. Diese Methode ist zuverlässiger und umgeht alle Browser-Einschränkungen.
-
-### Ablauf
+## Was du bekommst
 
 ```text
-+-------------------+     +------------------+     +-------------------+
-| Canvas-Seiten     | --> | Neues Fenster    | --> | Browser Print     |
-| (bereits gerendert)|     | mit <img> Tags   |     | Dialog            |
-+-------------------+     +------------------+     +-------------------+
+┌─────────────────────────────────────────────────────────────────┐
+│  💰 Aktueller Kassenbestand                                     │
+│                                                                 │
+│  Bargeld gesamt:     12.450,00 €                               │
+│  Bankeinzahlungen:   -8.000,00 €                               │
+│  ───────────────────────────────                               │
+│  Verbleibendes:       4.450,00 €        [+ Einzahlung]         │
+│                                                                 │
+│  Letzte Einzahlung: 05.02.2026 - 3.000,00 €                    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-## Änderungen
+**Button "Einzahlung hinzufügen"** öffnet einen Dialog:
+- Datum auswählen (mit Kalender)
+- Betrag eingeben
+- Optionale Notiz (z.B. "Wochenbetrag", "Monatsendzahlung")
 
-### Datei: src/components/shared/PdfPreview.tsx
+**Liste der Einzahlungen** unterhalb der Zusammenfassung:
+- Zeigt alle Bankeinzahlungen chronologisch
+- Mit Lösch-Option falls versehentlich falsch eingetragen
 
-1. **Refs für alle Canvas-Elemente sammeln**
-   - Ein Array von Canvas-Refs erstellen um auf alle gerenderten Seiten zugreifen zu können
+---
 
-2. **Neue handlePrint Funktion**
-   - Alle Canvas-Elemente zu Data-URLs konvertieren
-   - Ein neues Fenster mit HTML-Inhalt erstellen
-   - Jede Seite als `<img>` Tag mit Print-optimiertem CSS einbetten
-   - Nach dem Laden `print()` aufrufen
+## Technische Umsetzung
 
-### Technische Umsetzung
+### 1. Neue Datenbank-Tabelle: `bank_deposits`
 
-```typescript
-// Canvas-Refs sammeln
-const canvasRefs = useRef<Map<number, HTMLCanvasElement>>(new Map());
+| Spalte | Typ | Beschreibung |
+|--------|-----|--------------|
+| id | uuid | Primärschlüssel |
+| deposit_date | date | Datum der Einzahlung |
+| amount | numeric | Betrag in Euro |
+| notes | text | Optionale Notiz |
+| created_at | timestamp | Erstellungszeitpunkt |
 
-// Druckfunktion
-const handlePrint = () => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) return;
+**RLS-Policy:** Öffentlicher Zugriff (wie bei den anderen Tabellen)
 
-  // HTML mit allen Seiten als Bilder erstellen
-  const images = Array.from(canvasRefs.current.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([_, canvas]) => canvas.toDataURL('image/png'));
+### 2. Neue Dateien
 
-  printWindow.document.write(`
-    <html>
-      <head>
-        <title>${fileName || 'PDF Druck'}</title>
-        <style>
-          @media print {
-            body { margin: 0; }
-            img { 
-              width: 100%; 
-              page-break-after: always; 
-            }
-            img:last-child { page-break-after: avoid; }
-          }
-        </style>
-      </head>
-      <body>
-        ${images.map(src => `<img src="${src}" />`).join('')}
-      </body>
-    </html>
-  `);
-  
-  printWindow.document.close();
-  printWindow.onload = () => printWindow.print();
-};
+| Datei | Zweck |
+|-------|-------|
+| `src/hooks/useBankDeposits.ts` | Hook für CRUD-Operationen auf `bank_deposits` |
+| `src/components/cash-balance/CashBalanceSummary.tsx` | Zusammenfassungs-Karte mit aktuellem Kassenbestand |
+| `src/components/cash-balance/BankDepositDialog.tsx` | Dialog zum Hinzufügen einer Einzahlung |
+| `src/components/cash-balance/BankDepositList.tsx` | Liste aller Einzahlungen mit Lösch-Option |
+
+### 3. Änderungen an bestehenden Dateien
+
+**`src/pages/CashBalance.tsx`:**
+- Import der neuen Komponenten
+- Integration der Zusammenfassungs-Karte über der Tabelle
+- Berechnung: `Kassenbestand = Bargeld gesamt - Bankeinzahlungen`
+
+**`src/hooks/useCashBalanceData.ts`:**
+- Bleibt unverändert (berechnet weiterhin das tägliche Bargeld)
+
+### 4. Ablauf
+
+```text
++------------------+     +-------------------+     +------------------+
+| Nutzer klickt    | --> | Dialog öffnet     | --> | Speichern in     |
+| "Einzahlung"     |     | mit Formular      |     | bank_deposits    |
++------------------+     +-------------------+     +------------------+
+                                                          |
+                                                          v
++------------------+     +-------------------+     +------------------+
+| UI aktualisiert  | <-- | React Query       | <-- | Daten neu laden  |
+| Kassenbestand    |     | invalidiert Cache |     |                  |
++------------------+     +-------------------+     +------------------+
 ```
 
-3. **PdfPage Komponente anpassen**
-   - Canvas-Ref an übergeordnete Komponente melden via Callback
+---
 
 ## Vorteile dieser Lösung
 
-- Kein Popup-Blocker Problem (synchroner window.open Aufruf)
-- Keine Blob-URL/iframe Probleme
-- Die Seiten werden garantiert korrekt angezeigt, da sie bereits gerendert sind
-- Funktioniert in allen Browsern konsistent
-- Print-CSS sorgt für korrekte Seitenumbrüche
+- **Einfach:** Nur eine neue Tabelle, keine Änderung an bestehenden Daten
+- **Übersichtlich:** Kassenbestand auf einen Blick sichtbar
+- **Flexibel:** Einzahlungen können nachträglich korrigiert werden
+- **Konsistent:** Folgt dem bestehenden Muster (wie `expenses` Tabelle)
 
-## Alternative: jsPDF autoPrint
-
-Falls der Canvas-Ansatz nicht gewünscht ist, könnte man auch jsPDF's eingebaute `autoPrint()` Methode nutzen:
-
-```typescript
-// In pdfExport.ts
-doc.autoPrint();
-const blobUrl = URL.createObjectURL(doc.output('blob'));
-// Dann iframe öffnen - PDF startet automatisch Druckdialog
-```
-
-Dies ist jedoch weniger zuverlässig als der Canvas-Ansatz.
