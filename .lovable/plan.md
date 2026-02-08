@@ -1,102 +1,138 @@
 
-
-# Plan: Neue Seite "Bargeldbestand"
+# Plan: Monatlicher PDF-Export fuer Bargeldbestand
 
 ## Zusammenfassung
-Eine neue Navigationsoption **"Bargeldbestand"** wird zwischen "Verlauf" und "Mitarbeiter" eingefuegt. Diese Seite zeigt eine tabellarische Uebersicht aller Sessions mit allen relevanten Werten zur Bargeldberechnung - aehnlich wie im Excel-Screenshot.
+Ein Monatsauswahl-Dropdown und ein PDF-Export-Button werden zur Bargeldbestand-Seite hinzugefuegt. Der Benutzer kann einen Monat auswaehlen und dann die gefilterten Daten als PDF herunterladen.
 
 ## Funktionsweise
 
-Die neue Seite zeigt eine scrollbare Tabelle mit allen Sessions. Jede Zeile repraesentiert einen Tag mit:
-- Allen Einnahmen und Abzuegen, die in die BARGELD-Berechnung einfliessen
-- Der berechneten BARGELD-Summe am Ende
-- Farbcodierung: positive Werte gruen, negative Werte rot
+1. **Monatsauswahl**: Ein Dropdown oben auf der Seite zeigt alle verfuegbaren Monate (basierend auf den vorhandenen Sessions)
+2. **Tabellen-Filterung**: Die Tabelle zeigt nur die Eintraege des ausgewaehlten Monats
+3. **PDF-Export**: Ein Button generiert eine PDF mit allen Zeilen des ausgewaehlten Monats plus Summenzeile
 
-**Spalten der Tabelle:**
-| Datum | Tagesumsatz | Kreditkarten | OrderSmart | Wolt | Gutscheine EL | FineDine | Gutschein VK | Einladung | Offene RE | Vorschuss | Ausgaben | **Bargeld** |
+**PDF-Inhalt:**
+- Titel: "Bargeldbestand - [Monat Jahr]"
+- Erstellungsdatum
+- Tabelle mit allen Spalten wie in der UI
+- Summenzeile am Ende
+- Farbcodierung (gruen/rot) fuer Bargeld-Spalte
 
 ## Geplante Aenderungen
 
-### 1. Navigation erweitern (AppLayout.tsx)
-- Neuen Navigationseintrag "Bargeldbestand" mit Icon `Wallet` hinzufuegen
-- Position: nach "Verlauf", vor "Mitarbeiter"
+### 1. Neue PDF-Export-Funktion (pdfExport.ts)
+Eine neue Funktion `generateCashBalancePDF` wird hinzugefuegt:
+- Nimmt gefilterte Daten und Monat/Jahr als Parameter
+- Erstellt Tabelle mit allen Spalten
+- Fuegt Summenzeile hinzu
+- Verwendet gleiches Design wie bestehender Daily Summary Export
 
-### 2. Neue Seite erstellen (CashBalance.tsx)
-- Neuer Hook `useCashBalanceData` der alle Sessions mit zugehoerigen waiter_shifts und expenses laedt
-- Tabelle mit horizontalem Scroll fuer alle Spalten
-- Datum formatiert wie "Mo 5.Jan"
-- Summenzeile am Ende (optional)
-- Responsive Design mit horizontalem Scroll auf Mobile
+### 2. CashBalance.tsx erweitern
+- State fuer ausgewaehlten Monat hinzufuegen
+- Monatsauswahl-Dropdown (Select-Komponente)
+- PDF-Export-Button mit FileDown-Icon
+- Daten nach Monat filtern
+- Export-Funktion aufrufen
 
-### 3. Route registrieren (App.tsx)
-- Neue Route `/cash-balance` fuer die CashBalance-Seite
+## UI-Aenderungen
+
+```text
++--------------------------------------------------+
+| [Wallet Icon] Bargeldbestand                     |
+|                                                  |
+| Monat: [Februar 2026 ▼]    [PDF Export Button]   |
+|                                                  |
+| +----------------------------------------------+ |
+| | Taegliche Bargelduebersicht                 | |
+| | Datum | Tagesumsatz | ... | Bargeld         | |
+| | Sa 1.Feb | 4.800 € | ... | 145 €            | |
+| | ...                                          | |
+| | GESAMT | ... | 4.965 €                       | |
+| +----------------------------------------------+ |
++--------------------------------------------------+
+```
 
 ---
 
 ## Technische Details
 
-### Neuer Hook: useCashBalanceData
+### Neue Funktion: generateCashBalancePDF
+
 ```typescript
-// Laedt alle Sessions mit aggregierten Daten
-export function useCashBalanceData() {
-  return useQuery({
-    queryKey: ['cash-balance'],
-    queryFn: async () => {
-      // 1. Alle Sessions laden
-      const { data: sessions } = await supabase
-        .from('sessions')
-        .select('*')
-        .order('session_date', { ascending: true });
-      
-      // 2. Alle waiter_shifts laden
-      const { data: waiterShifts } = await supabase
-        .from('waiter_shifts')
-        .select('*');
-      
-      // 3. Alle expenses laden  
-      const { data: expenses } = await supabase
-        .from('expenses')
-        .select('*');
-      
-      // 4. Pro Session aggregieren und BARGELD berechnen
-      return sessions.map(session => {
-        const shifts = waiterShifts.filter(s => s.session_id === session.id);
-        const sessionExpenses = expenses.filter(e => e.session_id === session.id);
-        
-        // Berechnungen analog zu useStatistics.ts
-        const kellnerUmsatz = shifts.reduce((sum, w) => sum + (w.pos_sales || 0), 0);
-        const totalHilfMahl = shifts.reduce((sum, w) => sum + (w.hilf_mahl || 0), 0);
-        const totalOpenInvoices = shifts.reduce((sum, w) => sum + (w.open_invoices || 0), 0);
-        const totalExpenses = sessionExpenses.reduce((sum, e) => sum + e.amount, 0);
-        
-        const bargeld = kellnerUmsatz + (session.vouchers_sold || 0) + ...;
-        
-        return {
-          date: session.session_date,
-          kellnerUmsatz,
-          kreditkarten: (session.terminal_1_total || 0) + (session.terminal_2_total || 0),
-          ordersmart: session.ordersmart_revenue || 0,
-          wolt: session.wolt_revenue || 0,
-          gutscheineEL: session.vouchers_redeemed || 0,
-          finedine: session.finedine_vouchers || 0,
-          gutscheineVK: session.vouchers_sold || 0,
-          einladung: session.einladung || 0,
-          offeneRE: totalOpenInvoices,
-          vorschuss: session.vorschuss || 0,
-          ausgaben: totalExpenses,
-          bargeld,
-        };
-      });
-    },
-  });
+interface CashBalanceRow {
+  date: string;
+  kellnerUmsatz: number;
+  kreditkarten: number;
+  ordersmart: number;
+  wolt: number;
+  gutscheineEL: number;
+  finedine: number;
+  gutscheineVK: number;
+  einladung: number;
+  offeneRE: number;
+  vorschuss: number;
+  ausgaben: number;
+  bargeld: number;
 }
+
+interface CashBalancePDFData {
+  rows: CashBalanceRow[];
+  month: number; // 0-11
+  year: number;
+}
+
+export const generateCashBalancePDF = (data: CashBalancePDFData): void => {
+  const doc = new jsPDF('landscape'); // Querformat wegen vieler Spalten
+  
+  // Header mit Monat/Jahr
+  // Tabelle mit allen Zeilen
+  // Summenzeile mit Farbcodierung
+  // Speichern als "Bargeldbestand_2026-02.pdf"
+};
 ```
 
-### UI-Komponente: CashBalance.tsx
-- Verwendet `AppLayout` wie alle anderen Seiten
-- Titel "Bargeldbestand" mit Icon `Wallet`
-- Card mit scrollbarer Tabelle
-- Spalten mit `text-right tabular-nums` fuer Zahlen
-- BARGELD-Spalte mit bedingter Farbgebung (gruen/rot)
-- Optional: Filter nach Monat/Zeitraum
+### CashBalance.tsx Erweiterungen
 
+```typescript
+// Neue Imports
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { FileDown } from 'lucide-react';
+import { generateCashBalancePDF } from '@/utils/pdfExport';
+import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+
+// State fuer Monatsauswahl
+const [selectedMonth, setSelectedMonth] = useState<string>(''); // Format: "2026-02"
+
+// Verfuegbare Monate aus Daten extrahieren
+const availableMonths = useMemo(() => {
+  if (!data) return [];
+  const months = new Set<string>();
+  data.forEach(row => {
+    const date = parseISO(row.date);
+    months.add(format(date, 'yyyy-MM'));
+  });
+  return Array.from(months).sort().reverse();
+}, [data]);
+
+// Daten nach Monat filtern
+const filteredData = useMemo(() => {
+  if (!data || !selectedMonth) return data;
+  return data.filter(row => row.date.startsWith(selectedMonth));
+}, [data, selectedMonth]);
+
+// Export-Handler
+const handleExport = () => {
+  if (!filteredData || filteredData.length === 0) return;
+  const [year, month] = selectedMonth.split('-').map(Number);
+  generateCashBalancePDF({
+    rows: filteredData,
+    month: month - 1,
+    year,
+  });
+};
+```
+
+### Dateien die geaendert werden
+
+1. **src/utils/pdfExport.ts** - Neue Funktion `generateCashBalancePDF` hinzufuegen
+2. **src/pages/CashBalance.tsx** - Monatsauswahl, Filter und Export-Button hinzufuegen
