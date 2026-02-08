@@ -1,250 +1,163 @@
 
-## Plan: Manager Dashboard in Tagesabrechnung integrieren
+
+## Plan: Zwei-Spalten Layout für Tagesabrechnung
 
 ### Ziel
-Das Manager Dashboard vollständig in die Tagesabrechnung (DailySummary) integrieren, um eine einzige, übersichtliche Seite für tägliche Dateneingabe und Übersicht zu schaffen. Der Navigationspunkt "Manager Dashboard" wird entfernt.
+Die Eingabefelder und Übersichten in einem übersichtlicheren Zwei-Spalten Layout anordnen: **Links Eingabe**, **Rechts Übersicht/Zusammenfassung**.
 
 ---
 
-## Strategie
-
-Das bestehende **DailySummary-Layout** wird als Basis beibehalten und um die **Eingabefunktionalität des Manager Dashboards** erweitert:
+## Neues Layout
 
 ```text
-TAGESABRECHNUNG (erweitert)
-├── Header (Datum + PDF Export)
-├── Notizen-Karte (neu)
-├── Warnungen (neu - POS/Terminal-Differenzen)
-├── Stat-Cards (bestehend)
-├── Kassenstand-Karte (bestehend)
-├── EINGABE-BEREICH (neu - Manager Dashboard-Funktionalität)
-│   ├── POS & Terminal
-│   ├── Take Away
-│   ├── Gutscheine & Abzüge
-│   ├── Sonstiges
-│   └── Ausgaben
-└── Übersichts-Bereich (bestehend)
-    ├── Einnahmen Übersicht
-    ├── Abzüge Übersicht
-    ├── Take Away Details
-    └── Trinkgeld Übersicht
++------------------------------------------+------------------------------------------+
+|              LINKE SPALTE                |             RECHTE SPALTE                |
+|            (DATENEINGABE)                |        (ZUSAMMENFASSUNG & STATUS)        |
++------------------------------------------+------------------------------------------+
+|                                          |                                          |
+|  +------------------------------------+  |  +------------------------------------+  |
+|  | Stat-Cards (BARGELD, Umsatz, etc.) |  |  | Stat-Cards werden OBEN angezeigt   |  |
+|  | - Bleiben oben ueber volle Breite  |  |  | (volle Breite, nicht in Spalten)   |  |
+|  +------------------------------------+  |  +------------------------------------+  |
+|                                          |                                          |
+|  +------------------------------------+  |  +------------------------------------+  |
+|  |           NOTIZEN                  |  |  |      KASSENSTAND (wenn noetig)     |  |
+|  |  [Textarea fuer Notizen]           |  |  |  Anfangsbestand: 1.000 EUR         |  |
+|  +------------------------------------+  |  |  Bargeld heute:    xxx EUR         |  |
+|                                          |  |  Transfer:         +xx EUR         |  |
+|  +------------------------------------+  |  |  --------------------------------   |  |
+|  |         POS & TERMINAL             |  |  |  Kassenstand:    x.xxx EUR         |  |
+|  |  Kellner Abzugebender Betrag       |  |  +------------------------------------+  |
+|  |  Vectron Gesamtumsatz              |  |                                          |
+|  |  Terminal 1 / Terminal 2           |  |  +------------------------------------+  |
+|  |  Kreditkartenumsatz GL             |  |  |      EINNAHMEN UEBERSICHT          |  |
+|  +------------------------------------+  |  |  Tagesumsatz         x.xxx EUR     |  |
+|                                          |  |  Gutschein Verkauf     xxx EUR     |  |
+|  +------------------------------------+  |  |  Sonstige Einnahmen    xxx EUR     |  |
+|  |           TAKE AWAY                |  |  |  Hilf Mahl             xxx EUR     |  |
+|  |  Takeaway GL                       |  |  |  --------------------------------   |  |
+|  |  OrderSmart                        |  |  |  Summe Einnahmen   x.xxx EUR       |  |
+|  |  Wolt                              |  |  +------------------------------------+  |
+|  |  Take-Away Gesamt (berechnet)      |  |                                          |
+|  +------------------------------------+  |  +------------------------------------+  |
+|                                          |  |       ABZUEGE UEBERSICHT           |  |
+|  +------------------------------------+  |  |  Terminal 1           xxx EUR      |  |
+|  |      GUTSCHEINE & ABZUEGE          |  |  |  Terminal 2           xxx EUR      |  |
+|  |  Gutschein Verkauf                 |  |  |  Gutschein Eingeloest xxx EUR      |  |
+|  |  Gutschein Eingeloest              |  |  |  FineDine             xxx EUR      |  |
+|  |  FineDine Gutscheine               |  |  |  Vorschuss            xxx EUR      |  |
+|  +------------------------------------+  |  |  ...                                |  |
+|                                          |  |  --------------------------------   |  |
+|  +------------------------------------+  |  |  Summe Abzuege      x.xxx EUR      |  |
+|  |           SONSTIGES                |  |  +------------------------------------+  |
+|  |  Vorschuss                         |  |                                          |
+|  |  Einladung                         |  |  +------------------------------------+  |
+|  |  Sonstige Einnahmen                |  |  |      TRINKGELD UEBERSICHT          |  |
+|  +------------------------------------+  |  |  Kuechen-Trinkgeld    xxx EUR      |  |
+|                                          |  |  Kellner-Trinkgeld    xxx EUR      |  |
+|  +------------------------------------+  |  |  Pro Kellner           xx EUR      |  |
+|  |           AUSGABEN                 |  |  +------------------------------------+  |
+|  |  [Beschreibung] [Betrag] [+]       |  |                                          |
+|  |  Ausgabe 1         50,00 EUR [x]   |  |  +------------------------------------+  |
+|  |  Ausgabe 2         30,00 EUR [x]   |  |  |    KELLNER-ABRECHNUNGEN            |  |
+|  |  --------------------------------  |  |  |  Name | Status | Eingereicht       |  |
+|  |  Summe Ausgaben:   80,00 EUR       |  |  |  Max  | OK     | Heute, 21:30      |  |
+|  +------------------------------------+  |  |  Lisa | OK     | Heute, 21:45      |  |
+|                                          |  +------------------------------------+  |
++------------------------------------------+------------------------------------------+
 ```
 
 ---
 
-## Detaillierte Änderungen
+## Technische Umsetzung
 
-### 1. DailySummary.tsx erweitern
+### Aenderungen in DailySummary.tsx
 
-**Neue State-Variablen:**
-- `formData`: Alle Session-Eingabefelder (pos_total, terminal_1_total, vouchers_sold, etc.)
-- `expenseDescription` und `expenseAmount`: Für Ausgaben-Erfassung
+**1. Haupt-Container Struktur aendern:**
 
-**Neue Hooks:**
-- `useUpdateSession`: Für Auto-Save beim Ändern von Feldern
-- `useCreateExpense` und `useDeleteExpense`: Für Ausgaben-Management
-
-**Neue Funktionen:**
-- `updateField()`: Auto-Save beim Ändern eines Session-Feldes
-- `handleAddExpense()`: Hinzufügen von Ausgaben
-- `handleDeleteExpense()`: Löschen von Ausgaben
-
-**Neue UI-Sektionen (zwischen Kassenstand und bestehenden Übersichten):**
-1. **Notizen-Karte**: Textarea für tägliche Notizen (Auto-Save)
-2. **Warnungs-Banner**: POS-Differenz und Terminal-Differenz Warnungen
-3. **Eingabe-Bereich** (6 Karten im Grid):
-   - POS & Terminal (Vectron, Terminals, Kreditkartenumsatz GL)
-   - Take Away (Takeaway GL, OrderSmart, Wolt mit Gesamtberechnung)
-   - Gutscheine & Abzüge (Verkauf, Eingelöst, FineDine)
-   - Sonstiges (Vorschuss, Einladung, Sonstige Einnahmen)
-   - Ausgaben (mit Hinzufügen/Löschen-Funktionalität)
-   - Bargeld-Preview (Read-Only, zeigt berechnetes Bargeld)
-
-**Layout-Struktur:**
-```text
-Stat-Cards (4 Spalten) - BARGELD, Tagesumsatz, Kartenzahlungen, Take Away
-↓
-Kassenstand-Karte (nur wenn < 1.000 €)
-↓
-Notizen-Karte (oben prominent)
-↓
-Warnungs-Banner (nur bei Abweichungen)
-↓
-Eingabe-Bereich (6 Karten im md:grid-cols-2 lg:grid-cols-3 Layout)
-├── POS & Terminal
-├── Take Away
-├── Gutscheine & Abzüge
-├── Sonstiges
-├── Ausgaben
-└── Bargeld-Preview
-↓
-Übersichts-Bereich (4 Karten im lg:grid-cols-2 Layout - bestehend)
-├── Einnahmen Übersicht
-├── Abzüge Übersicht
-├── Take Away Details
-└── Trinkgeld Übersicht
+Aktuell:
+```tsx
+<div className="space-y-6">
+  {/* Warning Cards */}
+  {/* Main Stats - 4 Spalten */}
+  {/* Kassenstand Card */}
+  {/* Input Section - 6 Cards Grid */}
+  {/* Kellner-Abrechnungen */}
+  {/* Detailed Breakdown - 2 Spalten */}
+</div>
 ```
 
----
-
-### 2. AppLayout.tsx anpassen
-
-**Navigation:**
-- Entfernen von `{ path: 'manager', label: 'Manager Dashboard', icon: Settings, minLevel: 'manager' }` aus `allNavItems`
-- Aktualisieren von `alwaysVisibleForManager`: Entfernen von `'manager'`, behalten `['', 'kitchen', 'summary', 'register-balance']`
-
-**Auswirkung:** Manager sehen "Manager Dashboard" nicht mehr in der Navigation.
-
----
-
-### 3. App.tsx anpassen
-
-**Route entfernen:**
-```typescript
-// Vor:
-{ path: 'manager', element: <ManagerDashboard /> }
-
-// Nach:
-// Eintrag komplett entfernt
-```
-
----
-
-### 4. Alte ManagerDashboard.tsx
-
-**Aktion:** Datei bleibt zunächst bestehen (kann später gelöscht werden, wenn alles stabil läuft).
-
----
-
-## Technische Implementierungs-Details
-
-### Neue Imports in DailySummary.tsx
-```typescript
-// Zusätzliche Hooks
-import { useUpdateSession } from '@/hooks/useSession';
-
-// Zusätzliche Icons
-import { Trash2, AlertTriangle } from 'lucide-react';
-
-// Zusätzliche UI-Komponenten
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-
-// Bestehende Komponenten erweitern
-import { CurrencyInput } from '@/components/shared/CurrencyInput';
-```
-
-### State Initialization
-```typescript
-const [formData, setFormData] = useState({
-  spicery_counter: 0,
-  pos_total: 0,
-  terminal_1_total: 0,
-  terminal_2_total: 0,
-  ordersmart_revenue: 0,
-  wolt_revenue: 0,
-  vouchers_sold: 0,
-  vouchers_redeemed: 0,
-  finedine_vouchers: 0,
-  vorschuss: 0,
-  einladung: 0,
-  sonstige_einnahme: 0,
-  notes: '',
-  takeaway_total: 0,
-  card_total_gl: 0,
-});
-
-const [expenseDescription, setExpenseDescription] = useState('');
-const [expenseAmount, setExpenseAmount] = useState(0);
-```
-
-### Sync-Logik (useEffect)
-Beim Laden einer Session werden alle Session-Werte in `formData` synchronisiert.
-
-### Auto-Save Funktion
-```typescript
-const updateField = async (field: keyof typeof formData, value: number | string) => {
-  let updatedFormData: typeof formData | null = null;
+Neu:
+```tsx
+<div className="space-y-6">
+  {/* Warning Cards - volle Breite */}
   
-  setFormData((prev) => {
-    updatedFormData = { ...prev, [field]: value };
-    return updatedFormData;
-  });
+  {/* Main Stats - volle Breite, 4 Spalten */}
   
-  if (session?.id && updatedFormData) {
-    try {
-      await updateSession.mutateAsync({
-        id: session.id,
-        ...updatedFormData,
-      });
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-    }
-  }
-};
+  {/* Zwei-Spalten Layout */}
+  <div className="grid lg:grid-cols-2 gap-6">
+    {/* LINKE SPALTE - Eingabe */}
+    <div className="space-y-6">
+      <Card>Notizen</Card>
+      <Card>POS & Terminal</Card>
+      <Card>Take Away</Card>
+      <Card>Gutscheine & Abzuege</Card>
+      <Card>Sonstiges</Card>
+      <Card>Ausgaben</Card>
+    </div>
+    
+    {/* RECHTE SPALTE - Uebersicht */}
+    <div className="space-y-6">
+      <Card>Kassenstand (wenn noetig)</Card>
+      <Card>Einnahmen Uebersicht</Card>
+      <Card>Abzuege Uebersicht</Card>
+      <Card>Take Away Details</Card>
+      <Card>Trinkgeld Uebersicht</Card>
+      <Card>Kellner-Abrechnungen</Card>
+    </div>
+  </div>
+</div>
 ```
 
----
+**2. Responsive Verhalten:**
+- Auf Desktop (lg:): Zwei Spalten nebeneinander
+- Auf Tablet/Mobile: Eine Spalte, Eingabe oben, Uebersicht unten
+- Die Spalten scrollen unabhaengig voneinander
 
-## Reihenfolge der Implementierung
-
-1. **DailySummary.tsx erweitern:**
-   - State-Variablen hinzufügen
-   - useUpdateSession, useCreateExpense, useDeleteExpense Hooks importieren
-   - updateField() Funktion implementieren
-   - handleAddExpense() und handleDeleteExpense() Funktionen hinzufügen
-   - useEffect für Sync-Logik hinzufügen
-   - Notizen-Karte einfügen
-   - Warnungs-Banner einfügen
-   - Eingabe-Bereich mit 6 Karten einfügen (zwischen Kassenstand und Übersichten)
-
-2. **AppLayout.tsx anpassen:**
-   - 'manager' Eintrag aus allNavItems entfernen
-   - alwaysVisibleForManager aktualisieren
-
-3. **App.tsx anpassen:**
-   - Manager Dashboard Route entfernen
-
-4. **Testing:**
-   - Alle Eingabefunktionen testen (Auto-Save)
-   - Ausgaben hinzufügen/löschen testen
-   - Warnungen bei Abweichungen prüfen
-   - PDF Export mit neuen Daten testen
-   - Navigation prüfen (Manager Dashboard sollte weg sein)
+**3. Optionale Verbesserung - Sticky Sidebar:**
+```tsx
+{/* Rechte Spalte sticky beim Scrollen */}
+<div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
+```
+Dies haelt die Zusammenfassung sichtbar, waehrend man durch die Eingabefelder scrollt.
 
 ---
 
-## Vorher/Nachher
+## Vorteile dieses Layouts
 
-**Vorher:**
-- Zwei separate Seiten: "Manager Dashboard" (Eingabe) + "Tagesabrechnung" (Übersicht)
-- Manager müssen zwischen zwei Seiten navigieren
-
-**Nachher:**
-- Eine Seite: "Tagesabrechnung" mit Eingabe + Übersicht
-- Alles auf einer Seite, übersichtlicher, weniger Navigationslast
-
----
-
-## Potenzielle Herausforderungen & Mitigierung
-
-| Herausforderung | Lösung |
-|---|---|
-| Seite wird sehr lang | Bestehende Struktur mit Card-Grid ist modular, Scrolling ist normal für diese Art von Seiten |
-| Auto-Save Performance | Wird bereits im Manager Dashboard verwendet, sollte stabil sein |
-| State Management | useEffect Sync + updateField Auto-Save hat sich bewährt |
-| Navigation-Breadcrumbs | Nicht nötig, "Tagesabrechnung" ist eindeutig |
+| Aspekt | Verbesserung |
+|--------|--------------|
+| Uebersichtlichkeit | Eingabe links, Ergebnis rechts - klare Trennung |
+| Effizienz | Aenderungen sind sofort rechts sichtbar |
+| Weniger Scrollen | Wichtige Zahlen immer im Blick (sticky) |
+| Logischer Aufbau | Arbeitsfluss von links nach rechts |
+| Responsive | Auf Mobile weiterhin funktional |
 
 ---
 
-## Dateien die geändert werden
+## Dateien die geaendert werden
 
-| Datei | Typ | Beschreibung |
-|-------|-----|-------------|
-| `src/pages/DailySummary.tsx` | **Modify** | Erweitern mit Eingabefunktionalität |
-| `src/components/layout/AppLayout.tsx` | **Modify** | 'manager' Navigation entfernen |
-| `src/App.tsx` | **Modify** | Manager Dashboard Route entfernen |
-| `.lovable/plan.md` | **Modify** | Dokumentation aktualisieren |
+| Datei | Aenderung |
+|-------|-----------|
+| `src/pages/DailySummary.tsx` | Layout-Struktur auf Zwei-Spalten umstellen |
+
+---
+
+## Implementierungsschritte
+
+1. Warning Cards und Stat-Cards bleiben oben (volle Breite)
+2. Neuer Container `grid lg:grid-cols-2 gap-6` erstellen
+3. Linke Spalte: Notizen, POS & Terminal, Take Away, Gutscheine, Sonstiges, Ausgaben
+4. Rechte Spalte: Kassenstand, Einnahmen, Abzuege, Take Away Details, Trinkgeld, Kellner-Status
+5. Optional: `lg:sticky lg:top-4` fuer rechte Spalte
 
