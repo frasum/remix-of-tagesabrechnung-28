@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Store } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -108,28 +109,49 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
 
           {/* Restaurant Assignment */}
           <div className="space-y-3">
-            <Label>Restaurants *</Label>
-            <div className="space-y-2">
-              {restaurants.map((restaurant) => (
-                <div key={restaurant.id} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`restaurant-${restaurant.id}`}
-                    checked={selectedRestaurants.includes(restaurant.id)}
-                    onCheckedChange={(checked) => 
-                      handleRestaurantToggle(restaurant.id, checked as boolean)
-                    }
-                  />
-                  <Label
-                    htmlFor={`restaurant-${restaurant.id}`}
-                    className="text-sm font-normal cursor-pointer"
+            <Label className="text-base font-semibold flex items-center gap-2">
+              <Store className="w-4 h-4 text-primary" />
+              Arbeitet in folgenden Restaurants
+            </Label>
+            <div className="grid gap-2">
+              {restaurants.map((restaurant) => {
+                const isSelected = selectedRestaurants.includes(restaurant.id);
+                return (
+                  <div
+                    key={restaurant.id}
+                    onClick={() => handleRestaurantToggle(restaurant.id, !isSelected)}
+                    className={`
+                      flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer
+                      transition-all duration-200
+                      ${isSelected 
+                        ? 'border-primary bg-primary/10 shadow-sm' 
+                        : 'border-muted hover:border-muted-foreground/30 hover:bg-muted/50'
+                      }
+                    `}
                   >
-                    {restaurant.name}
-                  </Label>
-                </div>
-              ))}
+                    <Checkbox
+                      id={`restaurant-${restaurant.id}`}
+                      checked={isSelected}
+                      onCheckedChange={(checked) => 
+                        handleRestaurantToggle(restaurant.id, checked as boolean)
+                      }
+                      className="pointer-events-none"
+                    />
+                    <div className="flex-1">
+                      <span className={`font-medium ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                        {restaurant.name}
+                      </span>
+                    </div>
+                    {isSelected && (
+                      <div className="w-2 h-2 rounded-full bg-primary animate-scale-in" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
             {selectedRestaurants.length === 0 && (
-              <p className="text-xs text-destructive">
+              <p className="text-sm text-destructive bg-destructive/10 p-2 rounded-md flex items-center gap-2">
+                <span className="text-lg">⚠️</span>
                 Mindestens ein Restaurant muss ausgewählt werden
               </p>
             )}
