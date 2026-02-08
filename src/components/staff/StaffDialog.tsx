@@ -31,20 +31,21 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
   useEffect(() => {
     if (!open) return;
     
+    // Reset to initial state
     if (staff) {
+      // Editing existing staff
       setName(staff.name);
       setRole(staff.role);
       setIsActive(staff.is_active ?? true);
       setPinCode('');
-      const restaurantIds = staff.staff_restaurants?.map(sr => sr.restaurant_id) ?? [];
-      setSelectedRestaurants(restaurantIds);
+      setSelectedRestaurants(staff.staff_restaurants?.map(sr => sr.restaurant_id) ?? []);
     } else {
-      // New staff: clear form and use all restaurants as default
+      // Creating new staff - start with empty selection
       setName('');
       setRole('waiter');
       setIsActive(true);
       setPinCode('');
-      setSelectedRestaurants(restaurants.length > 0 ? restaurants.map(r => r.id) : []);
+      setSelectedRestaurants([]);
     }
   }, [open, staff]);
 
