@@ -1,127 +1,181 @@
 
-# Google/Apple Login für Kellner Self-Service
+# Manager-Verknüpfungsverwaltung für OAuth-Konten
 
 ## Übersicht
-Erweiterung des Kellner Self-Service Systems um Google/Apple OAuth-Login als schnellere Alternative zum PIN-Login. Die Kellner können dann mit einem Klick über ihr Smartphone einloggen, anstatt Name und PIN einzugeben.
+Erweiterung der Mitarbeiterverwaltung um die Möglichkeit, OAuth-Benutzer (Google/Apple) direkt mit Mitarbeiter-Profilen zu verknüpfen. Dies ermöglicht es Managern, Verknüpfungen zentral zu verwalten, ohne dass Kellner ihren PIN eingeben müssen.
 
 ## Aktueller Stand
-
-Das System unterstützt bereits:
-- PIN-basierte Authentifizierung für Kellner
-- Google/Apple OAuth auf der Login-Seite
-- Konto-Verknüpfung für OAuth-Nutzer mit bestehenden Mitarbeiter-Profilen
-- Mobile Self-Service Oberfläche (`/waiter`)
+- OAuth-Benutzer können sich selbst über den `AccountLinkingDialog` mit ihrem PIN verknüpfen
+- Die `profiles` Tabelle speichert `staff_id` für die Verknüpfung
+- Die Mitarbeiterverwaltung zeigt aktuell keinen Verknüpfungsstatus an
 
 ## Änderungen
 
-### 1. Login-Seite verbessern
-Anpassung der Weiterleitung nach OAuth-Login, um den Restaurant-Kontext beizubehalten:
-- Nach erfolgreichem Login → Weiterleitung zu `/{restaurant}/waiter` statt `/spicery/waiter`
-- Speicherung des ursprünglichen Restaurant-Slugs vor dem OAuth-Flow
+### 1. useStaff Hook erweitern
+Laden der verknüpften OAuth-Profile für jeden Mitarbeiter:
 
-### 2. QR-Code Poster aktualisieren
-Das Poster zeigt aktuell nur die PIN-Login Methode. Erweiterung um:
-- Hinweis auf "Mit Google/Apple anmelden" als Alternative
-- Aktualisierte Schritt-Anleitung (PIN oder Social Login)
+```typescript
+// Erweiterte Query mit Profile-Join
+.select(`
+  *,
+  staff_restaurants (...),
+  profiles!profiles_staff_id_fkey (
+    id,
+    email,
+    full_name,
+    avatar_url
+  )
+`)
+```
 
-### 3. WaiterQRCode Komponente erweitern
-Im Manager-Dashboard die Info ergänzen:
-- Hinweis dass auch Google/Apple Login möglich ist
+Neues Feld im Interface:
+```typescript
+interface Staff {
+  // ... existing
+  linked_profile?: {
+    id: string;
+    email: string;
+    full_name: string | null;
+    avatar_url: string | null;
+  };
+}
+```
 
-### 4. OAuth-Redirect mit Restaurant-Kontext
-Sicherstellen, dass nach dem OAuth-Callback der richtige Restaurant-Kontext wiederhergestellt wird:
-- Restaurant-Slug in localStorage speichern vor OAuth-Redirect
-- Nach Rückkehr zum richtigen Restaurant weiterleiten
+### 2. StaffCard Komponente erweitern
+Anzeige des Verknüpfungsstatus mit Badge:
+- Grüner Badge mit Smartphone-Icon wenn verknüpft
+- Tooltip mit verknüpfter E-Mail-Adresse
+
+### 3. Neue Edge Function: admin-link-account
+Manager-spezifische Verknüpfungsfunktion ohne PIN-Validierung:
+
+```typescript
+// Endpoint: POST /functions/v1/admin-link-account
+// Body: { staff_id: string, user_id: string }
+// oder: { staff_id: string, email: string }
+```
+
+Sicherheit:
+- Nur für authentifizierte Benutzer (Manager)
+- Überprüft ob der OAuth-Benutzer existiert
+- Verhindert Doppelverknüpfungen
+
+### 4. StaffDialog erweitern - OAuth-Verknüpfungssektion
+Neue Sektion im Bearbeitungsdialog:
+
+```
+┌─────────────────────────────────────────────────┐
+│ OAuth-Konto verknüpfen                          │
+├─────────────────────────────────────────────────┤
+│ ✅ Verknüpft mit: max@gmail.com                 │
+│    [Verknüpfung aufheben]                       │
+├─────────────────────────────────────────────────┤
+│ oder                                            │
+├─────────────────────────────────────────────────┤
+│ Nicht verknüpfte OAuth-Benutzer:                │
+│ ○ anna@gmail.com (Anna Schmidt)                 │
+│ ○ peter@icloud.com (Peter Müller)               │
+│    [Verknüpfen]                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### 5. Hook für unverknüpfte Profile
+Neuer Hook um OAuth-Benutzer ohne Mitarbeiter-Verknüpfung zu laden:
+
+```typescript
+function useUnlinkedProfiles() {
+  return useQuery({
+    queryKey: ['profiles', 'unlinked'],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, user_id, email, full_name, avatar_url')
+        .is('staff_id', null);
+      return data;
+    },
+  });
+}
+```
 
 ---
 
 ## Technische Details
 
-### Login.tsx Änderungen
+### Neue Dateien
 
-```typescript
-// Vor OAuth-Login den aktuellen Pfad speichern
-const handleGoogleSignIn = async () => {
-  // Restaurant-Slug aus URL extrahieren falls vorhanden
-  const pathMatch = window.location.pathname.match(/^\/([^/]+)/);
-  if (pathMatch && pathMatch[1] !== 'login') {
-    localStorage.setItem('oauth_redirect_restaurant', pathMatch[1]);
-  }
-  
-  setIsLoading(true);
-  const result = await lovable.auth.signInWithOAuth('google', {
-    redirect_uri: window.location.origin,
-  });
-  // ...
-};
-```
+| Datei | Beschreibung |
+|-------|--------------|
+| `supabase/functions/admin-link-account/index.ts` | Edge Function für Manager-Verknüpfung |
+| `src/hooks/useProfiles.ts` | Hook für Profile-Abfragen |
 
-### AuthContext.tsx Änderungen
-
-```typescript
-// Nach OAuth-Login zum gespeicherten Restaurant weiterleiten
-const getOAuthRedirectPath = (isMobile: boolean) => {
-  const savedRestaurant = localStorage.getItem('oauth_redirect_restaurant');
-  localStorage.removeItem('oauth_redirect_restaurant');
-  const restaurant = savedRestaurant || 'spicery';
-  return isMobile ? `/${restaurant}/waiter` : `/${restaurant}`;
-};
-```
-
-### WaiterQRPoster.tsx Änderungen
-
-Schritt 2 erweitern:
-```tsx
-{/* Step 2 - Updated */}
-<div className="flex items-start gap-4">
-  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary ...">
-    2
-  </div>
-  <div className="flex-1 pt-2">
-    <div className="flex items-center gap-2 mb-1">
-      <LogIn className="w-5 h-5 text-primary" />
-      <span className="font-semibold">Anmelden</span>
-    </div>
-    <p className="text-muted-foreground text-sm">
-      Mit Google/Apple anmelden <strong>oder</strong> Name & PIN eingeben
-    </p>
-  </div>
-</div>
-```
-
-### Dateien die geändert werden
+### Geänderte Dateien
 
 | Datei | Änderung |
 |-------|----------|
-| `src/pages/Login.tsx` | OAuth mit Restaurant-Kontext speichern |
-| `src/contexts/AuthContext.tsx` | Redirect-Pfad aus localStorage lesen |
-| `src/pages/WaiterQRPoster.tsx` | Anleitung um OAuth-Option erweitern |
-| `src/components/manager/WaiterQRCode.tsx` | Info-Text erweitern |
+| `src/hooks/useStaff.ts` | Profile-Join, linked_profile Feld |
+| `src/components/staff/StaffCard.tsx` | OAuth-Badge mit Status |
+| `src/components/staff/StaffDialogNative.tsx` | Neue Verknüpfungssektion |
+| `supabase/config.toml` | Neue Edge Function registrieren |
 
-## Benutzer-Flow nach Implementierung
+### Edge Function: admin-link-account
+
+```typescript
+// Hauptlogik
+Deno.serve(async (req) => {
+  // 1. Authentifizierung prüfen
+  // 2. staff_id und email/user_id aus Body lesen
+  
+  // 3. Prüfen ob Profil existiert
+  const { data: profile } = await supabaseAdmin
+    .from('profiles')
+    .select('id, user_id, staff_id')
+    .eq('email', email)
+    .single();
+  
+  // 4. Prüfen ob bereits verknüpft
+  if (profile.staff_id && profile.staff_id !== staff_id) {
+    return error('Bereits mit anderem Mitarbeiter verknüpft');
+  }
+  
+  // 5. Verknüpfung erstellen/aufheben
+  await supabaseAdmin
+    .from('profiles')
+    .update({ staff_id: staff_id || null })
+    .eq('id', profile.id);
+});
+```
+
+### RLS Policy Anpassung
+Die bestehende RLS Policy auf `profiles` erlaubt nur Benutzern ihre eigenen Profile zu ändern. Für Manager-Verknüpfungen verwenden wir den Service Role Key in der Edge Function.
+
+## Benutzer-Flow
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│  Kellner scannt QR-Code (/spicery/waiter)               │
-└─────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│  Nicht eingeloggt → Weiterleitung zu /login             │
-│  (Restaurant-Slug wird gespeichert)                     │
-└─────────────────────────────────────────────────────────┘
-                          │
-            ┌─────────────┴─────────────┐
-            ▼                           ▼
-   ┌────────────────┐          ┌────────────────┐
-   │  PIN-Login     │          │  Google/Apple  │
-   │  (Name + Code) │          │  (1-Klick)     │
-   └────────────────┘          └────────────────┘
-            │                           │
-            └─────────────┬─────────────┘
-                          ▼
-┌─────────────────────────────────────────────────────────┐
-│  Zurück zu /spicery/waiter (Self-Service)               │
-│  → Konto-Verknüpfung falls OAuth-Nutzer ohne Staff-ID   │
-└─────────────────────────────────────────────────────────┘
+Manager öffnet Mitarbeiterverwaltung
+            │
+            ▼
+┌─────────────────────────────────────────────────┐
+│  StaffCard zeigt:                               │
+│  • Max Mustermann  [🔗 OAuth verknüpft]         │
+│  • Anna Schmidt    [nicht verknüpft]            │
+└─────────────────────────────────────────────────┘
+            │
+            ▼ (klickt "Bearbeiten" bei Anna)
+┌─────────────────────────────────────────────────┐
+│  StaffDialog mit neuer Sektion:                 │
+│  "OAuth-Konto verknüpfen"                       │
+│  → Wählt anna@gmail.com aus Liste               │
+│  → Klickt "Verknüpfen"                          │
+└─────────────────────────────────────────────────┘
+            │
+            ▼
+┌─────────────────────────────────────────────────┐
+│  admin-link-account Edge Function               │
+│  → Verknüpft profile mit staff_id               │
+│  → Query Cache invalidiert                      │
+└─────────────────────────────────────────────────┘
+            │
+            ▼
+    StaffCard zeigt jetzt:
+    Anna Schmidt [🔗 OAuth verknüpft]
 ```
