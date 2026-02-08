@@ -1,163 +1,95 @@
 
 
-## Plan: Zwei-Spalten Layout für Tagesabrechnung
+## Plan: Tagesumsatz-Berechnung korrigieren
 
-### Ziel
-Die Eingabefelder und Übersichten in einem übersichtlicheren Zwei-Spalten Layout anordnen: **Links Eingabe**, **Rechts Übersicht/Zusammenfassung**.
+### Problem
+Die StatCard "Tagesumsatz" und die Einnahmen-Übersicht zeigen `kellnerUmsatz` (nur Kellner-pos_sales), aber es fehlt der Takeaway-Umsatz. Der angezeigte Wert (6.684,50 €) ist um genau den Takeaway-Betrag niedriger als der tatsächliche Tagesumsatz (7.168,70 €).
 
----
-
-## Neues Layout
-
-```text
-+------------------------------------------+------------------------------------------+
-|              LINKE SPALTE                |             RECHTE SPALTE                |
-|            (DATENEINGABE)                |        (ZUSAMMENFASSUNG & STATUS)        |
-+------------------------------------------+------------------------------------------+
-|                                          |                                          |
-|  +------------------------------------+  |  +------------------------------------+  |
-|  | Stat-Cards (BARGELD, Umsatz, etc.) |  |  | Stat-Cards werden OBEN angezeigt   |  |
-|  | - Bleiben oben ueber volle Breite  |  |  | (volle Breite, nicht in Spalten)   |  |
-|  +------------------------------------+  |  +------------------------------------+  |
-|                                          |                                          |
-|  +------------------------------------+  |  +------------------------------------+  |
-|  |           NOTIZEN                  |  |  |      KASSENSTAND (wenn noetig)     |  |
-|  |  [Textarea fuer Notizen]           |  |  |  Anfangsbestand: 1.000 EUR         |  |
-|  +------------------------------------+  |  |  Bargeld heute:    xxx EUR         |  |
-|                                          |  |  Transfer:         +xx EUR         |  |
-|  +------------------------------------+  |  |  --------------------------------   |  |
-|  |         POS & TERMINAL             |  |  |  Kassenstand:    x.xxx EUR         |  |
-|  |  Kellner Abzugebender Betrag       |  |  +------------------------------------+  |
-|  |  Vectron Gesamtumsatz              |  |                                          |
-|  |  Terminal 1 / Terminal 2           |  |  +------------------------------------+  |
-|  |  Kreditkartenumsatz GL             |  |  |      EINNAHMEN UEBERSICHT          |  |
-|  +------------------------------------+  |  |  Tagesumsatz         x.xxx EUR     |  |
-|                                          |  |  Gutschein Verkauf     xxx EUR     |  |
-|  +------------------------------------+  |  |  Sonstige Einnahmen    xxx EUR     |  |
-|  |           TAKE AWAY                |  |  |  Hilf Mahl             xxx EUR     |  |
-|  |  Takeaway GL                       |  |  |  --------------------------------   |  |
-|  |  OrderSmart                        |  |  |  Summe Einnahmen   x.xxx EUR       |  |
-|  |  Wolt                              |  |  +------------------------------------+  |
-|  |  Take-Away Gesamt (berechnet)      |  |                                          |
-|  +------------------------------------+  |  +------------------------------------+  |
-|                                          |  |       ABZUEGE UEBERSICHT           |  |
-|  +------------------------------------+  |  |  Terminal 1           xxx EUR      |  |
-|  |      GUTSCHEINE & ABZUEGE          |  |  |  Terminal 2           xxx EUR      |  |
-|  |  Gutschein Verkauf                 |  |  |  Gutschein Eingeloest xxx EUR      |  |
-|  |  Gutschein Eingeloest              |  |  |  FineDine             xxx EUR      |  |
-|  |  FineDine Gutscheine               |  |  |  Vorschuss            xxx EUR      |  |
-|  +------------------------------------+  |  |  ...                                |  |
-|                                          |  |  --------------------------------   |  |
-|  +------------------------------------+  |  |  Summe Abzuege      x.xxx EUR      |  |
-|  |           SONSTIGES                |  |  +------------------------------------+  |
-|  |  Vorschuss                         |  |                                          |
-|  |  Einladung                         |  |  +------------------------------------+  |
-|  |  Sonstige Einnahmen                |  |  |      TRINKGELD UEBERSICHT          |  |
-|  +------------------------------------+  |  |  Kuechen-Trinkgeld    xxx EUR      |  |
-|                                          |  |  Kellner-Trinkgeld    xxx EUR      |  |
-|  +------------------------------------+  |  |  Pro Kellner           xx EUR      |  |
-|  |           AUSGABEN                 |  |  +------------------------------------+  |
-|  |  [Beschreibung] [Betrag] [+]       |  |                                          |
-|  |  Ausgabe 1         50,00 EUR [x]   |  |  +------------------------------------+  |
-|  |  Ausgabe 2         30,00 EUR [x]   |  |  |    KELLNER-ABRECHNUNGEN            |  |
-|  |  --------------------------------  |  |  |  Name | Status | Eingereicht       |  |
-|  |  Summe Ausgaben:   80,00 EUR       |  |  |  Max  | OK     | Heute, 21:30      |  |
-|  +------------------------------------+  |  |  Lisa | OK     | Heute, 21:45      |  |
-|                                          |  +------------------------------------+  |
-+------------------------------------------+------------------------------------------+
-```
+### Lösung
+Der "Tagesumsatz" sollte der **Vectron Gesamtumsatz** (`formData.pos_total`) sein - also der Wert, der manuell vom Kassensystem eingegeben wird. Dies entspricht der Logik in `useCashBalanceData.ts`.
 
 ---
 
-## Technische Umsetzung
+## Änderungen in DailySummary.tsx
 
-### Aenderungen in DailySummary.tsx
+### 1. StatCard "Tagesumsatz" korrigieren (ca. Zeile 438-441)
 
-**1. Haupt-Container Struktur aendern:**
-
-Aktuell:
+**Vorher:**
 ```tsx
-<div className="space-y-6">
-  {/* Warning Cards */}
-  {/* Main Stats - 4 Spalten */}
-  {/* Kassenstand Card */}
-  {/* Input Section - 6 Cards Grid */}
-  {/* Kellner-Abrechnungen */}
-  {/* Detailed Breakdown - 2 Spalten */}
-</div>
+<StatCard
+  label="Tagesumsatz"
+  value={kellnerUmsatz}
+  icon={<FileText className="w-5 h-5" />}
+/>
 ```
 
-Neu:
+**Nachher:**
 ```tsx
-<div className="space-y-6">
-  {/* Warning Cards - volle Breite */}
-  
-  {/* Main Stats - volle Breite, 4 Spalten */}
-  
-  {/* Zwei-Spalten Layout */}
-  <div className="grid lg:grid-cols-2 gap-6">
-    {/* LINKE SPALTE - Eingabe */}
-    <div className="space-y-6">
-      <Card>Notizen</Card>
-      <Card>POS & Terminal</Card>
-      <Card>Take Away</Card>
-      <Card>Gutscheine & Abzuege</Card>
-      <Card>Sonstiges</Card>
-      <Card>Ausgaben</Card>
-    </div>
-    
-    {/* RECHTE SPALTE - Uebersicht */}
-    <div className="space-y-6">
-      <Card>Kassenstand (wenn noetig)</Card>
-      <Card>Einnahmen Uebersicht</Card>
-      <Card>Abzuege Uebersicht</Card>
-      <Card>Take Away Details</Card>
-      <Card>Trinkgeld Uebersicht</Card>
-      <Card>Kellner-Abrechnungen</Card>
-    </div>
-  </div>
-</div>
+<StatCard
+  label="Tagesumsatz"
+  value={formData.pos_total}
+  icon={<FileText className="w-5 h-5" />}
+/>
 ```
 
-**2. Responsive Verhalten:**
-- Auf Desktop (lg:): Zwei Spalten nebeneinander
-- Auf Tablet/Mobile: Eine Spalte, Eingabe oben, Uebersicht unten
-- Die Spalten scrollen unabhaengig voneinander
+### 2. Einnahmen-Übersicht Tabelle korrigieren (ca. Zeile 752-754)
 
-**3. Optionale Verbesserung - Sticky Sidebar:**
+**Vorher:**
 ```tsx
-{/* Rechte Spalte sticky beim Scrollen */}
-<div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
+<TableRow>
+  <TableCell className="py-2">Tagesumsatz</TableCell>
+  <TableCell className="text-right tabular-nums py-2">{formatCurrency(kellnerUmsatz)}</TableCell>
+</TableRow>
 ```
-Dies haelt die Zusammenfassung sichtbar, waehrend man durch die Eingabefelder scrollt.
+
+**Nachher:**
+```tsx
+<TableRow>
+  <TableCell className="py-2">Tagesumsatz (Vectron)</TableCell>
+  <TableCell className="text-right tabular-nums py-2">{formatCurrency(formData.pos_total)}</TableCell>
+</TableRow>
+```
+
+### 3. Summenberechnung in Einnahmen-Übersicht anpassen (ca. Zeile 768-773)
+
+**Vorher:**
+```tsx
+<TableCell className="text-right tabular-nums font-semibold text-success py-2">
+  {formatCurrency(kellnerUmsatz + formData.vouchers_sold + formData.sonstige_einnahme + totalHilfMahl)}
+</TableCell>
+```
+
+**Nachher:**
+```tsx
+<TableCell className="text-right tabular-nums font-semibold text-success py-2">
+  {formatCurrency(formData.pos_total + formData.vouchers_sold + formData.sonstige_einnahme + totalHilfMahl)}
+</TableCell>
+```
 
 ---
 
-## Vorteile dieses Layouts
+## Zusammenfassung der Änderungen
 
-| Aspekt | Verbesserung |
-|--------|--------------|
-| Uebersichtlichkeit | Eingabe links, Ergebnis rechts - klare Trennung |
-| Effizienz | Aenderungen sind sofort rechts sichtbar |
-| Weniger Scrollen | Wichtige Zahlen immer im Blick (sticky) |
-| Logischer Aufbau | Arbeitsfluss von links nach rechts |
-| Responsive | Auf Mobile weiterhin funktional |
+| Stelle | Vorher | Nachher |
+|--------|--------|---------|
+| StatCard "Tagesumsatz" | `kellnerUmsatz` | `formData.pos_total` |
+| Einnahmen-Tabelle "Tagesumsatz" | `kellnerUmsatz` | `formData.pos_total` |
+| Einnahmen-Summe | basiert auf `kellnerUmsatz` | basiert auf `formData.pos_total` |
 
 ---
 
-## Dateien die geaendert werden
+## Dateien
 
-| Datei | Aenderung |
-|-------|-----------|
-| `src/pages/DailySummary.tsx` | Layout-Struktur auf Zwei-Spalten umstellen |
+| Datei | Änderung |
+|-------|----------|
+| `src/pages/DailySummary.tsx` | 3 Stellen korrigieren |
 
 ---
 
-## Implementierungsschritte
+## Erwartetes Ergebnis
 
-1. Warning Cards und Stat-Cards bleiben oben (volle Breite)
-2. Neuer Container `grid lg:grid-cols-2 gap-6` erstellen
-3. Linke Spalte: Notizen, POS & Terminal, Take Away, Gutscheine, Sonstiges, Ausgaben
-4. Rechte Spalte: Kassenstand, Einnahmen, Abzuege, Take Away Details, Trinkgeld, Kellner-Status
-5. Optional: `lg:sticky lg:top-4` fuer rechte Spalte
+Nach der Korrektur:
+- **Tagesumsatz** zeigt den Vectron Gesamtwert (7.168,70 €)
+- **Einnahmen-Summe** basiert auf dem korrekten Tagesumsatz
+- Die Werte stimmen mit deiner manuellen Abrechnung überein
 
