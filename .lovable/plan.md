@@ -1,153 +1,93 @@
 
-## Manager-Navigationsberechtigungen verwalten
+## Manager-Zugriff auf Kellnerabrechnung
 
 ### Übersicht
-Ein neuer Navigationspunkt "Berechtigungen" wird hinzugefügt, über den Admins festlegen können, welche Navigationselemente einzelne Manager sehen dürfen. Dies ermöglicht eine granulare Kontrolle über den Funktionszugang für jeden Manager.
+Manager erhalten automatisch Zugriff auf die "Kellner Abrechnung" in der Navigationsleiste, sodass sie Abrechnungsfehler von Kellnern korrigieren können. Dies ist keine konfigurierbare Berechtigung, sondern ein Standard-Feature für alle Manager.
 
-### Datenbankstruktur
+### Aktuelle Situation
+- Die Kellner Abrechnung (`path: ''`) hat `minLevel: 'staff'`
+- Manager sehen sie bereits, da `minLevel: 'staff'` bedeutet "mindestens Staff-Level erforderlich"
+- **Problem**: Bei Manager-spezifischen Berechtigungen (Custom Permissions) wird die Kellnerabrechnung möglicherweise nicht korrekt angezeigt
 
-| Tabelle | Beschreibung |
-|---------|-------------|
-| `manager_nav_permissions` | Speichert pro Manager, welche Navigationspfade erlaubt sind |
+### Lösung
+Die Navigation-Filterlogik in `AppLayout.tsx` sicherstellen, dass Manager **immer** die Kellnerabrechnung sehen - unabhängig von benutzerdefinierten Berechtigungen.
 
-```text
-┌────────────────────────────────────┐
-│     manager_nav_permissions        │
-├────────────────────────────────────┤
-│ id (uuid, PK)                      │
-│ staff_id (uuid, FK → staff.id)     │
-│ nav_path (text)                    │ ← z.B. "manager", "kitchen", "statistics"
-│ created_at (timestamptz)           │
-│ updated_at (timestamptz)           │
-└────────────────────────────────────┘
-```
-
-**Logik**: Wenn ein Manager **keinen Eintrag** in dieser Tabelle hat, sieht er **alle Manager-Bereiche** (Rückwärtskompatibilität). Sobald mindestens ein Eintrag existiert, sieht er **nur die zugewiesenen Bereiche**.
-
-### Neue Seite: Berechtigungsverwaltung
-
-| Datei | Beschreibung |
-|-------|-------------|
-| `src/pages/PermissionManagement.tsx` | Neue Admin-Seite zur Verwaltung |
-
-**Benutzeroberfläche:**
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│  🔐 Berechtigungen verwalten                                 │
-│  Manager-Navigationszugriff konfigurieren                    │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  👤 Max Mustermann (Manager)                            │ │
-│  │  ─────────────────────────────────────────────          │ │
-│  │  ☑ Manager Dashboard                                    │ │
-│  │  ☑ Küchen Trinkgeld                                     │ │
-│  │  ☐ Tagesabrechnung                                      │ │
-│  │  ☑ Statistiken                                          │ │
-│  │  ☐ Verlauf                                              │ │
-│  │  ☐ Bargeldbestand                                       │ │
-│  │  [Speichern]                                            │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                                                              │
-│  ┌─────────────────────────────────────────────────────────┐ │
-│  │  👤 Anna Schmidt (Manager)                              │ │
-│  │  ─────────────────────────────────────────────          │ │
-│  │  ☑ Manager Dashboard                                    │ │
-│  │  ☑ Küchen Trinkgeld                                     │ │
-│  │  ☑ Tagesabrechnung                                      │ │
-│  │  ☑ Statistiken                                          │ │
-│  │  ☑ Verlauf                                              │ │
-│  │  ☑ Bargeldbestand                                       │ │
-│  │  [Speichern]                                            │ │
-│  └─────────────────────────────────────────────────────────┘ │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### Navigation-Integration
+### Betroffene Datei
 
 | Datei | Änderung |
 |-------|----------|
-| `src/components/layout/AppLayout.tsx` | Navigationsfilterung basierend auf `manager_nav_permissions` |
-| `src/types/permissions.ts` | Neue Konstante für konfigurierbare Manager-Bereiche |
+| `src/components/layout/AppLayout.tsx` | Navigation-Filterlogik anpassen |
 
-**Ablauf:**
-1. Beim Laden der App werden die Manager-Berechtigungen geladen
-2. Die Navigation filtert basierend auf:
-   - `staff` → sieht nur Kellner-Abrechnung
-   - `manager` → sieht zugewiesene Bereiche (oder alle, wenn keine Einschränkungen)
-   - `admin` → sieht alles + "Berechtigungen" Seite
+### Technische Umsetzung
 
-### Neue/Geänderte Dateien
-
-| Datei | Aktion |
-|-------|--------|
-| `src/pages/PermissionManagement.tsx` | **Neu** - Admin-Seite für Berechtigungsverwaltung |
-| `src/hooks/useManagerNavPermissions.ts` | **Neu** - Hook zum Laden/Speichern der Berechtigungen |
-| `src/components/layout/AppLayout.tsx` | **Ändern** - Navigation anpassen mit Berechtigungsfilter |
-| `src/types/permissions.ts` | **Ändern** - Konstante für Manager-Bereiche hinzufügen |
-| `src/App.tsx` | **Ändern** - Route für `/permissions` hinzufügen |
-| `supabase/functions/manage-nav-permissions/index.ts` | **Neu** - Edge Function für CRUD |
-
-### Sicherheit
-- Nur Admins können die Berechtigungsseite sehen und bearbeiten
-- RLS-Policies schützen die neue Tabelle
-- Edge Function mit Service Role Key für administrative Operationen
-
----
-
-### Technische Details
-
-**Datenbank-Migration:**
-```sql
-CREATE TABLE manager_nav_permissions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  staff_id UUID NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
-  nav_path TEXT NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(staff_id, nav_path)
-);
-
-ALTER TABLE manager_nav_permissions ENABLE ROW LEVEL SECURITY;
-
--- Read via app (for navigation filtering)
-CREATE POLICY "Allow nav permissions read via app"
-  ON manager_nav_permissions FOR SELECT USING (true);
-
--- Insert/Update/Delete via service role only
-CREATE POLICY "Allow nav permissions insert via service"
-  ON manager_nav_permissions FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow nav permissions update via service"
-  ON manager_nav_permissions FOR UPDATE USING (true);
-
-CREATE POLICY "Allow nav permissions delete via service"
-  ON manager_nav_permissions FOR DELETE USING (true);
-```
-
-**Edge Function API:**
-- `GET /manage-nav-permissions?staff_id=xxx` → Liefert alle erlaubten Pfade
-- `POST /manage-nav-permissions` → Setzt Berechtigungen (überschreibt bestehende)
-
-**Hook `useManagerNavPermissions`:**
-- Lädt Berechtigungen für alle Manager (Admin-Ansicht)
-- Lädt Berechtigungen für aktuellen User (Navigation)
-- Mutation zum Speichern
-
-**Navigationsfilterung in AppLayout:**
+**Aktuelle Logik (Zeile 75-95):**
 ```typescript
-// Wenn Manager und Berechtigungen existieren:
-const managerPaths = user?.navPermissions || [];
-const hasCustomPermissions = managerPaths.length > 0;
-
-const navItems = allNavItems.filter(item => {
-  if (userLevel === 'admin') return true;
-  if (userLevel === 'manager') {
-    if (!hasCustomPermissions) return item.minLevel !== 'admin';
-    return managerPaths.includes(item.path);
-  }
-  return item.minLevel === 'staff';
-});
+const navItems = useMemo(() => {
+  return allNavItems.filter(item => {
+    if (isAdmin) return true;
+    if (isManager && hasCustomPermissions) {
+      if (item.minLevel === 'staff') return true; // ✓ Bereits korrekt
+      return managerPaths.includes(item.path);
+    }
+    if (isManager) {
+      return item.minLevel !== 'admin'; // ✓ Sieht alle inkl. staff-level
+    }
+    return item.minLevel === 'staff';
+  });
+}, [...]);
 ```
+
+**Analyse**: Die Logik ist bereits korrekt implementiert! Manager sehen die Kellnerabrechnung bereits:
+- Manager ohne Custom Permissions: `item.minLevel !== 'admin'` → true für staff-level Items
+- Manager mit Custom Permissions: `item.minLevel === 'staff'` → true für Kellnerabrechnung
+
+### Verifikation
+Die aktuelle Implementierung sollte bereits funktionieren. Falls es ein Problem gibt, liegt es möglicherweise an:
+1. Fehlerhaften Berechtigungsdaten in der Datenbank
+2. Einem Edge-Case in der Permission-Logik
+
+### Empfohlene Änderung
+Um absolute Sicherheit zu gewährleisten, wird die Logik expliziter gestaltet:
+
+```typescript
+const navItems = useMemo(() => {
+  return allNavItems.filter(item => {
+    // Admin sieht alles
+    if (isAdmin) return true;
+    
+    // Manager sieht IMMER die Kellnerabrechnung (path: '')
+    if (isManager && item.path === '') return true;
+    
+    // Manager mit Custom Permissions
+    if (isManager && hasCustomPermissions) {
+      return managerPaths.includes(item.path);
+    }
+    
+    // Manager ohne Custom Permissions - alle Manager-Level Items
+    if (isManager) {
+      return item.minLevel !== 'admin';
+    }
+    
+    // Staff - nur staff-level Items
+    return item.minLevel === 'staff';
+  });
+}, [...]);
+```
+
+### Ablauf für Manager
+```text
+┌─────────────────────────────────────┐
+│  Navigation für Manager             │
+├─────────────────────────────────────┤
+│  ✓ Kellner Abrechnung (IMMER)       │ ← Für Fehlerkorrekturen
+│  ○ Manager Dashboard                │
+│  ○ Küchen Trinkgeld                 │ ← Je nach Admin-Konfiguration
+│  ○ Tagesabrechnung                  │
+│  ○ Statistiken                      │
+│  ○ Verlauf                          │
+│  ○ Bargeldbestand                   │
+└─────────────────────────────────────┘
+```
+
+### Sicherheitshinweis
+Manager können damit alle Kellner-Abrechnungen des Tages sehen und bearbeiten. Änderungen werden über das bestehende Audit-Log protokolliert (`audit_logs` Tabelle).
