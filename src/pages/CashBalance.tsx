@@ -12,6 +12,7 @@ import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { generateCashBalancePDF } from '@/utils/pdfExport';
+import { PdfPreview } from '@/components/shared/PdfPreview';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', {
@@ -287,17 +288,7 @@ export default function CashBalance() {
             </DialogTitle>
           </DialogHeader>
           <div className="flex-1 p-4 min-h-0">
-            {pdfPreview && (
-              <object
-                data={pdfPreview.blobUrl}
-                type="application/pdf"
-                className="w-full h-full rounded-md border"
-              >
-                <p className="text-center text-muted-foreground p-4">
-                  PDF konnte nicht angezeigt werden. Bitte laden Sie die Datei herunter.
-                </p>
-              </object>
-            )}
+            {pdfPreview && <PdfPreview blobUrl={pdfPreview.blobUrl} className="h-full" />}
           </div>
           <DialogFooter className="px-6 py-4 border-t gap-2">
             <Button variant="outline" onClick={handleClosePreview} className="gap-2">
