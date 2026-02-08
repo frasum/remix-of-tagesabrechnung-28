@@ -1,85 +1,62 @@
 
-## Korrektur der Trinkgeld-Prozentberechnungen
 
-### Zusammenfassung des Problems
-Die **TG %** (Trinkgeld-Prozent) Berechnung in der Kellner-Abrechnungstabelle stimmt nicht, besonders bei Team-Schichten (zwei Kellner auf einer Kasse).
+## Kreditkartenumsatz GL zu Kellner-Kreditkarten addieren
 
-### Aktueller Fehler
+### Zusammenfassung
+Das Feld **"Kreditkartenumsatz GL"** (`card_total_gl`) aus der Session-Tabelle muss zum gesamten Kreditkartenumsatz der Kellner addiert werden. Dies ist im Manager-Dashboard bereits korrekt implementiert, fehlt aber in der Tagesabrechnung.
 
-Im Screenshot sehen wir:
-- Erste Zeile: **113,14 € × 2** (Team-Schicht) zeigt **5.3%** TG und **10.6%** Ø TG
-- Zweite Zeile: **113,14 €** (Einzelschicht) zeigt **5.2%** TG und **5.2%** Ø TG
+### Aktuelle Situation
 
-**Problem:** Bei der Team-Schicht wird `TG %` mit nur einem Anteil (113,14 €) durch den gesamten Schicht-Umsatz berechnet - das ergibt einen niedrigeren Prozentsatz als korrekt wäre.
+| Datei | Status | Berechnung |
+|-------|--------|------------|
+| `ManagerDashboard.tsx` | ✅ Korrekt | `totalCardTotal = waiterShifts + card_total_gl` |
+| `DailySummary.tsx` | ❌ Fehlt | `totalCardTotal = nur waiterShifts` |
 
-### Korrekte Berechnung
+### Auswirkung der Korrektur
 
-| Schicht-Typ | Aktuell | Korrekt |
-|-------------|---------|---------|
-| **Einzelschicht** | `tipPerWaiter / pos_sales` | ✓ Richtig |
-| **Team-Schicht** | `tipPerWaiter / pos_sales` ❌ | `tipPerWaiter / (pos_sales / 2)` ✓ |
+**Beispiel:**
+- Kellner Kartenzahlungen: 1.200 €
+- Kreditkartenumsatz GL: 150 €
 
-Bei einer Team-Schicht sollte der **persönliche Anteil** mit dem **persönlichen Umsatzanteil** verglichen werden (50/50 Aufteilung).
-
-### Beispiel
-
-Angenommen eine Team-Schicht mit:
-- `pos_sales` = 4.280 € (gesamte Schicht)
-- `tipPerWaiter` = 113,14 € (pro Person)
-
-**Aktuell (falsch):**
-```
-TG % = 113,14 € / 4.280 € = 2.6%
-```
-
-**Korrekt:**
-```
-TG % = 113,14 € / (4.280 € / 2) = 113,14 € / 2.140 € = 5.3%
-```
-
----
+| Vorher | Nachher |
+|--------|---------|
+| Kartenzahlungen: **1.200 €** | Kartenzahlungen: **1.350 €** |
+| Terminal Differenz: **150 €** | Terminal Differenz: **0 €** |
 
 ### Betroffene Datei
 
 | Datei | Zeile | Änderung |
 |-------|-------|----------|
-| `src/pages/WaiterCashUp.tsx` | 431 | Bei Team-Schichten den Umsatz durch 2 teilen |
+| `src/pages/DailySummary.tsx` | 46 | `card_total_gl` zum `totalCardTotal` addieren |
 
 ---
 
 ### Technische Umsetzung
 
-**Aktuell (Zeile 431):**
+**Aktuell (Zeile 46):**
 ```typescript
-const currentTipPercent = shift.pos_sales > 0 
-  ? (shiftTipShare / shift.pos_sales) * 100 
-  : 0;
+const totalCardTotal = waiterShifts.reduce((sum, w) => sum + w.card_total, 0);
 ```
 
 **Neu:**
 ```typescript
-// Bei Team-Schichten: persönlicher Umsatzanteil = pos_sales / 2
-const personalSalesShare = shift.second_waiter_name 
-  ? (shift.pos_sales || 0) / 2 
-  : (shift.pos_sales || 0);
-const currentTipPercent = personalSalesShare > 0 
-  ? (shiftTipShare / personalSalesShare) * 100 
-  : 0;
+const totalCardTotal = waiterShifts.reduce((sum, w) => sum + w.card_total, 0) 
+  + (session?.card_total_gl || 0);
 ```
 
 ---
 
-### Auswirkung
+### Was sich ändert
 
-| Vorher | Nachher |
-|--------|---------|
-| Team-Schicht zeigt **halben** TG % | Team-Schicht zeigt **korrekten** TG % |
-| TG % ≠ Ø TG % bei Team-Schichten | TG % und Ø TG % sind konsistent |
-
-Die Durchschnittsberechnung (`Ø TG %`) in `useWaiterTipAverages` ist bereits korrekt implementiert (teilt den Umsatz bei Team-Schichten durch 2). Mit dieser Korrektur wird die aktuelle `TG %` Anzeige mit der Durchschnittsberechnung konsistent.
+1. **StatCard "Kartenzahlungen"**: Zeigt jetzt die korrekte Summe (Kellner + GL)
+2. **Terminal-Differenz-Berechnung**: Wird korrekt berechnet
+3. **PDF-Export**: Erhält die korrigierte Kartenzahlungssumme
 
 ---
 
-### Zusammenfassung
+### Was unverändert bleibt
 
-Eine einzige Codeänderung in `src/pages/WaiterCashUp.tsx` (Zeile 431), die bei Team-Schichten den persönlichen Umsatzanteil (pos_sales / 2) für die Prozentberechnung verwendet.
+- BARGELD-Berechnung (verwendet `terminal_1_total + terminal_2_total`, nicht `totalCardTotal`)
+- Manager-Dashboard (bereits korrekt implementiert)
+- Die Terminal-Differenz-Warnung-Logik
+
