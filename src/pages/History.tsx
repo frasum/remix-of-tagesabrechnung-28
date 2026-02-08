@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { History as HistoryIcon, Calendar, CheckCircle, XCircle, Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useSelectedDate } from '@/contexts/DateContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +30,8 @@ export default function History() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { restaurantId, restaurantSlug } = useRestaurant();
-  const [selectedMonth, setSelectedMonth] = useState(new Date());
+  const { selectedDate, setSelectedDate } = useSelectedDate();
+  const [selectedMonth, setSelectedMonth] = useState(selectedDate);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const { data: sessions = [], isLoading } = useSessionHistory(restaurantId);
@@ -41,7 +43,8 @@ export default function History() {
 
   const handleViewSession = (date: string) => {
     const parsedDate = new Date(date);
-    navigate(`/${restaurantSlug}/summary?date=${format(parsedDate, 'yyyy-MM-dd')}`);
+    setSelectedDate(parsedDate);
+    navigate(`/${restaurantSlug}/summary`);
   };
 
   // Calculate quick stats

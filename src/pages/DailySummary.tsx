@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
+import { useSelectedDate } from '@/contexts/DateContext';
 import { Plus, FileText, Euro, CreditCard, Truck, Receipt, Download, HelpCircle, ChevronDown, CheckCircle, AlertTriangle } from 'lucide-react';
 import { generateDailySummaryPDF } from '@/utils/pdfExport';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -22,7 +22,7 @@ import {
 } from '@/hooks/useSession';
 
 export default function DailySummary() {
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const { selectedDate, setSelectedDate } = useSelectedDate();
   const { toast } = useToast();
   const { restaurantId, restaurantName } = useRestaurant();
   const { user } = useAuth();

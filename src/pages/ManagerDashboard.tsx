@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
-import { getBusinessDate } from '@/utils/businessDate';
+import { useSelectedDate } from '@/contexts/DateContext';
 import { de } from 'date-fns/locale';
 import { Plus, Trash2, Settings, Truck, Receipt, Wallet, HelpCircle, ChevronDown, ClipboardList, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -27,7 +27,7 @@ import {
 } from '@/hooks/useSession';
 
 export default function ManagerDashboard() {
-  const [selectedDate, setSelectedDate] = useState(getBusinessDate());
+  const { selectedDate, setSelectedDate } = useSelectedDate();
   const { restaurantId } = useRestaurant();
   const { toast } = useToast();
 
