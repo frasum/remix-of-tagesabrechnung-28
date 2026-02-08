@@ -23,6 +23,7 @@ import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 import { ConfirmLoginPage } from "./pages/ConfirmLoginPage";
 import PermissionManagement from "./pages/PermissionManagement";
+import RegisterBalance from "./pages/RegisterBalance";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ function RestaurantRoutes() {
         <Route path="statistics" element={<ProtectedRoute requiredLevel="manager"><Statistics /></ProtectedRoute>} />
         <Route path="history" element={<ProtectedRoute requiredLevel="manager"><History /></ProtectedRoute>} />
         <Route path="cash-balance" element={<ProtectedRoute requiredLevel="manager"><CashBalance /></ProtectedRoute>} />
+        <Route path="register-balance" element={<ProtectedRoute requiredLevel="manager"><RegisterBalance /></ProtectedRoute>} />
         <Route path="qr-poster" element={<WaiterQRPoster />} />
       </Routes>
     </RestaurantProvider>

@@ -335,6 +335,44 @@ export type Database = {
           },
         ]
       }
+      register_transfers: {
+        Row: {
+          amount: number
+          created_at: string
+          direction: string
+          id: string
+          reason: string | null
+          restaurant_id: string
+          transfer_date: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          direction: string
+          id?: string
+          reason?: string | null
+          restaurant_id: string
+          transfer_date: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          direction?: string
+          id?: string
+          reason?: string | null
+          restaurant_id?: string
+          transfer_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "register_transfers_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       restaurants: {
         Row: {
           created_at: string
