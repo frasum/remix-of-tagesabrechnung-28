@@ -222,6 +222,7 @@ export type Database = {
           full_name: string | null
           id: string
           preferred_restaurant_id: string | null
+          staff_id: string | null
           updated_at: string
           user_id: string
         }
@@ -232,6 +233,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           preferred_restaurant_id?: string | null
+          staff_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -242,6 +244,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           preferred_restaurant_id?: string | null
+          staff_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -251,6 +254,13 @@ export type Database = {
             columns: ["preferred_restaurant_id"]
             isOneToOne: false
             referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
             referencedColumns: ["id"]
           },
         ]
