@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { getBusinessDate } from '@/utils/businessDate';
 import { de } from 'date-fns/locale';
-import { Check, Loader2, CalendarDays } from 'lucide-react';
+import { Check, Loader2, CalendarDays, Link2 } from 'lucide-react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { PerformanceCard } from '@/components/waiter/PerformanceCard';
 import { TipRanking, RankingItem } from '@/components/waiter/TipRanking';
@@ -11,19 +11,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useSession, useCreateSession, useWaiterShifts, useCreateWaiterShift, useWaiterTipAverages } from '@/hooks/useSession';
 import { useUpdateWaiterShiftWithAudit } from '@/hooks/useWaiterShiftAudit';
 import { useWaiterRanking } from '@/hooks/useWaiterRanking';
+import { AccountLinkingDialog } from '@/components/auth/AccountLinkingDialog';
 
 export default function WaiterMobile() {
   const today = getBusinessDate();
-  const { user } = useAuth();
+  const { user, linkAccount } = useAuth();
   const { restaurantId } = useRestaurant();
   const staffName = user?.name || '';
   const { toast } = useToast();
+  const [showLinkingDialog, setShowLinkingDialog] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -154,6 +157,25 @@ export default function WaiterMobile() {
   return (
     <MobileLayout>
       <div className="space-y-4">
+        {/* Account Linking Prompt for OAuth users */}
+        {user?.isOAuthUser && user?.needsLinking && (
+          <Alert className="border-primary/50 bg-primary/5">
+            <Link2 className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between gap-2">
+              <span className="text-sm">
+                Verknüpfe dein Konto mit deinem Mitarbeiter-Profil
+              </span>
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setShowLinkingDialog(true)}
+              >
+                Verknüpfen
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Performance Card */}
         <PerformanceCard
           currentTipPercent={currentTipPercent}
@@ -266,6 +288,13 @@ export default function WaiterMobile() {
           isLoading={rankingsLoading}
         />
       </div>
+
+      {/* Account Linking Dialog */}
+      <AccountLinkingDialog
+        open={showLinkingDialog}
+        onOpenChange={setShowLinkingDialog}
+        onSuccess={linkAccount}
+      />
     </MobileLayout>
   );
 }

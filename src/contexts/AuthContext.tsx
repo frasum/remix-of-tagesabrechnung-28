@@ -7,6 +7,8 @@ interface AuthUser {
   name: string;
   role: 'waiter' | 'kitchen';
   isOAuthUser?: boolean;
+  staffId?: string;
+  needsLinking?: boolean;
 }
 
 interface AuthContextType {
@@ -14,6 +16,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (name: string, pinCode: string) => Promise<boolean>;
   logout: () => void;
+  linkAccount: (staff: { id: string; name: string; role: string }) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,18 +27,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Convert Supabase OAuth user to AuthUser
-  const convertOAuthUser = (supabaseUser: User): AuthUser => {
+  // Convert Supabase OAuth user to AuthUser with profile data
+  const convertOAuthUser = async (supabaseUser: User): Promise<AuthUser> => {
     const name = supabaseUser.user_metadata?.full_name 
       || supabaseUser.user_metadata?.name 
       || supabaseUser.email?.split('@')[0] 
       || 'Benutzer';
     
+    // Check if user has linked staff account
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('staff_id')
+      .eq('user_id', supabaseUser.id)
+      .single();
+
+    let staffData = null;
+    if (profile?.staff_id) {
+      const { data: staff } = await supabase
+        .from('staff')
+        .select('id, name, role')
+        .eq('id', profile.staff_id)
+        .single();
+      staffData = staff;
+    }
+
     return {
-      id: supabaseUser.id,
-      name,
-      role: 'waiter', // Default role for OAuth users
+      id: staffData?.id || supabaseUser.id,
+      name: staffData?.name || name,
+      role: (staffData?.role as 'waiter' | 'kitchen') || 'waiter',
       isOAuthUser: true,
+      staffId: staffData?.id,
+      needsLinking: !staffData,
     };
   };
 
@@ -44,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          const authUser = convertOAuthUser(session.user);
+          const authUser = await convertOAuthUser(session.user);
           setUser(authUser);
           localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
           setIsLoading(false);
@@ -63,6 +85,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (storedUser) {
         try {
           const parsed = JSON.parse(storedUser);
+          // For OAuth users, refresh the profile data
+          if (parsed.isOAuthUser) {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              const authUser = await convertOAuthUser(session.user);
+              setUser(authUser);
+              localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+              setIsLoading(false);
+              return;
+            }
+          }
           setUser(parsed);
           setIsLoading(false);
           return;
@@ -74,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Then check Supabase session for OAuth
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
-        const authUser = convertOAuthUser(session.user);
+        const authUser = await convertOAuthUser(session.user);
         setUser(authUser);
         localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
       }
@@ -137,8 +170,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };
 
+  const linkAccount = (staff: { id: string; name: string; role: string }) => {
+    if (user) {
+      const updatedUser: AuthUser = {
+        ...user,
+        id: staff.id,
+        name: staff.name,
+        role: staff.role as 'waiter' | 'kitchen',
+        staffId: staff.id,
+        needsLinking: false,
+      };
+      setUser(updatedUser);
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updatedUser));
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, logout, linkAccount }}>
       {children}
     </AuthContext.Provider>
   );

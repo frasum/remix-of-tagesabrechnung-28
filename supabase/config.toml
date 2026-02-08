@@ -1,1 +1,4 @@
 project_id = "hncirnpdfwglagjniapy"
+
+[functions.link-account]
+verify_jwt = false
