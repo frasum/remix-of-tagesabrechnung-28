@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as pdfjs from "pdfjs-dist";
 import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, Printer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,14 +12,16 @@ pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 type PdfPreviewProps = {
   blobUrl: string;
   className?: string;
+  fileName?: string;
 };
 
-export function PdfPreview({ blobUrl, className }: PdfPreviewProps) {
+export function PdfPreview({ blobUrl, className, fileName }: PdfPreviewProps) {
   const [doc, setDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [scale, setScale] = useState(1.1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const printWindowRef = useRef<Window | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -55,6 +57,15 @@ export function PdfPreview({ blobUrl, className }: PdfPreviewProps) {
 
   const pages = useMemo(() => Array.from({ length: numPages }, (_, i) => i + 1), [numPages]);
 
+  const handlePrint = () => {
+    printWindowRef.current = window.open(blobUrl, "_blank");
+    if (printWindowRef.current) {
+      printWindowRef.current.addEventListener("load", () => {
+        printWindowRef.current?.print();
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className={cn("h-full rounded-md border p-4", className)}>
@@ -79,29 +90,44 @@ export function PdfPreview({ blobUrl, className }: PdfPreviewProps) {
 
   return (
     <div className={cn("flex h-full flex-col gap-3", className)}>
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setScale((s) => Math.max(0.7, Math.round((s - 0.1) * 10) / 10))}
-          disabled={scale <= 0.7}
-          className="gap-2"
-        >
-          <Minus className="h-4 w-4" />
-          Zoom
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setScale((s) => Math.min(2.0, Math.round((s + 0.1) * 10) / 10))}
-          disabled={scale >= 2.0}
-          className="gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Zoom
-        </Button>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium text-muted-foreground">
+          {numPages} {numPages === 1 ? 'Seite' : 'Seiten'}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setScale((s) => Math.max(0.7, Math.round((s - 0.1) * 10) / 10))}
+            disabled={scale <= 0.7}
+            className="gap-2"
+          >
+            <Minus className="h-4 w-4" />
+            Zoom
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setScale((s) => Math.min(2.0, Math.round((s + 0.1) * 10) / 10))}
+            disabled={scale >= 2.0}
+            className="gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Zoom
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handlePrint}
+            className="gap-2"
+          >
+            <Printer className="h-4 w-4" />
+            Drucken
+          </Button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto rounded-md border bg-background">
