@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Coins, Pencil, Check, X } from 'lucide-react';
 import { usePettyCash } from '@/hooks/useSettings';
+import { useRestaurant } from '@/hooks/useRestaurant';
 import { toast } from 'sonner';
 
 const formatCurrency = (value: number) => {
@@ -13,7 +14,8 @@ const formatCurrency = (value: number) => {
 };
 
 export function PettyCashSetting() {
-  const { pettyCash, updatePettyCash, isUpdating } = usePettyCash();
+  const { restaurantId } = useRestaurant();
+  const { pettyCash, updatePettyCash, isUpdating } = usePettyCash(restaurantId);
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
 
@@ -28,13 +30,18 @@ export function PettyCashSetting() {
   };
 
   const handleSave = () => {
+    if (!restaurantId) {
+      toast.error('Restaurant nicht gefunden');
+      return;
+    }
+    
     const numValue = parseFloat(editValue.replace(',', '.'));
     if (isNaN(numValue) || numValue < 0) {
       toast.error('Bitte geben Sie einen gültigen Betrag ein');
       return;
     }
 
-    updatePettyCash(numValue, {
+    updatePettyCash({ amount: numValue, restaurantId }, {
       onSuccess: () => {
         toast.success('Wechselgeld aktualisiert');
         setIsEditing(false);

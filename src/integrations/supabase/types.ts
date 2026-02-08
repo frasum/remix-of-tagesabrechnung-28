@@ -21,6 +21,7 @@ export type Database = {
           deposit_date: string
           id: string
           notes: string | null
+          restaurant_id: string
         }
         Insert: {
           amount: number
@@ -28,6 +29,7 @@ export type Database = {
           deposit_date: string
           id?: string
           notes?: string | null
+          restaurant_id: string
         }
         Update: {
           amount?: number
@@ -35,8 +37,17 @@ export type Database = {
           deposit_date?: string
           id?: string
           notes?: string | null
+          restaurant_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bank_deposits_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       card_transactions: {
         Row: {
@@ -140,6 +151,27 @@ export type Database = {
           },
         ]
       }
+      restaurants: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           card_total_gl: number | null
@@ -151,6 +183,7 @@ export type Database = {
           notes: string | null
           ordersmart_revenue: number | null
           pos_total: number | null
+          restaurant_id: string
           session_date: string
           sonstige_einnahme: number | null
           spicery_counter: number | null
@@ -174,6 +207,7 @@ export type Database = {
           notes?: string | null
           ordersmart_revenue?: number | null
           pos_total?: number | null
+          restaurant_id: string
           session_date: string
           sonstige_einnahme?: number | null
           spicery_counter?: number | null
@@ -197,6 +231,7 @@ export type Database = {
           notes?: string | null
           ordersmart_revenue?: number | null
           pos_total?: number | null
+          restaurant_id?: string
           session_date?: string
           sonstige_einnahme?: number | null
           spicery_counter?: number | null
@@ -210,13 +245,22 @@ export type Database = {
           vouchers_sold?: number | null
           wolt_revenue?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sessions_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       settings: {
         Row: {
           created_at: string
           id: string
           key: string
+          restaurant_id: string
           updated_at: string
           value: Json
         }
@@ -224,6 +268,7 @@ export type Database = {
           created_at?: string
           id?: string
           key: string
+          restaurant_id: string
           updated_at?: string
           value?: Json
         }
@@ -231,10 +276,19 @@ export type Database = {
           created_at?: string
           id?: string
           key?: string
+          restaurant_id?: string
           updated_at?: string
           value?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "settings_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       staff: {
         Row: {

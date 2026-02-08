@@ -1,8 +1,16 @@
 // Types for the restaurant cash reconciliation app
 
+export interface Restaurant {
+  id: string;
+  name: string;
+  slug: string;
+  created_at: string;
+}
+
 export interface Session {
   id: string;
   session_date: string;
+  restaurant_id: string;
   spicery_counter: number;
   pos_total: number;
   terminal_1_total: number;
@@ -67,6 +75,24 @@ export interface Expense {
   description: string;
   amount: number;
   created_at: string;
+}
+
+export interface BankDeposit {
+  id: string;
+  deposit_date: string;
+  amount: number;
+  notes: string | null;
+  restaurant_id: string;
+  created_at: string;
+}
+
+export interface Setting {
+  id: string;
+  key: string;
+  value: unknown;
+  restaurant_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 // Calculated summary types

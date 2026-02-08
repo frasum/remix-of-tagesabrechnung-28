@@ -3,21 +3,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import type { Session, WaiterShift, CardTransaction, KitchenShift, Expense } from '@/types/database';
 
-export function useSession(date: Date) {
+export function useSession(date: Date, restaurantId: string | null) {
   const dateStr = format(date, 'yyyy-MM-dd');
   
   return useQuery({
-    queryKey: ['session', dateStr],
+    queryKey: ['session', dateStr, restaurantId],
     queryFn: async () => {
+      if (!restaurantId) return null;
+      
       const { data, error } = await supabase
         .from('sessions')
         .select('*')
         .eq('session_date', dateStr)
+        .eq('restaurant_id', restaurantId)
         .maybeSingle();
       
       if (error) throw error;
       return data as Session | null;
     },
+    enabled: !!restaurantId,
   });
 }
 
@@ -25,11 +29,11 @@ export function useCreateSession() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (date: Date) => {
+    mutationFn: async ({ date, restaurantId }: { date: Date; restaurantId: string }) => {
       const dateStr = format(date, 'yyyy-MM-dd');
       const { data, error } = await supabase
         .from('sessions')
-        .insert({ session_date: dateStr })
+        .insert({ session_date: dateStr, restaurant_id: restaurantId })
         .select()
         .single();
       
@@ -37,7 +41,7 @@ export function useCreateSession() {
       return data as Session;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['session', data.session_date] });
+      queryClient.invalidateQueries({ queryKey: ['session', data.session_date, data.restaurant_id] });
     },
   });
 }
@@ -58,7 +62,7 @@ export function useUpdateSession() {
       return data as Session;
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['session', data.session_date] });
+      queryClient.invalidateQueries({ queryKey: ['session', data.session_date, data.restaurant_id] });
     },
   });
 }
@@ -331,19 +335,23 @@ export function useDeleteExpense() {
   });
 }
 
-export function useSessionHistory() {
+export function useSessionHistory(restaurantId: string | null) {
   return useQuery({
-    queryKey: ['session-history'],
+    queryKey: ['session-history', restaurantId],
     queryFn: async () => {
+      if (!restaurantId) return [];
+      
       const { data, error } = await supabase
         .from('sessions')
         .select('*')
+        .eq('restaurant_id', restaurantId)
         .order('session_date', { ascending: false })
         .limit(30);
       
       if (error) throw error;
       return data as Session[];
     },
+    enabled: !!restaurantId,
   });
 }
 
@@ -354,23 +362,29 @@ export interface WaiterTipAverage {
   avgTipPercent: number;
 }
 
-export function useWaiterTipAverages() {
+export function useWaiterTipAverages(restaurantId: string | null) {
   return useQuery({
-    queryKey: ['waiter-tip-averages'],
+    queryKey: ['waiter-tip-averages', restaurantId],
     queryFn: async () => {
-      // 1. Load all sessions with their shifts
+      if (!restaurantId) return {};
+      
+      // 1. Load all sessions for this restaurant with their shifts
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
         .select('id')
+        .eq('restaurant_id', restaurantId)
         .order('session_date', { ascending: false });
       
       if (sessionsError) throw sessionsError;
       if (!sessions || sessions.length === 0) return {};
 
-      // 2. Load all waiter shifts
+      const sessionIds = sessions.map(s => s.id);
+
+      // 2. Load all waiter shifts for these sessions
       const { data: allShifts, error: shiftsError } = await supabase
         .from('waiter_shifts')
-        .select('*');
+        .select('*')
+        .in('session_id', sessionIds);
       
       if (shiftsError) throw shiftsError;
       if (!allShifts || allShifts.length === 0) return {};
@@ -445,33 +459,71 @@ export function useWaiterTipAverages() {
 
       return result;
     },
+    enabled: !!restaurantId,
   });
 }
 
-export function useDeleteAllSessions() {
+export function useDeleteAllSessions(restaurantId: string | null) {
   const queryClient = useQueryClient();
   
   return useMutation({
     mutationFn: async () => {
-      // Delete all dependent tables first (order matters due to foreign keys)
-      const { error: cardError } = await supabase.from('card_transactions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
-      if (cardError) throw cardError;
+      if (!restaurantId) throw new Error('Restaurant ID required');
       
-      const { error: expenseError } = await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // Get all session IDs for this restaurant first
+      const { data: sessions, error: sessionsQueryError } = await supabase
+        .from('sessions')
+        .select('id')
+        .eq('restaurant_id', restaurantId);
+      
+      if (sessionsQueryError) throw sessionsQueryError;
+      if (!sessions || sessions.length === 0) return;
+      
+      const sessionIds = sessions.map(s => s.id);
+      
+      // Delete all dependent tables first (order matters due to foreign keys)
+      // Get waiter shift IDs first for card_transactions
+      const { data: waiterShifts } = await supabase
+        .from('waiter_shifts')
+        .select('id')
+        .in('session_id', sessionIds);
+      
+      if (waiterShifts && waiterShifts.length > 0) {
+        const waiterShiftIds = waiterShifts.map(ws => ws.id);
+        const { error: cardError } = await supabase
+          .from('card_transactions')
+          .delete()
+          .in('waiter_shift_id', waiterShiftIds);
+        if (cardError) throw cardError;
+      }
+      
+      const { error: expenseError } = await supabase
+        .from('expenses')
+        .delete()
+        .in('session_id', sessionIds);
       if (expenseError) throw expenseError;
       
-      const { error: kitchenError } = await supabase.from('kitchen_shifts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const { error: kitchenError } = await supabase
+        .from('kitchen_shifts')
+        .delete()
+        .in('session_id', sessionIds);
       if (kitchenError) throw kitchenError;
       
-      const { error: waiterError } = await supabase.from('waiter_shifts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      const { error: waiterError } = await supabase
+        .from('waiter_shifts')
+        .delete()
+        .in('session_id', sessionIds);
       if (waiterError) throw waiterError;
       
-      // Finally delete all sessions
-      const { error } = await supabase.from('sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      // Finally delete all sessions for this restaurant
+      const { error } = await supabase
+        .from('sessions')
+        .delete()
+        .eq('restaurant_id', restaurantId);
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['session-history'] });
+      queryClient.invalidateQueries({ queryKey: ['session-history', restaurantId] });
       queryClient.invalidateQueries({ queryKey: ['sessions'] });
     },
   });

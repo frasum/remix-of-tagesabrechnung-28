@@ -15,10 +15,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { useSession, useCreateSession, useWaiterShifts, useCreateWaiterShift, useDeleteWaiterShift, useUpdateWaiterShift, useWaiterTipAverages } from '@/hooks/useSession';
+import { useRestaurant } from '@/hooks/useRestaurant';
 import type { WaiterShift } from '@/types/database';
+
 export default function WaiterCashUp() {
   const [selectedDate, setSelectedDate] = useState(getBusinessDate());
   const { toast } = useToast();
+  const { restaurantId } = useRestaurant();
 
   // Form state for new waiter
   const [newWaiterName, setNewWaiterName] = useState('');
@@ -37,7 +40,7 @@ export default function WaiterCashUp() {
   const {
     data: session,
     isLoading: sessionLoading
-  } = useSession(selectedDate);
+  } = useSession(selectedDate, restaurantId);
   const createSession = useCreateSession();
   const {
     data: waiterShifts = []
@@ -45,11 +48,12 @@ export default function WaiterCashUp() {
   const createWaiterShift = useCreateWaiterShift();
   const deleteWaiterShift = useDeleteWaiterShift();
   const updateWaiterShift = useUpdateWaiterShift();
-  const { data: waiterTipAverages = {} } = useWaiterTipAverages();
+  const { data: waiterTipAverages = {} } = useWaiterTipAverages(restaurantId);
 
   const handleCreateSession = async () => {
+    if (!restaurantId) return;
     try {
-      await createSession.mutateAsync(selectedDate);
+      await createSession.mutateAsync({ date: selectedDate, restaurantId });
       toast({
         title: 'Session erstellt',
         description: `Session für ${format(selectedDate, 'dd.MM.yyyy')} wurde erstellt.`
@@ -234,7 +238,7 @@ export default function WaiterCashUp() {
               <p className="text-muted-foreground mb-4">
                 Keine Session für diesen Tag vorhanden.
               </p>
-              <Button onClick={handleCreateSession} disabled={createSession.isPending}>
+              <Button onClick={handleCreateSession} disabled={createSession.isPending || !restaurantId}>
                 <Plus className="w-4 h-4 mr-2" />
                 Session erstellen
               </Button>
@@ -425,39 +429,43 @@ export default function WaiterCashUp() {
                           const currentTipPercent = shift.pos_sales > 0 ? (shiftTipShare / shift.pos_sales) * 100 : 0;
                           const avgData = waiterTipAverages[shift.waiter_name];
                           return (
-                            <TableRow key={shift.id} className={!shift.participates_in_pool ? 'opacity-60' : ''}>
+                            <TableRow key={shift.id}>
                               <TableCell className="font-medium">
                                 {shift.waiter_name}
+                                {shift.second_waiter_name && (
+                                  <span className="text-muted-foreground text-xs ml-1">
+                                    + {shift.second_waiter_name}
+                                  </span>
+                                )}
                                 {!shift.participates_in_pool && (
-                                  <span className="ml-1 text-xs text-muted-foreground">(nicht am Pool)</span>
+                                  <span className="ml-2 text-xs text-muted-foreground">(kein Pool)</span>
                                 )}
                               </TableCell>
                               <TableCell className={`text-right tabular-nums ${contribution >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                {contribution >= 0 ? '+' : ''}{formatCurrency(contribution)}
+                                {formatCurrency(contribution)}
                               </TableCell>
-                              <TableCell className={`text-right tabular-nums ${shiftTipShare >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                {formatCurrency(shiftTipShare)}
+                              <TableCell className="text-right tabular-nums text-success">
+                                {shift.participates_in_pool ? (
+                                  shift.second_waiter_name ? (
+                                    <>
+                                      {formatCurrency(shiftTipShare)} × 2
+                                    </>
+                                  ) : (
+                                    formatCurrency(shiftTipShare)
+                                  )
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
                               </TableCell>
                               <TableCell className="text-right tabular-nums">
-                                {shift.pos_sales > 0 ? `${currentTipPercent.toFixed(1)} %` : '-'}
+                                {shift.participates_in_pool ? `${currentTipPercent.toFixed(1)}%` : '—'}
                               </TableCell>
                               <TableCell className="text-right tabular-nums text-muted-foreground">
-                                {avgData?.shiftsCount > 1 ? `${avgData.avgTipPercent.toFixed(1)} %` : '-'}
+                                {avgData ? `${avgData.avgTipPercent.toFixed(1)}%` : '—'}
                               </TableCell>
                             </TableRow>
                           );
                         })}
-                        <TableRow className="bg-muted/50 font-semibold border-t-2">
-                          <TableCell>Gesamt</TableCell>
-                          <TableCell className={`text-right tabular-nums ${totalPool >= 0 ? 'text-success' : 'text-destructive'}`}>
-                            {formatCurrency(totalPool)}
-                          </TableCell>
-                          <TableCell className={`text-right tabular-nums ${totalPool >= 0 ? 'text-success' : 'text-destructive'}`}>
-                            {formatCurrency(totalPool)}
-                          </TableCell>
-                          <TableCell></TableCell>
-                          <TableCell></TableCell>
-                        </TableRow>
                       </TableBody>
                     </Table>
                     </div>
@@ -465,125 +473,79 @@ export default function WaiterCashUp() {
                 )}
               </CardContent>
             </Card>
+            </div>
 
-            {/* Waiter Shifts Table */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Kellner Übersicht</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {waiterShifts.length === 0 ? <p className="text-muted-foreground text-center py-8">
-                    Noch keine Kellner für diesen Tag hinzugefügt.
-                  </p> : <div className="overflow-x-auto">
+            {/* Waiter List */}
+            {waiterShifts.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Abgerechnete Kellner</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Name</TableHead>
                           <TableHead className="text-right">Umsatz</TableHead>
-                          <TableHead className="text-right">Abzugebender Betrag</TableHead>
-                          <TableHead className="text-right">Kredit Karten</TableHead>
+                          <TableHead className="text-right">Kassiert</TableHead>
+                          <TableHead className="text-right">KK</TableHead>
                           <TableHead className="text-right">Hilf Mahl</TableHead>
-                          <TableHead className="text-right">Offene Rechnung</TableHead>
+                          <TableHead className="text-right">Offen</TableHead>
+                          <TableHead className="text-right">Abgegeben</TableHead>
                           <TableHead className="text-right">Erwartet</TableHead>
-                          <TableHead className="text-right">Abgegebenes Bargeld</TableHead>
-                          <TableHead className="text-right">Trinkgeld</TableHead>
-                          <TableHead className="text-right">an die Küche</TableHead>
-                          <TableHead className="text-right">Beitrag</TableHead>
-                          <TableHead className="text-right">Anteil</TableHead>
+                          <TableHead className="text-right">Küche TG</TableHead>
                           <TableHead></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {waiterShifts.map(shift => {
-                      const expected = calculateExpected(shift);
-                      const contribution = calculateContribution(shift);
-                      const abweichung = shift.cash_handed_in - expected;
-                      const shiftTipShare = shift.participates_in_pool ? tipPerWaiter : 0;
-                      return <TableRow 
-                        key={shift.id} 
-                        className={`cursor-pointer transition-colors ${editingShiftId === shift.id ? 'bg-primary/10' : 'hover:bg-muted/50'} ${!shift.participates_in_pool ? 'opacity-60' : ''}`}
-                        onClick={() => handleEditWaiter(shift)}
-                      >
+                        {waiterShifts.map((shift) => {
+                          const expected = calculateExpected(shift);
+                          return (
+                            <TableRow key={shift.id}>
                               <TableCell className="font-medium">
                                 {shift.waiter_name}
                                 {shift.second_waiter_name && (
-                                  <span className="text-muted-foreground"> + {shift.second_waiter_name}</span>
-                                )}
-                                {!shift.participates_in_pool && (
-                                  <span className="ml-1 text-xs text-muted-foreground">(nicht am Pool)</span>
+                                  <span className="text-muted-foreground text-sm ml-1">
+                                    + {shift.second_waiter_name}
+                                  </span>
                                 )}
                               </TableCell>
                               <TableCell className="text-right tabular-nums">{formatCurrency(shift.pos_sales)}</TableCell>
-                              <TableCell className="text-right tabular-nums">{formatCurrency(shift.kassiert_brutto || 0)}</TableCell>
+                              <TableCell className="text-right tabular-nums">{formatCurrency(shift.kassiert_brutto)}</TableCell>
                               <TableCell className="text-right tabular-nums">{formatCurrency(shift.card_total)}</TableCell>
                               <TableCell className="text-right tabular-nums">{formatCurrency(shift.hilf_mahl)}</TableCell>
                               <TableCell className="text-right tabular-nums">{formatCurrency(shift.open_invoices)}</TableCell>
-                              <TableCell className="text-right tabular-nums">{formatCurrency(expected)}</TableCell>
                               <TableCell className="text-right tabular-nums">{formatCurrency(shift.cash_handed_in)}</TableCell>
-                              <TableCell className={`text-right tabular-nums font-semibold ${abweichung < 0 ? 'text-destructive' : abweichung > 0 ? 'text-success' : ''}`}>
-                                {abweichung > 0 ? '+' : ''}{formatCurrency(abweichung)}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums">{formatCurrency(shift.kitchen_tip)}</TableCell>
-                              <TableCell className={`text-right tabular-nums ${contribution >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                {contribution >= 0 ? '+' : ''}{formatCurrency(contribution)}
-                              </TableCell>
-                              <TableCell className={`text-right tabular-nums font-semibold ${shiftTipShare >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                {formatCurrency(shiftTipShare)}
-                              </TableCell>
+                              <TableCell className="text-right tabular-nums">{formatCurrency(expected)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-success">{formatCurrency(shift.kitchen_tip)}</TableCell>
                               <TableCell>
-                                <Button variant="ghost" size="icon" onClick={e => {
-                            e.stopPropagation();
-                            handleDeleteWaiter(shift.id);
-                          }}>
-                                  <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditWaiter(shift)}
+                                  >
+                                    <Pencil className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteWaiter(shift.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                </div>
                               </TableCell>
-                            </TableRow>;
-                    })}
-                        {/* Totals Row */}
-                        {waiterShifts.length > 0 && <TableRow className="bg-muted/50 font-semibold border-t-2">
-                            <TableCell>GESAMT</TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(waiterShifts.reduce((sum, s) => sum + s.pos_sales, 0))}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(waiterShifts.reduce((sum, s) => sum + (s.kassiert_brutto || 0), 0))}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(waiterShifts.reduce((sum, s) => sum + s.card_total, 0))}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(waiterShifts.reduce((sum, s) => sum + s.hilf_mahl, 0))}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(waiterShifts.reduce((sum, s) => sum + s.open_invoices, 0))}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(waiterShifts.reduce((sum, s) => sum + calculateExpected(s), 0))}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(waiterShifts.reduce((sum, s) => sum + s.cash_handed_in, 0))}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(waiterShifts.reduce((sum, s) => sum + (s.cash_handed_in - calculateExpected(s)), 0))}
-                            </TableCell>
-                            <TableCell className="text-right tabular-nums">
-                              {formatCurrency(totalKitchenTip)}
-                            </TableCell>
-                            <TableCell className={`text-right tabular-nums ${totalPool >= 0 ? 'text-success' : 'text-destructive'}`}>
-                              {formatCurrency(totalPool)}
-                            </TableCell>
-                            <TableCell className={`text-right tabular-nums ${totalPool >= 0 ? 'text-success' : 'text-destructive'}`}>
-                              {formatCurrency(totalPool)}
-                            </TableCell>
-                            <TableCell></TableCell>
-                          </TableRow>}
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
-                  </div>}
-              </CardContent>
-            </Card>
-            </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>}
       </div>
     </AppLayout>;

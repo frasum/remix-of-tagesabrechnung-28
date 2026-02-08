@@ -7,6 +7,7 @@ export interface BankDeposit {
   deposit_date: string;
   amount: number;
   notes: string | null;
+  restaurant_id: string;
   created_at: string;
 }
 
@@ -14,22 +15,27 @@ export interface CreateBankDeposit {
   deposit_date: string;
   amount: number;
   notes?: string;
+  restaurant_id: string;
 }
 
-export function useBankDeposits() {
+export function useBankDeposits(restaurantId: string | null) {
   const queryClient = useQueryClient();
 
   const depositsQuery = useQuery({
-    queryKey: ['bank-deposits'],
+    queryKey: ['bank-deposits', restaurantId],
     queryFn: async () => {
+      if (!restaurantId) return [];
+      
       const { data, error } = await supabase
         .from('bank_deposits')
         .select('*')
+        .eq('restaurant_id', restaurantId)
         .order('deposit_date', { ascending: false });
 
       if (error) throw error;
       return data as BankDeposit[];
     },
+    enabled: !!restaurantId,
   });
 
   const createMutation = useMutation({
@@ -40,6 +46,7 @@ export function useBankDeposits() {
           deposit_date: deposit.deposit_date,
           amount: deposit.amount,
           notes: deposit.notes || null,
+          restaurant_id: deposit.restaurant_id,
         })
         .select()
         .single();
@@ -47,8 +54,8 @@ export function useBankDeposits() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bank-deposits'] });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['bank-deposits', data.restaurant_id] });
       toast.success('Bankeinzahlung erfolgreich hinzugefügt');
     },
     onError: (error) => {
@@ -58,16 +65,17 @@ export function useBankDeposits() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, restaurantId: restId }: { id: string; restaurantId: string }) => {
       const { error } = await supabase
         .from('bank_deposits')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+      return restId;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bank-deposits'] });
+    onSuccess: (restId) => {
+      queryClient.invalidateQueries({ queryKey: ['bank-deposits', restId] });
       toast.success('Bankeinzahlung gelöscht');
     },
     onError: (error) => {

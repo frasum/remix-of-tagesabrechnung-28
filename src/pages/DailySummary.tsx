@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useRestaurant } from '@/hooks/useRestaurant';
 import {
   useSession,
   useCreateSession,
@@ -22,9 +23,10 @@ import {
 export default function DailySummary() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { toast } = useToast();
+  const { restaurantId, restaurantName } = useRestaurant();
 
   // Data hooks
-  const { data: session, isLoading: sessionLoading } = useSession(selectedDate);
+  const { data: session, isLoading: sessionLoading } = useSession(selectedDate, restaurantId);
   const createSession = useCreateSession();
   const { data: waiterShifts = [] } = useWaiterShifts(session?.id);
   const { data: kitchenShifts = [] } = useKitchenShifts(session?.id);
@@ -84,8 +86,9 @@ export default function DailySummary() {
   const cardTerminalMismatch = terminalTotal - totalCardTotal;
 
   const handleCreateSession = async () => {
+    if (!restaurantId) return;
     try {
-      await createSession.mutateAsync(selectedDate);
+      await createSession.mutateAsync({ date: selectedDate, restaurantId });
       toast({ title: 'Session erstellt', description: `Session für ${format(selectedDate, 'dd.MM.yyyy')} wurde erstellt.` });
     } catch (error) {
       toast({ title: 'Fehler', description: 'Session konnte nicht erstellt werden.', variant: 'destructive' });
@@ -131,7 +134,7 @@ export default function DailySummary() {
       },
     });
     
-    toast({ 
+    toast({
       title: 'PDF erstellt', 
       description: 'Die Tagesabrechnung wurde als PDF heruntergeladen.' 
     });
@@ -182,7 +185,7 @@ export default function DailySummary() {
               <p className="text-muted-foreground mb-4">
                 Keine Session für diesen Tag vorhanden.
               </p>
-              <Button onClick={handleCreateSession} disabled={createSession.isPending}>
+              <Button onClick={handleCreateSession} disabled={createSession.isPending || !restaurantId}>
                 <Plus className="w-4 h-4 mr-2" />
                 Session erstellen
               </Button>
@@ -398,29 +401,13 @@ export default function DailySummary() {
                             <div key={shift.id} className="flex justify-between text-sm">
                               <span>{shift.waiter_name}</span>
                               <div className="flex gap-4">
-                                <span className={`tabular-nums text-xs ${contribution >= 0 ? 'text-muted-foreground' : 'text-destructive'}`}>
-                                  (Beitrag: {contribution >= 0 ? '+' : ''}{formatCurrency(contribution)})
+                                <span className={`tabular-nums ${contribution >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(contribution)}
                                 </span>
-                                <span className="tabular-nums font-medium">{formatCurrency(tipPerWaiter)}</span>
+                                <span className="tabular-nums text-success">
+                                  → {formatCurrency(tipPerWaiter)}
+                                </span>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  {kitchenShifts.length > 0 && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm font-medium mb-2">Küchenpersonal ({kitchenShifts.length} Mitarbeiter)</p>
-                      <div className="space-y-1">
-                        {kitchenShifts.map((shift) => {
-                          const totalHours = kitchenShifts.reduce((sum, s) => sum + s.hours_worked, 0);
-                          const tipAmount = totalHours > 0 ? (shift.hours_worked / totalHours) * totalKitchenTip : 0;
-                          return (
-                            <div key={shift.id} className="flex justify-between text-sm">
-                              <span>{shift.staff_name}</span>
-                              <span className="tabular-nums">{formatCurrency(tipAmount)}</span>
                             </div>
                           );
                         })}
@@ -430,123 +417,6 @@ export default function DailySummary() {
                 </CardContent>
               </Card>
             </div>
-
-            {/* Formula Explanation */}
-            <Collapsible className="group" defaultOpen={true}>
-              <Card className="border-muted">
-                <CollapsibleTrigger className="w-full">
-                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <CardTitle className="flex items-center justify-between text-base">
-                      <div className="flex items-center gap-2">
-                        <HelpCircle className="w-5 h-5 text-muted-foreground" />
-                        Wie wird BARGELD berechnet?
-                      </div>
-                      <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                    </CardTitle>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent className="pt-0 space-y-4">
-                    {/* Formula */}
-                    <div className="p-4 bg-muted/50 rounded-lg font-mono text-sm">
-                      <p className="font-semibold text-foreground mb-2">Formel:</p>
-                      <p className="text-success">+ Tagesumsatz</p>
-                      <p className="text-success">+ Gutschein VK</p>
-                      <p className="text-success">+ Sonstige Einnahmen</p>
-                      <p className="text-success">+ Hilf Mahl</p>
-                      <p className="text-destructive">− Terminal 1 + 2</p>
-                      <p className="text-destructive">− OpenTabs Abzug</p>
-                      <p className="text-destructive">− Gutschein EL</p>
-                      <p className="text-destructive">− FineDine Gutscheine</p>
-                      <p className="text-destructive">− Vorschuss</p>
-                      <p className="text-destructive">− Einladung</p>
-                      <p className="text-destructive">− Offene Rechnungen</p>
-                      <p className="text-destructive">− Ausgaben</p>
-                      <p className="text-destructive">− Take Away</p>
-                      <p className="border-t border-border mt-2 pt-2 font-bold">= BARGELD</p>
-                    </div>
-
-                    {/* Live Calculation */}
-                    <div className="space-y-2">
-                      <p className="font-semibold text-sm text-muted-foreground">Aktuelle Berechnung:</p>
-                      <Table>
-                        <TableBody>
-                          <TableRow>
-                            <TableCell className="text-success">+ Tagesumsatz</TableCell>
-                            <TableCell className="text-right tabular-nums text-success">{formatCurrency(kellnerUmsatz)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-success">+ Gutschein Verkauf</TableCell>
-                            <TableCell className="text-right tabular-nums text-success">{formatCurrency(session?.vouchers_sold || 0)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-success">+ Sonstige Einnahmen</TableCell>
-                            <TableCell className="text-right tabular-nums text-success">{formatCurrency(session?.sonstige_einnahme || 0)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-success">+ Hilf Mahl</TableCell>
-                            <TableCell className="text-right tabular-nums text-success">{formatCurrency(totalHilfMahl)}</TableCell>
-                          </TableRow>
-                          <TableRow className="border-t">
-                            <TableCell className="font-medium">Summe Einnahmen</TableCell>
-                            <TableCell className="text-right tabular-nums font-medium text-success">
-                              {formatCurrency(kellnerUmsatz + (session?.vouchers_sold || 0) + (session?.sonstige_einnahme || 0) + totalHilfMahl)}
-                            </TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-destructive">− Terminals (1+2)</TableCell>
-                            <TableCell className="text-right tabular-nums text-destructive">{formatCurrency((session?.terminal_1_total || 0) + (session?.terminal_2_total || 0))}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-destructive">− Gutschein Eingelöst + FineDine</TableCell>
-                            <TableCell className="text-right tabular-nums text-destructive">{formatCurrency((session?.vouchers_redeemed || 0) + (session?.finedine_vouchers || 0))}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-destructive">− Vorschuss + Einladung</TableCell>
-                            <TableCell className="text-right tabular-nums text-destructive">{formatCurrency((session?.vorschuss || 0) + (session?.einladung || 0))}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-destructive">− Offene Rechnungen</TableCell>
-                            <TableCell className="text-right tabular-nums text-destructive">{formatCurrency(totalOpenInvoices)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-destructive">− Ausgaben</TableCell>
-                            <TableCell className="text-right tabular-nums text-destructive">{formatCurrency(totalExpenses)}</TableCell>
-                          </TableRow>
-                          <TableRow>
-                            <TableCell className="text-destructive">− Take Away</TableCell>
-                            <TableCell className="text-right tabular-nums text-destructive">{formatCurrency(totalDeliveryRevenue)}</TableCell>
-                          </TableRow>
-                          <TableRow className="border-t-2 bg-muted/30">
-                            <TableCell className="font-bold text-lg">= BARGELD</TableCell>
-                            <TableCell className={`text-right tabular-nums font-bold text-lg ${bargeld >= 0 ? 'text-success' : 'text-destructive'}`}>
-                              {formatCurrency(bargeld)}
-                            </TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
-
-            {/* Final Result */}
-            <Card className={bargeld >= 0 ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}>
-              <CardContent className="py-8 text-center">
-                <div className="flex items-center justify-center gap-3 mb-2">
-                  {bargeld >= 0 ? (
-                    <CheckCircle className="w-8 h-8 text-success" />
-                  ) : (
-                    <AlertTriangle className="w-8 h-8 text-destructive" />
-                  )}
-                  <h2 className="text-2xl font-display font-bold">BARGELD</h2>
-                </div>
-                <p className={`text-4xl font-display font-bold tabular-nums ${bargeld >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  {formatCurrency(bargeld)}
-                </p>
-              </CardContent>
-            </Card>
           </div>
         )}
       </div>

@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useRestaurant } from '@/hooks/useRestaurant';
 import {
   useSession,
   useCreateSession,
@@ -27,6 +28,7 @@ import {
 
 export default function ManagerDashboard() {
   const [selectedDate, setSelectedDate] = useState(getBusinessDate());
+  const { restaurantId } = useRestaurant();
   const { toast } = useToast();
 
   // Form state
@@ -54,7 +56,7 @@ export default function ManagerDashboard() {
   const [expenseAmount, setExpenseAmount] = useState(0);
 
   // Data hooks
-  const { data: session, isLoading: sessionLoading } = useSession(selectedDate);
+  const { data: session, isLoading: sessionLoading } = useSession(selectedDate, restaurantId);
   const createSession = useCreateSession();
   const updateSession = useUpdateSession();
   const { data: expenses = [] } = useExpenses(session?.id);
@@ -106,8 +108,9 @@ export default function ManagerDashboard() {
   }, [session]);
 
   const handleCreateSession = async () => {
+    if (!restaurantId) return;
     try {
-      await createSession.mutateAsync(selectedDate);
+      await createSession.mutateAsync({ date: selectedDate, restaurantId });
       toast({ title: 'Session erstellt', description: `Session für ${format(selectedDate, 'dd.MM.yyyy')} wurde erstellt.` });
     } catch (error) {
       toast({ title: 'Fehler', description: 'Session konnte nicht erstellt werden.', variant: 'destructive' });

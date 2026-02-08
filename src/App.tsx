@@ -2,8 +2,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { RestaurantProvider } from "@/contexts/RestaurantContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Login from "./pages/Login";
 import WaiterCashUp from "./pages/WaiterCashUp";
@@ -21,6 +22,25 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+// Wrapper component that provides restaurant context for restaurant-specific routes
+function RestaurantRoutes() {
+  return (
+    <RestaurantProvider>
+      <Routes>
+        <Route index element={<ProtectedRoute><WaiterCashUp /></ProtectedRoute>} />
+        <Route path="waiter" element={<ProtectedRoute><WaiterMobile /></ProtectedRoute>} />
+        <Route path="manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
+        <Route path="kitchen" element={<ProtectedRoute><KitchenTipSplit /></ProtectedRoute>} />
+        <Route path="summary" element={<ProtectedRoute><DailySummary /></ProtectedRoute>} />
+        <Route path="statistics" element={<ProtectedRoute><Statistics /></ProtectedRoute>} />
+        <Route path="history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+        <Route path="cash-balance" element={<ProtectedRoute><CashBalance /></ProtectedRoute>} />
+        <Route path="qr-poster" element={<WaiterQRPoster />} />
+      </Routes>
+    </RestaurantProvider>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -29,18 +49,18 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            {/* Global routes (no restaurant context needed) */}
             <Route path="/login" element={<Login />} />
             <Route path="/install" element={<Install />} />
-            <Route path="/" element={<ProtectedRoute><WaiterCashUp /></ProtectedRoute>} />
-            <Route path="/waiter" element={<ProtectedRoute><WaiterMobile /></ProtectedRoute>} />
-            <Route path="/manager" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
-            <Route path="/kitchen" element={<ProtectedRoute><KitchenTipSplit /></ProtectedRoute>} />
-            <Route path="/summary" element={<ProtectedRoute><DailySummary /></ProtectedRoute>} />
-            <Route path="/statistics" element={<ProtectedRoute><Statistics /></ProtectedRoute>} />
-            <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
-            <Route path="/cash-balance" element={<ProtectedRoute><CashBalance /></ProtectedRoute>} />
             <Route path="/staff" element={<ProtectedRoute><StaffManagement /></ProtectedRoute>} />
-            <Route path="/qr-poster" element={<WaiterQRPoster />} />
+            
+            {/* Redirect root to default restaurant */}
+            <Route path="/" element={<Navigate to="/spicery" replace />} />
+            
+            {/* Restaurant-specific routes */}
+            <Route path="/:restaurant/*" element={<RestaurantRoutes />} />
+            
+            {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
