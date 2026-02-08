@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useRestaurant } from '@/hooks/useRestaurant';
 import {
   useSession,
   useCreateSession,
@@ -24,6 +25,7 @@ import { MonthlyKitchenTipCard } from '@/components/kitchen/MonthlyKitchenTipCar
 export default function KitchenTipSplit() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const { toast } = useToast();
+  const { restaurantId } = useRestaurant();
 
   // Form state
   const [staffName, setStaffName] = useState('');
@@ -31,7 +33,7 @@ export default function KitchenTipSplit() {
   const [shiftEnd, setShiftEnd] = useState('17:00');
 
   // Data hooks
-  const { data: session, isLoading: sessionLoading } = useSession(selectedDate);
+  const { data: session, isLoading: sessionLoading } = useSession(selectedDate, restaurantId);
   const createSession = useCreateSession();
   const { data: waiterShifts = [] } = useWaiterShifts(session?.id);
   const { data: kitchenShifts = [] } = useKitchenShifts(session?.id);
@@ -48,8 +50,9 @@ export default function KitchenTipSplit() {
   const tipPerHour = totalHours > 0 ? totalKitchenTip / totalHours : 0;
 
   const handleCreateSession = async () => {
+    if (!restaurantId) return;
     try {
-      await createSession.mutateAsync(selectedDate);
+      await createSession.mutateAsync({ date: selectedDate, restaurantId });
       toast({ title: 'Session erstellt', description: `Session für ${format(selectedDate, 'dd.MM.yyyy')} wurde erstellt.` });
     } catch (error) {
       toast({ title: 'Fehler', description: 'Session konnte nicht erstellt werden.', variant: 'destructive' });
@@ -128,7 +131,7 @@ export default function KitchenTipSplit() {
               <p className="text-muted-foreground mb-4">
                 Keine Session für diesen Tag vorhanden.
               </p>
-              <Button onClick={handleCreateSession} disabled={createSession.isPending}>
+              <Button onClick={handleCreateSession} disabled={createSession.isPending || !restaurantId}>
                 <Plus className="w-4 h-4 mr-2" />
                 Session erstellen
               </Button>

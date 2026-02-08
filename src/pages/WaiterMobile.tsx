@@ -13,12 +13,14 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant } from '@/hooks/useRestaurant';
 import { useSession, useCreateSession, useWaiterShifts, useCreateWaiterShift, useUpdateWaiterShift, useWaiterTipAverages } from '@/hooks/useSession';
 import { useWaiterRanking } from '@/hooks/useWaiterRanking';
 
 export default function WaiterMobile() {
   const today = getBusinessDate();
   const { user } = useAuth();
+  const { restaurantId } = useRestaurant();
   const staffName = user?.name || '';
   const { toast } = useToast();
 
@@ -33,12 +35,12 @@ export default function WaiterMobile() {
   });
 
   // Data hooks
-  const { data: session, isLoading: sessionLoading } = useSession(today);
+  const { data: session, isLoading: sessionLoading } = useSession(today, restaurantId);
   const createSession = useCreateSession();
   const { data: waiterShifts = [], isLoading: shiftsLoading } = useWaiterShifts(session?.id);
   const createWaiterShift = useCreateWaiterShift();
   const updateWaiterShift = useUpdateWaiterShift();
-  const { data: tipAverages = {}, isLoading: averagesLoading } = useWaiterTipAverages();
+  const { data: tipAverages = {}, isLoading: averagesLoading } = useWaiterTipAverages(restaurantId);
   const { data: rankings = [], isLoading: rankingsLoading } = useWaiterRanking();
 
   // Find current user's shift (case-insensitive comparison)
@@ -101,11 +103,13 @@ export default function WaiterMobile() {
   };
 
   const handleSave = async () => {
+    if (!restaurantId) return;
+    
     try {
       // Create session if not exists
       let sessionId = session?.id;
       if (!sessionId) {
-        const newSession = await createSession.mutateAsync(today);
+        const newSession = await createSession.mutateAsync({ date: today, restaurantId });
         sessionId = newSession.id;
       }
 
@@ -237,7 +241,7 @@ export default function WaiterMobile() {
 
                 <Button 
                   onClick={handleSave} 
-                  disabled={isSaving}
+                  disabled={isSaving || !restaurantId}
                   className="w-full"
                   size="lg"
                 >

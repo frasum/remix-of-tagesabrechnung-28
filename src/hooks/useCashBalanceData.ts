@@ -17,29 +17,37 @@ export interface CashBalanceRow {
   bargeld: number;
 }
 
-export function useCashBalanceData() {
+export function useCashBalanceData(restaurantId: string | null) {
   return useQuery({
-    queryKey: ['cash-balance'],
+    queryKey: ['cash-balance', restaurantId],
     queryFn: async (): Promise<CashBalanceRow[]> => {
-      // 1. Alle Sessions laden
+      if (!restaurantId) return [];
+      
+      // 1. Alle Sessions für dieses Restaurant laden
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
         .select('*')
+        .eq('restaurant_id', restaurantId)
         .order('session_date', { ascending: true });
 
       if (sessionsError) throw sessionsError;
+      if (!sessions || sessions.length === 0) return [];
+
+      const sessionIds = sessions.map(s => s.id);
 
       // 2. Alle waiter_shifts laden (für offene Rechnungen)
       const { data: waiterShifts, error: shiftsError } = await supabase
         .from('waiter_shifts')
-        .select('*');
+        .select('*')
+        .in('session_id', sessionIds);
 
       if (shiftsError) throw shiftsError;
 
       // 3. Alle expenses laden
       const { data: expenses, error: expensesError } = await supabase
         .from('expenses')
-        .select('*');
+        .select('*')
+        .in('session_id', sessionIds);
 
       if (expensesError) throw expensesError;
 
@@ -96,5 +104,6 @@ export function useCashBalanceData() {
         };
       });
     },
+    enabled: !!restaurantId,
   });
 }

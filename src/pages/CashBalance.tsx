@@ -16,6 +16,7 @@ import { Wallet, FileDown, Download, X, ChevronDown, FileSpreadsheet } from 'luc
 import { useCashBalanceData } from '@/hooks/useCashBalanceData';
 import { useBankDeposits } from '@/hooks/useBankDeposits';
 import { usePettyCash } from '@/hooks/useSettings';
+import { useRestaurant } from '@/hooks/useRestaurant';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -39,9 +40,10 @@ const formatDate = (dateStr: string) => {
 };
 
 export default function CashBalance() {
-  const { data, isLoading, error } = useCashBalanceData();
-  const { deposits, totalDeposits, latestDeposit, createDeposit, deleteDeposit, isCreating, isDeleting } = useBankDeposits();
-  const { pettyCash } = usePettyCash();
+  const { restaurantId, restaurantName } = useRestaurant();
+  const { data, isLoading, error } = useCashBalanceData(restaurantId);
+  const { deposits, totalDeposits, latestDeposit, createDeposit, deleteDeposit, isCreating, isDeleting } = useBankDeposits(restaurantId);
+  const { pettyCash, updatePettyCash } = usePettyCash(restaurantId);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<{ blobUrl: string; fileName: string } | null>(null);
@@ -110,7 +112,7 @@ export default function CashBalance() {
       setPdfPreview(result);
       setPreviewOpen(true);
     }
-  }, [filteredData, selectedMonth, deposits, pettyCash]);
+  }, [filteredData, selectedMonth, deposits, pettyCash, restaurantName]);
 
   // Handle download from preview
   const handleDownload = useCallback(() => {
@@ -143,14 +145,21 @@ export default function CashBalance() {
       month: month - 1,
       year,
     });
-  }, [filteredData, selectedMonth, deposits]);
+  }, [filteredData, selectedMonth, deposits, restaurantName]);
 
   // Handle deposit submission
   const handleDepositSubmit = useCallback((data: { deposit_date: string; amount: number; notes?: string }) => {
-    createDeposit(data, {
+    if (!restaurantId) return;
+    createDeposit({ ...data, restaurant_id: restaurantId }, {
       onSuccess: () => setDepositDialogOpen(false),
     });
-  }, [createDeposit]);
+  }, [createDeposit, restaurantId]);
+
+  // Handle deposit delete
+  const handleDeleteDeposit = useCallback((id: string) => {
+    if (!restaurantId) return;
+    deleteDeposit({ id, restaurantId });
+  }, [deleteDeposit, restaurantId]);
 
   return (
     <AppLayout>
@@ -173,7 +182,7 @@ export default function CashBalance() {
         {/* Bank Deposits List */}
         <BankDepositList
           deposits={deposits}
-          onDelete={deleteDeposit}
+          onDelete={handleDeleteDeposit}
           isDeleting={isDeleting}
         />
 

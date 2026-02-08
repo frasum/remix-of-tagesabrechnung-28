@@ -12,25 +12,32 @@ import {
   Euro,
   BarChart3,
   LogOut,
-  Wallet
+  Wallet,
+  ChevronDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant, useRestaurants } from '@/hooks/useRestaurant';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 const navItems = [
-  { href: '/', label: 'Kellner Abrechnung', icon: Users },
-  { href: '/manager', label: 'Manager Dashboard', icon: Settings },
-  { href: '/kitchen', label: 'Küchen Trinkgeld', icon: ChefHat },
-  { href: '/summary', label: 'Tagesabrechnung', icon: FileText },
-  { href: '/statistics', label: 'Statistiken', icon: BarChart3 },
-  { href: '/history', label: 'Verlauf', icon: History },
-  { href: '/cash-balance', label: 'Bargeldbestand', icon: Wallet },
-  { href: '/staff', label: 'Mitarbeiter', icon: UserCog },
+  { path: '', label: 'Kellner Abrechnung', icon: Users },
+  { path: 'manager', label: 'Manager Dashboard', icon: Settings },
+  { path: 'kitchen', label: 'Küchen Trinkgeld', icon: ChefHat },
+  { path: 'summary', label: 'Tagesabrechnung', icon: FileText },
+  { path: 'statistics', label: 'Statistiken', icon: BarChart3 },
+  { path: 'history', label: 'Verlauf', icon: History },
+  { path: 'cash-balance', label: 'Bargeldbestand', icon: Wallet },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -38,11 +45,30 @@ export function AppLayout({ children }: AppLayoutProps) {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
+  const { restaurantName, restaurantSlug } = useRestaurant();
+  const { data: restaurants = [] } = useRestaurants();
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
+
+  const handleRestaurantSwitch = (slug: string) => {
+    // Get current path relative to restaurant
+    const currentPath = location.pathname.replace(`/${restaurantSlug}`, '');
+    navigate(`/${slug}${currentPath}`);
+  };
+
+  const getNavHref = (path: string) => `/${restaurantSlug}/${path}`;
+  
+  const isActive = (path: string) => {
+    const fullPath = `/${restaurantSlug}/${path}`;
+    if (path === '') {
+      return location.pathname === `/${restaurantSlug}` || location.pathname === `/${restaurantSlug}/`;
+    }
+    return location.pathname.startsWith(fullPath);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
@@ -52,7 +78,25 @@ export function AppLayout({ children }: AppLayoutProps) {
             <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
               <Euro className="w-5 h-5 text-sidebar-primary-foreground" />
             </div>
-            <span className="font-display font-semibold text-sidebar-foreground">Tagesabrechnung</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="font-display font-semibold text-sidebar-foreground gap-1 px-2">
+                  {restaurantName || 'Restaurant'}
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {restaurants.map((r) => (
+                  <DropdownMenuItem
+                    key={r.id}
+                    onClick={() => handleRestaurantSwitch(r.slug)}
+                    className={cn(r.slug === restaurantSlug && 'bg-accent')}
+                  >
+                    {r.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <Button
             variant="ghost"
@@ -68,15 +112,15 @@ export function AppLayout({ children }: AppLayoutProps) {
         {mobileMenuOpen && (
           <nav className="px-4 pb-4 bg-sidebar border-b border-sidebar-border animate-slide-in">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.href;
+              const active = isActive(item.path);
               return (
                 <Link
-                  key={item.href}
-                  to={item.href}
+                  key={item.path}
+                  to={getNavHref(item.path)}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
                     "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
-                    isActive 
+                    active 
                       ? "bg-sidebar-primary text-sidebar-primary-foreground" 
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
                   )}
@@ -86,6 +130,19 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </Link>
               );
             })}
+            <Link
+              to="/staff"
+              onClick={() => setMobileMenuOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
+                location.pathname === '/staff'
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground" 
+                  : "text-sidebar-foreground hover:bg-sidebar-accent"
+              )}
+            >
+              <UserCog className="w-5 h-5" />
+              Mitarbeiter
+            </Link>
             <button
               onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
               className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors text-destructive hover:bg-sidebar-accent w-full"
@@ -103,19 +160,37 @@ export function AppLayout({ children }: AppLayoutProps) {
           <div className="w-9 h-9 rounded-lg bg-sidebar-primary flex items-center justify-center">
             <Euro className="w-5 h-5 text-sidebar-primary-foreground" />
           </div>
-          <span className="font-display font-semibold text-sidebar-foreground">Tagesabrechnung</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="font-display font-semibold text-sidebar-foreground gap-1 px-2">
+                {restaurantName || 'Restaurant'}
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {restaurants.map((r) => (
+                <DropdownMenuItem
+                  key={r.id}
+                  onClick={() => handleRestaurantSwitch(r.slug)}
+                  className={cn(r.slug === restaurantSlug && 'bg-accent')}
+                >
+                  {r.name}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
+            const active = isActive(item.path);
             return (
               <Link
-                key={item.href}
-                to={item.href}
+                key={item.path}
+                to={getNavHref(item.path)}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  isActive 
+                  active 
                     ? "bg-sidebar-primary text-sidebar-primary-foreground" 
                     : "text-sidebar-foreground hover:bg-sidebar-accent"
                 )}
@@ -125,6 +200,18 @@ export function AppLayout({ children }: AppLayoutProps) {
               </Link>
             );
           })}
+          <Link
+            to="/staff"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+              location.pathname === '/staff'
+                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
+                : "text-sidebar-foreground hover:bg-sidebar-accent"
+            )}
+          >
+            <UserCog className="w-5 h-5" />
+            Mitarbeiter
+          </Link>
         </nav>
 
         <div className="px-4 py-4 border-t border-sidebar-border space-y-3">

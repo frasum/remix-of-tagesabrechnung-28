@@ -21,16 +21,18 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { useSessionHistory, useDeleteAllSessions } from '@/hooks/useSession';
+import { useRestaurant } from '@/hooks/useRestaurant';
 import { useToast } from '@/hooks/use-toast';
 
 export default function History() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { restaurantId, restaurantSlug } = useRestaurant();
   const [selectedMonth, setSelectedMonth] = useState(new Date());
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
-  const { data: sessions = [], isLoading } = useSessionHistory();
-  const deleteAllSessions = useDeleteAllSessions();
+  const { data: sessions = [], isLoading } = useSessionHistory(restaurantId);
+  const deleteAllSessions = useDeleteAllSessions(restaurantId);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
@@ -38,7 +40,7 @@ export default function History() {
 
   const handleViewSession = (date: string) => {
     const parsedDate = new Date(date);
-    navigate(`/summary?date=${format(parsedDate, 'yyyy-MM-dd')}`);
+    navigate(`/${restaurantSlug}/summary?date=${format(parsedDate, 'yyyy-MM-dd')}`);
   };
 
   // Calculate quick stats
