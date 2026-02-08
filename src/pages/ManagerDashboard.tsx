@@ -544,44 +544,6 @@ export default function ManagerDashboard() {
               </CardContent>
               </Card>
 
-              {/* Bargeld Card */}
-              <Card className={currentRegisterBalance < 0 ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20" : ""}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Banknote className="w-5 h-5" />
-                    Bargeld
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label>Bargeld des Tages</Label>
-                    <div className={`text-2xl font-bold tabular-nums ${bargeldPreview >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {formatCurrency(bargeldPreview)}
-                    </div>
-                  </div>
-                  
-                  {currentRegisterBalance < 0 && (
-                    <>
-                      <Separator />
-                      <div>
-                        <Label className="text-muted-foreground">Kumuliertes Defizit</Label>
-                        <div className="text-xl font-semibold tabular-nums text-destructive">
-                          {formatCurrency(currentRegisterBalance)}
-                        </div>
-                      </div>
-                      <Button 
-                        onClick={() => setShowTransferDialog(true)}
-                        variant="outline"
-                        className="w-full gap-2"
-                      >
-                        <Vault className="w-4 h-4" />
-                        Transfer vom Tresor
-                      </Button>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-
               {/* Expenses */}
               <Card>
                 <CardHeader>
@@ -634,6 +596,44 @@ export default function ManagerDashboard() {
                         </span>
                       </div>
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Bargeld Card */}
+              <Card className={currentRegisterBalance < 0 ? "border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20" : ""}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Banknote className="w-5 h-5" />
+                    Bargeld
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label>Bargeld des Tages</Label>
+                    <div className={`text-2xl font-bold tabular-nums ${bargeldPreview >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {formatCurrency(bargeldPreview)}
+                    </div>
+                  </div>
+                  
+                  {currentRegisterBalance < 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <Label className="text-muted-foreground">Kumuliertes Defizit</Label>
+                        <div className="text-xl font-semibold tabular-nums text-destructive">
+                          {formatCurrency(currentRegisterBalance)}
+                        </div>
+                      </div>
+                      <Button 
+                        onClick={() => setShowTransferDialog(true)}
+                        variant="outline"
+                        className="w-full gap-2"
+                      >
+                        <Vault className="w-4 h-4" />
+                        Transfer vom Tresor
+                      </Button>
+                    </>
                   )}
                 </CardContent>
               </Card>
