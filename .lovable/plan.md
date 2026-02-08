@@ -1,128 +1,60 @@
 
-# Fix: OAuth-Benutzer-Profile und Manager-Verknüpfung
+# Fix: Verknüpftes OAuth-Konto im Dialog anzeigen und aufheben
 
 ## Problem-Analyse
 
-### Problem 1: Keine Profile werden erstellt
-Die `profiles`-Tabelle ist komplett leer. Der `handle_new_user` Trigger existiert zwar, aber es fehlt möglicherweise der Auth-Trigger, der ihn bei neuen Benutzern aufruft.
+Die Verknüpfung existiert bereits in der Datenbank (`frasum@gmail.com` → `Frank`), wird aber nicht im Dialog angezeigt, weil:
 
-### Problem 2: RLS blockiert Manager-Zugriff
-Die aktuelle RLS-Policy auf `profiles` erlaubt nur Benutzern ihre eigenen Profile zu sehen:
-```sql
-USING (auth.uid() = user_id)
-```
+1. **Fehlender Foreign Key**: Der Join `profiles!profiles_staff_id_fkey` in der `useStaff` Query funktioniert nicht, da kein Foreign Key zwischen `profiles.staff_id` und `staff.id` definiert ist.
 
-Manager müssen aber alle Profile ohne `staff_id` sehen können, um Verknüpfungen zu erstellen.
-
----
+2. **Deshalb ist `staff.linked_profile` immer `null`** - die Verknüpfungsanzeige (grüner Bereich mit "Aufheben"-Button) wird nie gezeigt.
 
 ## Lösungen
 
-### 1. Auth Trigger erstellen
-Der Trigger `handle_new_user` existiert, aber er muss an `auth.users` gebunden werden:
-
+### Option 1: Foreign Key in der Datenbank erstellen (empfohlen)
 ```sql
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+ALTER TABLE public.profiles 
+ADD CONSTRAINT profiles_staff_id_fkey 
+FOREIGN KEY (staff_id) REFERENCES public.staff(id) 
+ON DELETE SET NULL;
 ```
 
-### 2. RLS-Policy für Profile erweitern
-Neue SELECT-Policy, die das Lesen aller Profile mit `staff_id IS NULL` erlaubt (für Manager):
-
-```sql
--- Manager/App können unverknüpfte Profile lesen
-CREATE POLICY "Allow reading unlinked profiles"
-  ON public.profiles FOR SELECT
-  USING (staff_id IS NULL);
-```
-
-Alternativ: Das Laden der unverknüpften Profile über die Edge Function `admin-link-account` erledigen (sicherer).
-
-### 3. Edge Function erweitern: get-unlinked-profiles
-Da die bestehende `admin-link-account` Edge Function bereits den Service Role Key verwendet, können wir diese erweitern oder eine neue Funktion erstellen, die alle unverknüpften Profile zurückgibt:
-
-```typescript
-// GET /functions/v1/admin-link-account?action=list-unlinked
-// Gibt alle Profile ohne staff_id zurück
-```
+### Option 2: Query anpassen (alternative Falls FK nicht möglich)
+Falls der Foreign Key nicht erstellt werden kann, die Query auf eine manuelle Subquery umstellen.
 
 ---
 
-## Änderungen
+## Geplante Änderungen
 
-### Datenbank-Migrationen
+### Datenbank-Migration
 
 | Änderung | SQL |
 |----------|-----|
-| Auth Trigger erstellen | `CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users...` |
-| RLS Policy hinzufügen | `CREATE POLICY "Allow reading unlinked profiles"...` |
+| Foreign Key erstellen | `ALTER TABLE profiles ADD CONSTRAINT profiles_staff_id_fkey...` |
 
-### Edge Function erweitern
-
-| Datei | Änderung |
-|-------|----------|
-| `supabase/functions/admin-link-account/index.ts` | GET-Methode für Liste der unverknüpften Profile |
-
-### Frontend Hook anpassen
-
-| Datei | Änderung |
-|-------|----------|
-| `src/hooks/useProfiles.ts` | Statt direkter Supabase-Abfrage Edge Function aufrufen |
-
----
-
-## Technische Details
-
-### Edge Function: admin-link-account (erweitert)
-
+Das ermöglicht den bestehenden Join in `useStaff`:
 ```typescript
-Deno.serve(async (req) => {
-  // GET: Liste unverknüpfte Profile
-  if (req.method === 'GET') {
-    const { data, error } = await supabaseAdmin
-      .from('profiles')
-      .select('id, user_id, email, full_name, avatar_url, staff_id')
-      .is('staff_id', null)
-      .order('email', { ascending: true });
-    
-    return new Response(JSON.stringify(data), { ... });
-  }
-  
-  // POST: Link/Unlink (bestehende Logik)
-  // ...
-});
-```
-
-### useUnlinkedProfiles Hook (angepasst)
-
-```typescript
-export function useUnlinkedProfiles() {
-  return useQuery({
-    queryKey: ['profiles', 'unlinked'],
-    queryFn: async () => {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-link-account`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-        }
-      );
-      if (!response.ok) throw new Error('Failed to fetch profiles');
-      return response.json();
-    },
-  });
-}
+profiles!profiles_staff_id_fkey (
+  id, user_id, email, full_name, avatar_url
+)
 ```
 
 ---
 
-## Benutzer-Ergebnis
+## Ergebnis
 
-Nach der Implementierung:
-1. Bei OAuth-Login wird automatisch ein Profil in der `profiles`-Tabelle erstellt
-2. Manager können in der Mitarbeiterverwaltung alle OAuth-Benutzer ohne Verknüpfung sehen
-3. Manager können diese Profile direkt mit Mitarbeitern verknüpfen
-4. Dein Konto (frasum@gmail.com) wird nach erneutem Login sichtbar sein
+Nach der Migration wird:
+
+```text
+┌─────────────────────────────────────────────────┐
+│ OAuth-Konto verknüpfen                          │
+├─────────────────────────────────────────────────┤
+│ ✅ Verknüpft mit: frasum@gmail.com              │
+│    (frank schumann)                             │
+│                            [🔗 Aufheben]        │
+└─────────────────────────────────────────────────┘
+```
+
+Anstatt der aktuellen Meldung "Keine nicht verknüpften OAuth-Benutzer verfügbar".
+
+Der "Aufheben"-Button ist bereits implementiert (Zeilen 241-257 in StaffDialogNative.tsx) und ruft `handleUnlink()` auf, welches die Edge Function `admin-link-account` mit `action: 'unlink'` aufruft.
