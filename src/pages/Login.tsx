@@ -68,65 +68,45 @@ export default function Login() {
     setPinCode(sanitized);
   };
 
-  const handleGoogleSignIn = async () => {
+  const startOAuthSignIn = async (provider: 'google' | 'apple') => {
     // Restaurant-Slug aus URL extrahieren falls vorhanden (für Redirect nach OAuth)
     const pathMatch = window.location.pathname.match(/^\/([^/]+)/);
-    if (pathMatch && pathMatch[1] !== 'login') {
-      localStorage.setItem('oauth_redirect_restaurant', pathMatch[1]);
-    } else {
-      // Fallback: spicery als Standard-Restaurant speichern
-      localStorage.setItem('oauth_redirect_restaurant', 'spicery');
-    }
-    
-    setIsLoading(true);
-    
-    // Redirect URI mit dem aktuellen Pfad, damit der User zurück zur Login-Seite kommt
-    // und dann korrekt weitergeleitet wird
-    const redirectUri = `${window.location.origin}/login`;
-    
-    const result = await lovable.auth.signInWithOAuth('google', {
-      redirect_uri: redirectUri,
-    });
+    const restaurantSlug = pathMatch && pathMatch[1] !== 'login' ? pathMatch[1] : 'spicery';
+    localStorage.setItem('oauth_redirect_restaurant', restaurantSlug);
 
-    if (result.error) {
-      setIsLoading(false);
+    const providerLabel = provider === 'google' ? 'Google' : 'Apple';
+
+    setIsLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        // Wichtig: origin-only ist am kompatibelsten für Provider-Redirects.
+        redirect_uri: window.location.origin,
+      });
+
+      // Wenn redirected=true, übernimmt der Browser die Navigation.
+      if (result.redirected) return;
+
+      if (result.error) {
+        toast({
+          title: `${providerLabel}-Anmeldung fehlgeschlagen`,
+          description: result.error.message || 'Ein Fehler ist aufgetreten.',
+          variant: 'destructive',
+        });
+      }
+    } catch (e) {
       toast({
-        title: 'Google-Anmeldung fehlgeschlagen',
-        description: result.error.message || 'Ein Fehler ist aufgetreten.',
+        title: `${providerLabel}-Anmeldung fehlgeschlagen`,
+        description: e instanceof Error ? e.message : 'Ein Fehler ist aufgetreten.',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleAppleSignIn = async () => {
-    // Restaurant-Slug aus URL extrahieren falls vorhanden (für Redirect nach OAuth)
-    const pathMatch = window.location.pathname.match(/^\/([^/]+)/);
-    if (pathMatch && pathMatch[1] !== 'login') {
-      localStorage.setItem('oauth_redirect_restaurant', pathMatch[1]);
-    } else {
-      // Fallback: spicery als Standard-Restaurant speichern
-      localStorage.setItem('oauth_redirect_restaurant', 'spicery');
-    }
-    
-    setIsLoading(true);
-    
-    // Redirect URI mit dem aktuellen Pfad, damit der User zurück zur Login-Seite kommt
-    // und dann korrekt weitergeleitet wird
-    const redirectUri = `${window.location.origin}/login`;
-    
-    const result = await lovable.auth.signInWithOAuth('apple', {
-      redirect_uri: redirectUri,
-    });
+  const handleGoogleSignIn = () => startOAuthSignIn('google');
 
-    if (result.error) {
-      setIsLoading(false);
-      toast({
-        title: 'Apple-Anmeldung fehlgeschlagen',
-        description: result.error.message || 'Ein Fehler ist aufgetreten.',
-        variant: 'destructive',
-      });
-    }
-  };
+  const handleAppleSignIn = () => startOAuthSignIn('apple');
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
