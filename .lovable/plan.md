@@ -1,138 +1,68 @@
 
-# Plan: Monatlicher PDF-Export fuer Bargeldbestand
+# Plan: PDF-Vorschau Fix
 
-## Zusammenfassung
-Ein Monatsauswahl-Dropdown und ein PDF-Export-Button werden zur Bargeldbestand-Seite hinzugefuegt. Der Benutzer kann einen Monat auswaehlen und dann die gefilterten Daten als PDF herunterladen.
+## Problem
+Die PDF-Vorschau zeigt einen leeren weissen Bereich an, obwohl der Dialog und die Buttons korrekt funktionieren. Das PDF wird generiert, aber nicht im iframe angezeigt.
 
-## Funktionsweise
+## Ursache
+Das Problem liegt daran, dass der Blob fuer die PDF ohne expliziten MIME-Type erstellt wird und einige Browser/Umgebungen Schwierigkeiten haben, PDFs direkt in iframes anzuzeigen.
 
-1. **Monatsauswahl**: Ein Dropdown oben auf der Seite zeigt alle verfuegbaren Monate (basierend auf den vorhandenen Sessions)
-2. **Tabellen-Filterung**: Die Tabelle zeigt nur die Eintraege des ausgewaehlten Monats
-3. **PDF-Export**: Ein Button generiert eine PDF mit allen Zeilen des ausgewaehlten Monats plus Summenzeile
+## Loesung
 
-**PDF-Inhalt:**
-- Titel: "Bargeldbestand - [Monat Jahr]"
-- Erstellungsdatum
-- Tabelle mit allen Spalten wie in der UI
-- Summenzeile am Ende
-- Farbcodierung (gruen/rot) fuer Bargeld-Spalte
+### 1. Blob mit korrektem MIME-Type erstellen
+In `src/utils/pdfExport.ts` muss der Blob explizit als `application/pdf` erstellt werden:
 
-## Geplante Aenderungen
+```typescript
+// Aktuell:
+const blob = doc.output('blob');
 
-### 1. Neue PDF-Export-Funktion (pdfExport.ts)
-Eine neue Funktion `generateCashBalancePDF` wird hinzugefuegt:
-- Nimmt gefilterte Daten und Monat/Jahr als Parameter
-- Erstellt Tabelle mit allen Spalten
-- Fuegt Summenzeile hinzu
-- Verwendet gleiches Design wie bestehender Daily Summary Export
-
-### 2. CashBalance.tsx erweitern
-- State fuer ausgewaehlten Monat hinzufuegen
-- Monatsauswahl-Dropdown (Select-Komponente)
-- PDF-Export-Button mit FileDown-Icon
-- Daten nach Monat filtern
-- Export-Funktion aufrufen
-
-## UI-Aenderungen
-
-```text
-+--------------------------------------------------+
-| [Wallet Icon] Bargeldbestand                     |
-|                                                  |
-| Monat: [Februar 2026 ▼]    [PDF Export Button]   |
-|                                                  |
-| +----------------------------------------------+ |
-| | Taegliche Bargelduebersicht                 | |
-| | Datum | Tagesumsatz | ... | Bargeld         | |
-| | Sa 1.Feb | 4.800 € | ... | 145 €            | |
-| | ...                                          | |
-| | GESAMT | ... | 4.965 €                       | |
-| +----------------------------------------------+ |
-+--------------------------------------------------+
+// Korrigiert:
+const pdfBlob = doc.output('blob');
+const blob = new Blob([pdfBlob], { type: 'application/pdf' });
 ```
 
----
+### 2. Fallback mit object-Tag
+Da einige Browser PDFs in iframes nicht richtig rendern, wird ein `<object>`-Tag als Fallback verwendet, der bessere PDF-Unterstuetzung bietet:
+
+```typescript
+// In CashBalance.tsx:
+<object
+  data={pdfPreview.blobUrl}
+  type="application/pdf"
+  className="w-full h-full rounded-md border"
+>
+  <p>PDF konnte nicht angezeigt werden.</p>
+</object>
+```
+
+### 3. Alternative: embed-Tag
+Falls `object` nicht funktioniert, kann auch `<embed>` verwendet werden:
+
+```typescript
+<embed
+  src={pdfPreview.blobUrl}
+  type="application/pdf"
+  className="w-full h-full rounded-md border"
+/>
+```
+
+## Aenderungen
+
+### Datei 1: src/utils/pdfExport.ts
+- Blob mit explizitem `application/pdf` MIME-Type erstellen
+- Zeile 706: `doc.output('blob')` durch Blob-Erstellung mit MIME-Type ersetzen
+
+### Datei 2: src/pages/CashBalance.tsx
+- iframe durch object-Tag ersetzen fuer bessere PDF-Kompatibilitaet
+- Optional: Fallback-Nachricht wenn PDF nicht angezeigt werden kann
 
 ## Technische Details
 
-### Neue Funktion: generateCashBalancePDF
+### Warum object statt iframe?
+- `<object>` ist speziell fuer eingebettete Inhalte wie PDFs konzipiert
+- Bietet bessere Browser-Kompatibilitaet fuer PDF-Anzeige
+- Ermoeglicht Fallback-Content wenn das PDF nicht geladen werden kann
+- Wird von allen modernen Browsern unterstuetzt
 
-```typescript
-interface CashBalanceRow {
-  date: string;
-  kellnerUmsatz: number;
-  kreditkarten: number;
-  ordersmart: number;
-  wolt: number;
-  gutscheineEL: number;
-  finedine: number;
-  gutscheineVK: number;
-  einladung: number;
-  offeneRE: number;
-  vorschuss: number;
-  ausgaben: number;
-  bargeld: number;
-}
-
-interface CashBalancePDFData {
-  rows: CashBalanceRow[];
-  month: number; // 0-11
-  year: number;
-}
-
-export const generateCashBalancePDF = (data: CashBalancePDFData): void => {
-  const doc = new jsPDF('landscape'); // Querformat wegen vieler Spalten
-  
-  // Header mit Monat/Jahr
-  // Tabelle mit allen Zeilen
-  // Summenzeile mit Farbcodierung
-  // Speichern als "Bargeldbestand_2026-02.pdf"
-};
-```
-
-### CashBalance.tsx Erweiterungen
-
-```typescript
-// Neue Imports
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Button } from '@/components/ui/button';
-import { FileDown } from 'lucide-react';
-import { generateCashBalancePDF } from '@/utils/pdfExport';
-import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
-
-// State fuer Monatsauswahl
-const [selectedMonth, setSelectedMonth] = useState<string>(''); // Format: "2026-02"
-
-// Verfuegbare Monate aus Daten extrahieren
-const availableMonths = useMemo(() => {
-  if (!data) return [];
-  const months = new Set<string>();
-  data.forEach(row => {
-    const date = parseISO(row.date);
-    months.add(format(date, 'yyyy-MM'));
-  });
-  return Array.from(months).sort().reverse();
-}, [data]);
-
-// Daten nach Monat filtern
-const filteredData = useMemo(() => {
-  if (!data || !selectedMonth) return data;
-  return data.filter(row => row.date.startsWith(selectedMonth));
-}, [data, selectedMonth]);
-
-// Export-Handler
-const handleExport = () => {
-  if (!filteredData || filteredData.length === 0) return;
-  const [year, month] = selectedMonth.split('-').map(Number);
-  generateCashBalancePDF({
-    rows: filteredData,
-    month: month - 1,
-    year,
-  });
-};
-```
-
-### Dateien die geaendert werden
-
-1. **src/utils/pdfExport.ts** - Neue Funktion `generateCashBalancePDF` hinzufuegen
-2. **src/pages/CashBalance.tsx** - Monatsauswahl, Filter und Export-Button hinzufuegen
+### MIME-Type Wichtigkeit
+Der Browser muss wissen, dass es sich um ein PDF handelt, um den integrierten PDF-Viewer zu verwenden. Ohne expliziten MIME-Type kann der Browser den Inhalt als generischen Blob behandeln und nicht richtig darstellen.
