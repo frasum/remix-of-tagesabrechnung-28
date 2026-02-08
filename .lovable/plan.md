@@ -1,136 +1,127 @@
 
-# Plan: Audit-Log für Kellner-Abrechnungsänderungen
+# Google/Apple Login für Kellner Self-Service
 
 ## Übersicht
-Wir erstellen ein Änderungsprotokoll (Audit-Log), das automatisch dokumentiert, wenn eine bereits erstellte Kellner-Abrechnung bearbeitet wird. Dabei werden Datum, Uhrzeit und der Name der Person erfasst, die die Änderung vorgenommen hat.
+Erweiterung des Kellner Self-Service Systems um Google/Apple OAuth-Login als schnellere Alternative zum PIN-Login. Die Kellner können dann mit einem Klick über ihr Smartphone einloggen, anstatt Name und PIN einzugeben.
 
-## Ansatz
+## Aktueller Stand
 
-Es gibt zwei Optionen für die Implementierung:
+Das System unterstützt bereits:
+- PIN-basierte Authentifizierung für Kellner
+- Google/Apple OAuth auf der Login-Seite
+- Konto-Verknüpfung für OAuth-Nutzer mit bestehenden Mitarbeiter-Profilen
+- Mobile Self-Service Oberfläche (`/waiter`)
 
-### Option A: Datenbank-Trigger (empfohlen)
-Ein PostgreSQL-Trigger erfasst jede Änderung an der `waiter_shifts`-Tabelle automatisch und schreibt einen Eintrag in eine neue `audit_logs`-Tabelle.
+## Änderungen
 
-**Vorteile:**
-- Lückenlose Protokollierung, auch bei direkten Datenbank-Änderungen
-- Keine Änderungen am Frontend-Code nötig
-- Erfasst auch den vorherigen und neuen Wert
+### 1. Login-Seite verbessern
+Anpassung der Weiterleitung nach OAuth-Login, um den Restaurant-Kontext beizubehalten:
+- Nach erfolgreichem Login → Weiterleitung zu `/{restaurant}/waiter` statt `/spicery/waiter`
+- Speicherung des ursprünglichen Restaurant-Slugs vor dem OAuth-Flow
 
-**Nachteile:**
-- Der "Name" der Person kommt aus dem Frontend (AuthContext), nicht aus der Datenbank selbst. Ein reiner Trigger weiß nicht, wer eingeloggt ist.
+### 2. QR-Code Poster aktualisieren
+Das Poster zeigt aktuell nur die PIN-Login Methode. Erweiterung um:
+- Hinweis auf "Mit Google/Apple anmelden" als Alternative
+- Aktualisierte Schritt-Anleitung (PIN oder Social Login)
 
-### Option B: Frontend-basiertes Logging (pragmatisch)
-Bei jedem Update einer `waiter_shift` wird zusätzlich ein Log-Eintrag in eine `audit_logs`-Tabelle geschrieben - direkt aus dem `useUpdateWaiterShift`-Hook.
+### 3. WaiterQRCode Komponente erweitern
+Im Manager-Dashboard die Info ergänzen:
+- Hinweis dass auch Google/Apple Login möglich ist
 
-**Vorteile:**
-- Einfacher Zugang zum eingeloggten Benutzer (`useAuth`)
-- Volle Kontrolle über Format und Inhalt
-
-**Nachteile:**
-- Nur Änderungen über die App werden erfasst
-
----
-
-## Empfohlene Lösung: Kombination (Option B mit Erweiterung)
-
-Da die App den eingeloggten Benutzer kennt (`useAuth`), ist ein Frontend-basiertes Logging am praktischsten.
-
-## Implementierungsschritte
-
-### 1. Neue Datenbank-Tabelle `audit_logs` erstellen
-
-```text
-+------------------+-------------------------+
-| audit_logs                                 |
-+------------------+-------------------------+
-| id               | uuid (PK)               |
-| created_at       | timestamp               |
-| table_name       | text                    |
-| record_id        | uuid                    |
-| action           | text (update/delete)    |
-| changed_by_id    | uuid (staff.id)         |
-| changed_by_name  | text                    |
-| old_values       | jsonb                   |
-| new_values       | jsonb                   |
-| restaurant_id    | uuid                    |
-+------------------+-------------------------+
-```
-
-### 2. Hook `useUpdateWaiterShift` erweitern
-- Vor dem Update: Alten Datensatz laden
-- Nach dem Update: Audit-Log-Eintrag schreiben mit:
-  - Alten Werten
-  - Neuen Werten
-  - Name und ID des eingeloggten Benutzers
-
-### 3. Neuen Hook `useAuditLogs` erstellen
-- Lädt Audit-Logs für eine Session oder einen bestimmten Zeitraum
-- Filtert nach `table_name = 'waiter_shifts'`
-
-### 4. UI-Komponente für das Audit-Log
-- Neue Seite oder Collapsible-Bereich im Manager-Dashboard
-- Zeigt chronologisch alle Änderungen:
-  - Wann (Datum + Uhrzeit)
-  - Wer (Name des Bearbeiters)
-  - Was wurde geändert (vorher → nachher)
+### 4. OAuth-Redirect mit Restaurant-Kontext
+Sicherstellen, dass nach dem OAuth-Callback der richtige Restaurant-Kontext wiederhergestellt wird:
+- Restaurant-Slug in localStorage speichern vor OAuth-Redirect
+- Nach Rückkehr zum richtigen Restaurant weiterleiten
 
 ---
 
 ## Technische Details
 
-### Datenbank-Migration
-```sql
-CREATE TABLE public.audit_logs (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_at timestamptz NOT NULL DEFAULT now(),
-  table_name text NOT NULL,
-  record_id uuid NOT NULL,
-  action text NOT NULL CHECK (action IN ('create', 'update', 'delete')),
-  changed_by_id uuid,
-  changed_by_name text NOT NULL,
-  old_values jsonb,
-  new_values jsonb,
-  restaurant_id uuid NOT NULL
-);
+### Login.tsx Änderungen
 
--- RLS Policy (nur lesen für authentifizierte Benutzer)
-ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow public access to audit_logs" 
-  ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
+```typescript
+// Vor OAuth-Login den aktuellen Pfad speichern
+const handleGoogleSignIn = async () => {
+  // Restaurant-Slug aus URL extrahieren falls vorhanden
+  const pathMatch = window.location.pathname.match(/^\/([^/]+)/);
+  if (pathMatch && pathMatch[1] !== 'login') {
+    localStorage.setItem('oauth_redirect_restaurant', pathMatch[1]);
+  }
+  
+  setIsLoading(true);
+  const result = await lovable.auth.signInWithOAuth('google', {
+    redirect_uri: window.location.origin,
+  });
+  // ...
+};
 ```
 
-### Betroffene Dateien
+### AuthContext.tsx Änderungen
+
+```typescript
+// Nach OAuth-Login zum gespeicherten Restaurant weiterleiten
+const getOAuthRedirectPath = (isMobile: boolean) => {
+  const savedRestaurant = localStorage.getItem('oauth_redirect_restaurant');
+  localStorage.removeItem('oauth_redirect_restaurant');
+  const restaurant = savedRestaurant || 'spicery';
+  return isMobile ? `/${restaurant}/waiter` : `/${restaurant}`;
+};
+```
+
+### WaiterQRPoster.tsx Änderungen
+
+Schritt 2 erweitern:
+```tsx
+{/* Step 2 - Updated */}
+<div className="flex items-start gap-4">
+  <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary ...">
+    2
+  </div>
+  <div className="flex-1 pt-2">
+    <div className="flex items-center gap-2 mb-1">
+      <LogIn className="w-5 h-5 text-primary" />
+      <span className="font-semibold">Anmelden</span>
+    </div>
+    <p className="text-muted-foreground text-sm">
+      Mit Google/Apple anmelden <strong>oder</strong> Name & PIN eingeben
+    </p>
+  </div>
+</div>
+```
+
+### Dateien die geändert werden
+
 | Datei | Änderung |
 |-------|----------|
-| `src/hooks/useSession.ts` | `useUpdateWaiterShift` erweitern, um Audit-Log zu schreiben |
-| `src/hooks/useAuditLogs.ts` | Neuer Hook zum Laden der Logs |
-| `src/types/database.ts` | Neuer Type `AuditLog` |
-| `src/pages/History.tsx` oder neues `/audit-log` | UI zum Anzeigen der Logs |
+| `src/pages/Login.tsx` | OAuth mit Restaurant-Kontext speichern |
+| `src/contexts/AuthContext.tsx` | Redirect-Pfad aus localStorage lesen |
+| `src/pages/WaiterQRPoster.tsx` | Anleitung um OAuth-Option erweitern |
+| `src/components/manager/WaiterQRCode.tsx` | Info-Text erweitern |
 
----
-
-## Beispiel-Anzeige
+## Benutzer-Flow nach Implementierung
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│ Änderungsprotokoll                                          │
-├─────────────────────────────────────────────────────────────┤
-│ 07.02.2026, 22:45 Uhr - Frank                               │
-│ Kellner-Abrechnung von "Max" geändert:                      │
-│   • Bargeld abgegeben: 350,00 € → 380,00 €                  │
-│   • Kartenzahlung: 120,00 € → 125,00 €                      │
-├─────────────────────────────────────────────────────────────┤
-│ 07.02.2026, 21:30 Uhr - Lisa                                │
-│ Kellner-Abrechnung von "Tim" geändert:                      │
-│   • Umsatz: 500,00 € → 520,00 €                             │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│  Kellner scannt QR-Code (/spicery/waiter)               │
+└─────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│  Nicht eingeloggt → Weiterleitung zu /login             │
+│  (Restaurant-Slug wird gespeichert)                     │
+└─────────────────────────────────────────────────────────┘
+                          │
+            ┌─────────────┴─────────────┐
+            ▼                           ▼
+   ┌────────────────┐          ┌────────────────┐
+   │  PIN-Login     │          │  Google/Apple  │
+   │  (Name + Code) │          │  (1-Klick)     │
+   └────────────────┘          └────────────────┘
+            │                           │
+            └─────────────┬─────────────┘
+                          ▼
+┌─────────────────────────────────────────────────────────┐
+│  Zurück zu /spicery/waiter (Self-Service)               │
+│  → Konto-Verknüpfung falls OAuth-Nutzer ohne Staff-ID   │
+└─────────────────────────────────────────────────────────┘
 ```
-
----
-
-## Zusammenfassung
-
-1. **Neue Tabelle** `audit_logs` in der Datenbank
-2. **Hook erweitern** `useUpdateWaiterShift` schreibt bei Updates automatisch ein Protokoll
-3. **Neuer Hook** `useAuditLogs` zum Abrufen der Logs
-4. **UI-Anzeige** im History-Bereich oder als eigene Seite
