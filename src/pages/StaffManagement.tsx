@@ -32,28 +32,44 @@ export default function StaffManagement() {
     return matchesRole && matchesSearch;
   });
 
-  // Group and sort staff
-  const groupedStaff = (() => {
-    const filtered = filteredStaff;
-    
-    if (filter === 'all') {
-      // Group by role and sort each group alphabetically
-      const waiters = filtered
-        .filter(s => s.role === 'waiter')
-        .sort((a, b) => a.name.localeCompare(b.name));
-      
-      const kitchen = filtered
-        .filter(s => s.role === 'kitchen')
-        .sort((a, b) => a.name.localeCompare(b.name));
-      
-      return { waiters, kitchen };
-    } else {
-      // Just sort alphabetically by role
-      const sorted = filtered.sort((a, b) => a.name.localeCompare(b.name));
-      return filter === 'waiter' 
-        ? { waiters: sorted, kitchen: [] }
-        : { waiters: [], kitchen: sorted };
+  // Group staff by restaurant, then by role
+  const groupedByRestaurant = (() => {
+    // Collect all restaurants from staff assignments
+    const restaurantMap = new Map<string, { id: string; name: string; waiters: Staff[]; kitchen: Staff[] }>();
+    const noRestaurant: { waiters: Staff[]; kitchen: Staff[] } = { waiters: [], kitchen: [] };
+
+    for (const staff of filteredStaff) {
+      const restaurants = staff.staff_restaurants ?? [];
+      if (restaurants.length === 0) {
+        if (staff.role === 'waiter') noRestaurant.waiters.push(staff);
+        else noRestaurant.kitchen.push(staff);
+      } else {
+        for (const sr of restaurants) {
+          const r = sr.restaurants;
+          if (!restaurantMap.has(r.id)) {
+            restaurantMap.set(r.id, { id: r.id, name: r.name, waiters: [], kitchen: [] });
+          }
+          const group = restaurantMap.get(r.id)!;
+          if (staff.role === 'waiter') {
+            if (!group.waiters.find(s => s.id === staff.id)) group.waiters.push(staff);
+          } else {
+            if (!group.kitchen.find(s => s.id === staff.id)) group.kitchen.push(staff);
+          }
+        }
+      }
     }
+
+    // Sort within each group
+    const sortGroup = (g: { waiters: Staff[]; kitchen: Staff[] }) => {
+      g.waiters.sort((a, b) => a.name.localeCompare(b.name));
+      g.kitchen.sort((a, b) => a.name.localeCompare(b.name));
+    };
+
+    const result = Array.from(restaurantMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    result.forEach(sortGroup);
+    sortGroup(noRestaurant);
+
+    return { restaurants: result, noRestaurant };
   })();
 
   const waiterCount = allStaff.filter(s => s.role === 'waiter').length;
@@ -169,44 +185,71 @@ export default function StaffManagement() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {/* Kellner Section */}
-            {groupedStaff.waiters.length > 0 && (
-              <div>
-                <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <UtensilsCrossed className="w-5 h-5 text-primary" />
-                  Kellner ({groupedStaff.waiters.length})
-                </h2>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {groupedStaff.waiters.map(staff => (
-                    <StaffCard
-                      key={staff.id}
-                      staff={staff}
-                      onEdit={handleEdit}
-                      onDelete={setDeleteStaff}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="space-y-8">
+            {groupedByRestaurant.restaurants.map(group => (
+              <div key={group.id} className="space-y-4">
+                <h2 className="text-xl font-bold text-foreground border-b pb-2">{group.name}</h2>
+                
+                {group.waiters.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <UtensilsCrossed className="w-5 h-5 text-primary" />
+                      Kellner ({group.waiters.length})
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {group.waiters.map(staff => (
+                        <StaffCard key={staff.id} staff={staff} onEdit={handleEdit} onDelete={setDeleteStaff} />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-            {/* Küche Section */}
-            {groupedStaff.kitchen.length > 0 && (
-              <div>
-                <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <ChefHat className="w-5 h-5 text-primary" />
-                  Küche ({groupedStaff.kitchen.length})
-                </h2>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {groupedStaff.kitchen.map(staff => (
-                    <StaffCard
-                      key={staff.id}
-                      staff={staff}
-                      onEdit={handleEdit}
-                      onDelete={setDeleteStaff}
-                    />
-                  ))}
-                </div>
+                {group.kitchen.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <ChefHat className="w-5 h-5 text-primary" />
+                      Küche ({group.kitchen.length})
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {group.kitchen.map(staff => (
+                        <StaffCard key={staff.id} staff={staff} onEdit={handleEdit} onDelete={setDeleteStaff} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Staff without restaurant */}
+            {(groupedByRestaurant.noRestaurant.waiters.length > 0 || groupedByRestaurant.noRestaurant.kitchen.length > 0) && (
+              <div className="space-y-4">
+                <h2 className="text-xl font-bold text-muted-foreground border-b pb-2">Ohne Restaurant</h2>
+                {groupedByRestaurant.noRestaurant.waiters.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <UtensilsCrossed className="w-5 h-5 text-primary" />
+                      Kellner ({groupedByRestaurant.noRestaurant.waiters.length})
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {groupedByRestaurant.noRestaurant.waiters.map(staff => (
+                        <StaffCard key={staff.id} staff={staff} onEdit={handleEdit} onDelete={setDeleteStaff} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {groupedByRestaurant.noRestaurant.kitchen.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
+                      <ChefHat className="w-5 h-5 text-primary" />
+                      Küche ({groupedByRestaurant.noRestaurant.kitchen.length})
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {groupedByRestaurant.noRestaurant.kitchen.map(staff => (
+                        <StaffCard key={staff.id} staff={staff} onEdit={handleEdit} onDelete={setDeleteStaff} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
