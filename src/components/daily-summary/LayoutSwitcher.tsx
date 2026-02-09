@@ -1,4 +1,4 @@
-import { LayoutList, LayoutGrid, Columns2, Table } from 'lucide-react';
+import { LayoutList, LayoutGrid, Columns2, Table, FileSpreadsheet } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   Tooltip,
@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-export type LayoutMode = 'horizontal' | 'sections' | 'columns' | 'table';
+export type LayoutMode = 'horizontal' | 'sections' | 'columns' | 'table' | 'excel';
 
 interface LayoutSwitcherProps {
   value: LayoutMode;
@@ -19,6 +19,7 @@ const layoutOptions = [
   { value: 'sections' as const, icon: LayoutGrid, label: 'Gruppierte Sektionen' },
   { value: 'columns' as const, icon: Columns2, label: 'Zwei-Spalten' },
   { value: 'table' as const, icon: Table, label: 'Kompakte Tabelle' },
+  { value: 'excel' as const, icon: FileSpreadsheet, label: 'Excel-Stil' },
 ];
 
 export function LayoutSwitcher({ value, onChange }: LayoutSwitcherProps) {
