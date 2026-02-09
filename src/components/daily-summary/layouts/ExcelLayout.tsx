@@ -110,8 +110,6 @@ export function ExcelLayout({
             <table className="w-full text-sm">
               <tbody>
                 <ExcelInputRow label="Vectron Gesamtumsatz" value={formData.pos_total} onChange={(v) => onFieldChange('pos_total', v)} />
-                <ExcelReadonlyRow label="Kellner Umsatz" value={kellnerUmsatz} />
-                <ExcelReadonlyRow label="Kellner Abzugeben" value={totalKassiertBrutto} />
               </tbody>
             </table>
 
