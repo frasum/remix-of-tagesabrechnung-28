@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { LogOut, Utensils } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRestaurant } from '@/hooks/useRestaurant';
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -9,6 +10,7 @@ interface MobileLayoutProps {
 
 export function MobileLayout({ children }: MobileLayoutProps) {
   const { user, logout } = useAuth();
+  const { restaurantName } = useRestaurant();
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -19,7 +21,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground">
               <Utensils className="w-4 h-4" />
             </div>
-            <span className="font-display font-semibold text-foreground">Spicery</span>
+            <span className="font-display font-semibold text-foreground">{restaurantName || 'Restaurant'}</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground">{user?.name}</span>
