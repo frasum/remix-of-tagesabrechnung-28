@@ -46,7 +46,7 @@ function RestaurantRoutes() {
           <Route path="history" element={<ProtectedRoute requiredLevel="manager"><History /></ProtectedRoute>} />
           <Route path="cash-balance" element={<ProtectedRoute requiredLevel="manager"><CashBalance /></ProtectedRoute>} />
           <Route path="register-balance" element={<ProtectedRoute requiredLevel="manager"><RegisterBalance /></ProtectedRoute>} />
-          <Route path="qr-poster" element={<WaiterQRPoster />} />
+          <Route path="qr-poster" element={<ProtectedRoute requiredLevel="manager"><WaiterQRPoster /></ProtectedRoute>} />
         </Routes>
       </DateProvider>
     </RestaurantProvider>

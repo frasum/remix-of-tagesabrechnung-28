@@ -14,6 +14,7 @@ import {
   LogOut,
   Vault,
   Wallet,
+  QrCode,
   ChevronDown,
   LucideIcon,
   Shield
@@ -51,6 +52,7 @@ const allNavItems: NavItem[] = [
   { path: 'statistics', label: 'Statistiken', icon: BarChart3, minLevel: 'manager' },
   { path: 'history', label: 'Verlauf', icon: History, minLevel: 'manager' },
   { path: 'cash-balance', label: 'Bargeldbestand', icon: Wallet, minLevel: 'manager' },
+  { path: 'qr-poster', label: 'QR-Poster', icon: QrCode, minLevel: 'manager' },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
