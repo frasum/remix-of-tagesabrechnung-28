@@ -123,7 +123,7 @@ export function ExcelLayout({
               <tbody>
                 <ExcelInputRow label="Terminal 1" value={formData.terminal_1_total} onChange={(v) => onFieldChange('terminal_1_total', v)} disabled={locked} />
                 <ExcelInputRow label="Terminal 2" value={formData.terminal_2_total} onChange={(v) => onFieldChange('terminal_2_total', v)} disabled={locked} />
-                <ExcelInputRow label="KK Umsatz GL" value={formData.card_total_gl} onChange={(v) => onFieldChange('card_total_gl', v)} disabled={locked} />
+                <ExcelInputRow label="GL Kredit Karten" value={formData.card_total_gl} onChange={(v) => onFieldChange('card_total_gl', v)} disabled={locked} />
                 
               </tbody>
             </table>
