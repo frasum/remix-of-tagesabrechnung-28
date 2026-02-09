@@ -80,11 +80,8 @@ export function TableLayout({
             <TableBody>
               {inputRows.map((row) => (
                 <TableRow key={row.field}>
-                  <TableCell className="py-2 font-medium w-1/3">{row.label}</TableCell>
-                  <TableCell className="py-2 text-right tabular-nums w-1/3">
-                    {formatCurrency(row.value)}
-                  </TableCell>
-                  <TableCell className="py-2 w-1/3">
+                  <TableCell className="py-2 font-medium w-1/2">{row.label}</TableCell>
+                  <TableCell className="py-2 w-1/2">
                     <CurrencyInput
                       value={row.value}
                       onChange={(v) => onFieldChange(row.field, v)}
