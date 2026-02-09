@@ -22,7 +22,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRegisterTransfers } from '@/hooks/useRegisterTransfers';
 import { TransferDialog } from '@/components/register/TransferDialog';
 import { LayoutSwitcher, type LayoutMode } from '@/components/daily-summary/LayoutSwitcher';
-import { HorizontalLayout, SectionsLayout, ColumnsLayout, TableLayout } from '@/components/daily-summary/layouts';
+import { HorizontalLayout, SectionsLayout, ColumnsLayout, TableLayout, ExcelLayout } from '@/components/daily-summary/layouts';
 import {
   useSession,
   useCreateSession,
@@ -47,7 +47,7 @@ export default function DailySummary() {
   const [layoutMode, setLayoutMode] = useState<LayoutMode>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
-      if (saved && ['horizontal', 'sections', 'columns', 'table'].includes(saved)) {
+      if (saved && ['horizontal', 'sections', 'columns', 'table', 'excel'].includes(saved)) {
         return saved as LayoutMode;
       }
     }
@@ -934,6 +934,30 @@ export default function DailySummary() {
             {...layoutProps}
             formData={formData}
             onFieldChange={(field, value) => updateField(field as keyof typeof formData, value)}
+          />
+        );
+      case 'excel':
+        return (
+          <ExcelLayout
+            warnings={warningsComponent}
+            expenses={expensesComponent}
+            cashBalanceCard={cashBalanceCardComponent}
+            waiterShifts={waiterShifts}
+            formData={formData}
+            onFieldChange={(field, value) => updateField(field as keyof typeof formData, value)}
+            totalKassiertBrutto={totalKassiertBrutto}
+            kellnerUmsatz={kellnerUmsatz}
+            totalCardTotal={totalCardTotal}
+            totalDeliveryRevenue={totalDeliveryRevenue}
+            totalOpenInvoices={totalOpenInvoices}
+            totalExpenses={totalExpenses}
+            totalKitchenTip={totalKitchenTip}
+            waiterTipPool={waiterTipPool}
+            waiterShareCount={waiterShareCount}
+            tipPerWaiter={tipPerWaiter}
+            uniqueKitchenStaff={uniqueKitchenStaff}
+            tipPerKitchen={tipPerKitchen}
+            bargeld={bargeld}
           />
         );
       case 'columns':
