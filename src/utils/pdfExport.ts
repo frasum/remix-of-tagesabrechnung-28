@@ -159,26 +159,16 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     tableWidth: tableWidth,
   });
 
-  // ========== RIGHT SIDE: Trinkgeld p.p. + ohne HilfMahl ==========
+  // ========== RIGHT SIDE: ohne HilfMahl ==========
   const rightX = margin + tableWidth + 10;
-  const waiterCount = data.waiterShifts.length;
-  const tipPerWaiter = waiterCount > 0 ? data.totals.totalWaiterTip / waiterCount : 0;
+  const totalHilfMahl2 = data.totals.totalHilfMahl;
+  const bargeldOhneHilf2 = bargeldMitHilf - totalHilfMahl2;
 
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('trinkgeld p.p', rightX, y + 5);
-  doc.text(formatCurrency(tipPerWaiter), pageWidth - margin, y + 5, { align: 'right' });
-
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('service', rightX, y + 11);
-
-  // "ohne hilfmahl" at bottom-right, aligned with Bargeld row
   const tableEndY = (doc as any).lastAutoTable.finalY;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text('ohne hilfmahl', rightX, tableEndY - 2);
-  doc.text(formatCurrency(bargeldOhneHilf), pageWidth - margin, tableEndY - 2, { align: 'right' });
+  doc.text(formatCurrency(bargeldOhneHilf2), pageWidth - margin, tableEndY - 2, { align: 'right' });
 
   y = tableEndY + 8;
 
