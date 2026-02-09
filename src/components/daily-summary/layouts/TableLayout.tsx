@@ -95,23 +95,25 @@ export function TableLayout({
         </CardContent>
       </Card>
 
-      {/* Expenses above Notes */}
-      {expenses}
-
-      {/* Notes */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle>Notizen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            placeholder="Notizen für diesen Tag..."
-            value={formData.notes}
-            onChange={(e) => onFieldChange('notes', e.target.value)}
-            rows={3}
-          />
-        </CardContent>
-      </Card>
+      {/* Expenses & Notes side by side */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {expenses}
+        
+        {/* Notes */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Notizen</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              placeholder="Notizen für diesen Tag..."
+              value={formData.notes}
+              onChange={(e) => onFieldChange('notes', e.target.value)}
+              rows={3}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Summary Grid */}
       <div className="grid md:grid-cols-3 gap-4">
