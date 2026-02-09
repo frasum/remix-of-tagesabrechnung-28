@@ -277,6 +277,18 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
       tableWidth: tableWidth,
     });
     y = (doc as any).lastAutoTable.finalY + 4;
+
+    // Gesamt-Trinkgeld-Prozentsatz
+    const totalTipPercent = data.totals.kellnerUmsatz > 0
+      ? (data.totals.totalWaiterTip / data.totals.kellnerUmsatz) * 100
+      : 0;
+    y += 4;
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text(
+      `Ø Trinkgeld: ${formatCurrency(data.totals.totalWaiterTip)} von ${formatCurrency(data.totals.kellnerUmsatz)} Umsatz = ${totalTipPercent.toFixed(1).replace('.', ',')}%`,
+      tableMarginLeft + 2, y
+    );
   }
 
   // ========== Footer with page numbers ==========
