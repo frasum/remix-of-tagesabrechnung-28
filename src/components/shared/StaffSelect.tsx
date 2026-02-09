@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useActiveStaff, StaffRole } from '@/hooks/useStaff';
+import { useActiveStaff, useActiveStaffByRestaurant, StaffRole } from '@/hooks/useStaff';
 import { User, ChefHat, Users } from 'lucide-react';
 
 export type StaffSelectRole = StaffRole | 'all';
@@ -11,6 +11,7 @@ interface StaffSelectProps {
   placeholder?: string;
   disabled?: boolean;
   excludeNames?: string[];
+  restaurantId?: string | null;
 }
 
 export function StaffSelect({ 
@@ -20,8 +21,12 @@ export function StaffSelect({
   placeholder = 'Mitarbeiter wählen',
   disabled = false,
   excludeNames = [],
+  restaurantId,
 }: StaffSelectProps) {
-  const { data: staffList = [], isLoading } = useActiveStaff(role === 'all' ? undefined : role);
+  const resolvedRole = role === 'all' ? undefined : role;
+  const globalQuery = useActiveStaff(restaurantId ? undefined : resolvedRole);
+  const restaurantQuery = useActiveStaffByRestaurant(restaurantId ?? null, resolvedRole);
+  const { data: staffList = [], isLoading } = restaurantId ? restaurantQuery : globalQuery;
   const filteredStaff = excludeNames.length > 0
     ? staffList.filter((s) => !excludeNames.includes(s.name))
     : staffList;
