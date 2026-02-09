@@ -16,6 +16,7 @@ export const NAV_PERMISSIONS: Record<string, PermissionConfig> = {
   'history': { label: 'Verlauf', description: 'Vergangene Abrechnungen', minLevel: 'manager' },
   'cash-balance': { label: 'Bargeldbestand', description: 'Bargeld verwalten', minLevel: 'manager' },
   'register-balance': { label: 'Wechselgeldbestand', description: 'Kassentransfers verwalten', minLevel: 'manager' },
+  'qr-poster': { label: 'QR-Poster', description: 'Kellner Self-Service Poster', minLevel: 'manager' },
   'staff': { label: 'Mitarbeiter', description: 'Mitarbeiter verwalten', minLevel: 'admin' },
   'permissions': { label: 'Berechtigungen', description: 'Navigationszugriff verwalten', minLevel: 'admin' },
 };
@@ -29,6 +30,7 @@ export const MANAGER_NAV_ITEMS = [
   { path: 'history', label: 'Verlauf' },
   { path: 'cash-balance', label: 'Bargeldbestand' },
   { path: 'register-balance', label: 'Tresor' },
+  { path: 'qr-poster', label: 'QR-Poster' },
 ];
 
 // Permission level hierarchy (higher index = more permissions)
