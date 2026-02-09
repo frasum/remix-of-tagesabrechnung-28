@@ -1,42 +1,66 @@
 
-# Restaurant-Switcher auf zugewiesene Restaurants beschraenken
+
+# Fix: staffId bei PIN-Login setzen
 
 ## Problem
 
-Der Restaurant-Switcher in der Sidebar (`AppLayout.tsx`) zeigt **alle** Restaurants an, nicht nur die, denen der Mitarbeiter zugeordnet ist. Das liegt daran, dass `useRestaurants()` in `RestaurantContext.tsx` einfach `SELECT * FROM restaurants` ausfuehrt -- ohne Filterung nach `staff_restaurants`.
+Wenn sich Mitarbeiter per PIN einloggen, wird `staffId` nicht gesetzt. Das hat zwei Auswirkungen:
+
+1. **Manager sehen zu viel:** Statistiken, Verlauf und Bargeldbestand werden angezeigt, auch wenn sie in der Datenbank nicht freigeschaltet sind
+2. **Restaurant-Switcher:** Der kuerzlich implementierte Filter (nur zugewiesene Restaurants anzeigen) greift ebenfalls nicht, da er auf `staffId` basiert
+
+## Ursache
+
+In `src/contexts/AuthContext.tsx`, Zeile 279-284, fehlt beim PIN-Login das Feld `staffId`:
+
+```text
+// Aktuell (PIN-Login):
+authUser = {
+  id: result.user.id,       // = Staff-ID
+  name, role, permissionLevel
+  // staffId fehlt!
+}
+
+// OAuth-Login setzt korrekt:
+authUser = {
+  ...
+  staffId: roleData.staff_id   // vorhanden
+}
+```
 
 ## Loesung
 
-Den `useRestaurants()`-Hook so anpassen, dass er nur die Restaurants zurueckgibt, denen der eingeloggte Mitarbeiter zugeordnet ist. Admins sehen weiterhin alle Restaurants.
+Eine einzeilige Aenderung in `src/contexts/AuthContext.tsx`:
 
-## Aenderungen
+### `src/contexts/AuthContext.tsx` -- PIN-Login (Zeile ~279-284)
 
-### 1. `src/contexts/RestaurantContext.tsx` -- `useRestaurants` anpassen
-
-- Die `staffId` und `permissionLevel` aus dem `AuthContext` nutzen
-- Fuer **Admins**: Weiterhin alle Restaurants laden (damit sie ueberall Zugriff haben)
-- Fuer **alle anderen**: Nur Restaurants laden, die ueber `staff_restaurants` verknuepft sind
-- Query ueber `staff_restaurants` mit Join auf `restaurants` filtern (gleiche Logik wie in `RestaurantSelect.tsx`)
-
-### 2. `src/hooks/useRestaurant.ts` -- Re-Export bleibt unveraendert
-
-Keine Aenderung noetig, da der Hook weiterhin aus dem Context re-exportiert wird.
-
-## Technische Details
+`staffId: result.user.id` zum AuthUser-Objekt hinzufuegen. Die `result.user.id` aus der `validate-pin` Edge Function ist bereits die Staff-ID aus der `staff`-Tabelle.
 
 ```text
 Vorher:
-  useRestaurants() -> SELECT * FROM restaurants
+  const authUser: AuthUser = {
+    id: result.user.id,
+    name: result.user.name,
+    role: result.user.role,
+    permissionLevel: result.permission_level || 'staff',
+  };
 
-Nachher (Staff/Manager):
-  useRestaurants() -> SELECT restaurant_id, restaurants(*)
-                      FROM staff_restaurants
-                      WHERE staff_id = :staffId
-
-Nachher (Admin):
-  useRestaurants() -> SELECT * FROM restaurants (unveraendert)
+Nachher:
+  const authUser: AuthUser = {
+    id: result.user.id,
+    name: result.user.name,
+    role: result.user.role,
+    permissionLevel: result.permission_level || 'staff',
+    staffId: result.user.id,
+  };
 ```
 
-- Die gleiche Abfrage-Logik existiert bereits in `RestaurantSelect.tsx` und wird hier wiederverwendet
-- Der `queryKey` erhaelt die `staffId` als Abhaengigkeit, damit der Cache korrekt invalidiert wird
-- Kein Datenbankumbau noetig -- die Tabelle `staff_restaurants` existiert bereits
+## Auswirkung
+
+Nach dieser Aenderung funktionieren fuer **alle** PIN-eingeloggten Mitarbeiter:
+
+- **Navigationsfilter:** Manager sehen nur die ihnen zugewiesenen Seiten
+- **Restaurant-Switcher:** Zeigt nur zugewiesene Restaurants (statt alle)
+- **Session-Lock:** Die `unlockSession`-Funktion prueft bereits `user?.staffId` -- funktioniert dann auch korrekt
+
+Keine weiteren Dateien muessen geaendert werden.
