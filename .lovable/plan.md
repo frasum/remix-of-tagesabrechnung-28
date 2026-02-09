@@ -1,48 +1,29 @@
 
-# Kellner-Details im PDF-Export ergaenzen
+
+# PDF-Export: Team-Schichten aufteilen + TG Euro-Betrag anzeigen
 
 ## Uebersicht
-Unterhalb der bestehenden Zusammenfassung (nach "ohne hilfmahl" und Ausgaben) wird eine neue Tabelle mit Kellner-Details eingefuegt:
-- **Name** des Kellners
-- **Umsatz** (pos_sales)
-- **Abgabezeit** (submitted_at)
-- **TG %** (Trinkgeld-Prozentsatz vom Umsatz)
+Zwei Aenderungen an der Kellner-Details-Tabelle im PDF:
 
-## Aenderungen
+1. **Team-Schichten aufteilen**: Bei Team-Schichten (z.B. Cherry + Joy) werden beide Kellner als separate Zeilen angezeigt, mit halbiertem Umsatz und je einem Pool-Anteil.
+2. **TG Euro-Betrag ergaenzen**: Neben dem TG % wird eine neue Spalte mit dem Euro-Betrag des Trinkgelds pro Kellner angezeigt.
 
-### 1. WaiterShift-Interface erweitern (`src/utils/pdfExport.ts`)
-Zwei neue Felder hinzufuegen:
-- `submitted_at?: string | null` - Zeitpunkt der Abgabe
-- `participates_in_pool?: boolean` - ob am TG-Pool teilgenommen wird
-- `second_waiter_name?: string | null` - fuer korrekte Anteilsberechnung
+## Ergebnis im PDF
 
-### 2. Neue Kellner-Tabelle im PDF (`src/utils/pdfExport.ts`)
-Nach dem Ausgaben-Block eine neue autoTable-Tabelle einfuegen:
-
-| Kellner | Umsatz | Abgabe | TG % |
-|---------|--------|--------|------|
-| Max     | 1.234 EUR | 14:32 | 3,2% |
-| Anna    | 987 EUR   | 15:10 | 4,1% |
-
-**TG % Berechnung:**
-```
-tipPerWaiter = totalWaiterTip / Anzahl Pool-Teilnehmer
-shares = second_waiter_name ? 2 : 1
-waiterPoolShare = participates_in_pool ? tipPerWaiter * shares : 0
-tipPercent = posSales > 0 ? (waiterPoolShare / posSales) * 100 : null
-```
-
-### 3. Daten beim Export uebergeben (`src/pages/DailySummary.tsx`)
-Die `waiterShifts`-Mapping um `submitted_at`, `participates_in_pool` und `second_waiter_name` erweitern.
-
-### 4. totalWaiterTip an PDFExportData uebergeben
-Wird bereits in `totals.totalWaiterTip` uebergeben - wird fuer die TG%-Berechnung in der PDF-Funktion genutzt.
+| Kellner | Umsatz | Abgabe | TG | TG % |
+|---------|--------|--------|----|------|
+| Max     | 1.234 EUR | 14:32 | 45,20 EUR | 3,7% |
+| Cherry  | 1.072 EUR | 15:42 | 45,20 EUR | 4,2% |
+| Joy     | 1.072 EUR | 15:42 | 45,20 EUR | 4,2% |
 
 ## Technische Details
 
-**Dateien:**
-- `src/utils/pdfExport.ts` - Interface erweitern + neue Tabelle nach Ausgaben
-- `src/pages/DailySummary.tsx` - `submitted_at`, `participates_in_pool`, `second_waiter_name` im Mapping ergaenzen
+**Datei: `src/utils/pdfExport.ts`** (Zeilen 210-240)
 
-**Layout im PDF:**
-Die Kellner-Tabelle wird zentriert mit gleicher Breite wie die Haupttabelle dargestellt, mit Header-Zeile in Grau und kompakter Schrift (8pt).
+- `map` wird durch `flatMap` ersetzt, um Team-Schichten in zwei Zeilen aufzuteilen
+- Umsatz wird bei Teams halbiert (`pos_sales / 2`)
+- Jeder Kellner bekommt 1 Share (statt 2 fuer die gesamte Team-Schicht)
+- Neue Spalte "TG" mit `formatCurrency(waiterPoolShare)` wird zwischen "Abgabe" und "TG %" eingefuegt
+- Header wird auf `['Kellner', 'Umsatz', 'Abgabe', 'TG', 'TG %']` erweitert
+- columnStyles werden fuer die zusaetzliche Spalte angepasst
+
