@@ -157,18 +157,18 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     tableWidth: tableWidth,
   });
 
-  // ========== RIGHT SIDE: ohne HilfMahl ==========
-  const rightX = margin + tableWidth + 10;
+  // ========== "ohne hilfmahl" below the Bargeld row ==========
+  const tableEndY = (doc as any).lastAutoTable.finalY;
   const totalHilfMahl2 = data.totals.totalHilfMahl;
   const bargeldOhneHilf2 = bargeldMitHilf - totalHilfMahl2;
 
-  const tableEndY = (doc as any).lastAutoTable.finalY;
+  y = tableEndY + 6;
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('ohne hilfmahl', rightX, tableEndY - 2);
-  doc.text(formatCurrency(bargeldOhneHilf2), pageWidth - margin, tableEndY - 2, { align: 'right' });
+  doc.text('ohne hilfmahl', margin + 2, y);
+  doc.text(formatCurrency(bargeldOhneHilf2), margin + tableWidth - 2, y, { align: 'right' });
 
-  y = tableEndY + 8;
+  y += 8;
 
   // ========== AUSGABEN (if any) ==========
   if (data.expenses.length > 0) {
