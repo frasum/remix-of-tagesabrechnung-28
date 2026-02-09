@@ -281,6 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: result.user.name,
         role: result.user.role,
         permissionLevel: result.permission_level || 'staff',
+        staffId: result.user.id,
       };
 
       setUser(authUser);
