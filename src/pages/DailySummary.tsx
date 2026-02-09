@@ -732,6 +732,7 @@ export default function DailySummary() {
               onValueChange={setAdvanceStaffName}
               role="all"
               placeholder="Mitarbeiter wählen"
+              restaurantId={restaurantId}
             />
           </div>
           <CurrencyInput

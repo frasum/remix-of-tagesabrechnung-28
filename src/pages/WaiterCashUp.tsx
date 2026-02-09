@@ -289,7 +289,7 @@ export default function WaiterCashUp() {
               <CardContent className="space-y-4">
                 <div>
                   <Label>Kellner auswählen</Label>
-                  <StaffSelect value={newWaiterName} onValueChange={setNewWaiterName} role="waiter" placeholder="Kellner wählen" excludeNames={waiterShifts.filter(s => s.id !== editingShiftId).map(s => s.waiter_name)} />
+                  <StaffSelect value={newWaiterName} onValueChange={setNewWaiterName} role="waiter" placeholder="Kellner wählen" excludeNames={waiterShifts.filter(s => s.id !== editingShiftId).map(s => s.waiter_name)} restaurantId={restaurantId} />
                 </div>
 
                 {newParticipatesInPool && (
@@ -300,6 +300,7 @@ export default function WaiterCashUp() {
                       onValueChange={setNewSecondWaiterName} 
                       excludeWaiter={newWaiterName}
                       placeholder="Keiner (Einzelschicht)"
+                      restaurantId={restaurantId}
                     />
                   </div>
                 )}

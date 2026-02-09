@@ -1,5 +1,5 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useActiveStaff } from '@/hooks/useStaff';
+import { useActiveStaff, useActiveStaffByRestaurant } from '@/hooks/useStaff';
 import { User, Users } from 'lucide-react';
 
 interface SecondWaiterSelectProps {
@@ -8,6 +8,7 @@ interface SecondWaiterSelectProps {
   excludeWaiter?: string;
   placeholder?: string;
   disabled?: boolean;
+  restaurantId?: string | null;
 }
 
 export function SecondWaiterSelect({ 
@@ -15,9 +16,12 @@ export function SecondWaiterSelect({
   onValueChange, 
   excludeWaiter = '',
   placeholder = 'Keiner',
-  disabled = false 
+  disabled = false,
+  restaurantId,
 }: SecondWaiterSelectProps) {
-  const { data: staffList = [], isLoading } = useActiveStaff('waiter');
+  const globalQuery = useActiveStaff(restaurantId ? undefined : 'waiter');
+  const restaurantQuery = useActiveStaffByRestaurant(restaurantId ?? null, 'waiter');
+  const { data: staffList = [], isLoading } = restaurantId ? restaurantQuery : globalQuery;
   
   // Filter out the primary waiter from the list
   const filteredStaff = staffList.filter(staff => staff.name !== excludeWaiter);
