@@ -28,6 +28,7 @@ export const MANAGER_NAV_ITEMS = [
   { path: 'statistics', label: 'Statistiken' },
   { path: 'history', label: 'Verlauf' },
   { path: 'cash-balance', label: 'Bargeldbestand' },
+  { path: 'register-balance', label: 'Tresor' },
 ];
 
 // Permission level hierarchy (higher index = more permissions)
