@@ -1,36 +1,32 @@
 
+# PDF-Export Anpassungen: Datum groesser, Bargeld-Feld schwarz-weiss, Tabelle zentriert
 
-# Datum gross anzeigen auf der Tagesabrechnungs-Seite
+## Aenderungen
 
-## Aenderung
+### 1. Datum groesser und fett
+Das Datum wird von 18pt normal auf **24pt bold** erhoeht, damit es deutlich prominenter ist.
 
-Die Datumsanzeige "Samstag, 7. Februar 2026" wird deutlich groesser und prominenter dargestellt -- aktuell ist sie nur ein kleiner grauer Untertitel.
+### 2. Bargeld-Zeile: Schwarz-weiss statt gruen
+Da ein Schwarz-Weiss-Drucker verwendet wird, wird die gruene Hintergrundfarbe (`fillColor: [220, 252, 231]`) entfernt. Stattdessen bekommt die Zeile:
+- Weisser Hintergrund
+- Schwarzer Rahmen drumherum
+- Etwas groessere Schrift (11pt statt 9pt)
 
-## Umsetzung
+### 3. Tabelle mittig auf der Seite
+Die Tabelle wird horizontal zentriert, indem der linke Margin dynamisch berechnet wird:
+`marginLeft = (pageWidth - tableWidth) / 2`
 
-In `src/pages/DailySummary.tsx` (Zeile 1001-1003):
+Aktuell ist die Tabelle linksbuendig mit `margin: { left: 14 }`. Neu wird sie mittig gesetzt.
 
-**Vorher:**
-```
-<p className="text-muted-foreground mt-1">
-  Komplette Uebersicht fuer {format(...)}
-</p>
-```
+## Technische Umsetzung
 
-**Nachher:**
-```
-<p className="text-xl lg:text-2xl font-semibold text-foreground mt-1">
-  {format(selectedDate, "EEEE, d. MMMM yyyy", { locale: de })}
-</p>
-```
+In `src/utils/pdfExport.ts`:
 
-- Schriftgroesse wird von Standard auf `text-xl` / `text-2xl` erhoeht
-- Farbe wird von grau (`text-muted-foreground`) auf schwarz (`text-foreground`) geaendert
-- Der Praefix "Komplette Uebersicht fuer" wird entfernt, sodass nur das Datum stehen bleibt (wie im Screenshot)
-
-## Datei
-
-| Datei | Aenderung |
+| Zeile | Aenderung |
 |-------|-----------|
-| `src/pages/DailySummary.tsx` | Zeile 1001-1003: Datum-Anzeige vergroessern und vereinfachen |
-
+| 87-88 | Datum: `setFontSize(24)` + `setFont('helvetica', 'bold')` |
+| 125 | `tableWidth` bleibt bei 55%, aber margins werden zentriert: `const tableMarginLeft = (pageWidth - tableWidth) / 2` |
+| 146-148 | Bargeld-Zeile: `fillColor` entfernen, stattdessen `lineWidth` und `lineColor` fuer schwarzen Rahmen verwenden |
+| 150-158 | autoTable margin links/rechts auf zentrierte Werte setzen |
+| 165-169 | "ohne hilfmahl" ebenfalls zentriert positionieren |
+| 174-193 | Ausgaben-Tabelle ebenfalls zentriert |
