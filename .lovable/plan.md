@@ -1,38 +1,22 @@
 
 
-# Navigation nur nach Laden der Berechtigungen anzeigen
+# Kellner-Tabelle auf Seite 2 fuer beidseitigen Druck
 
-## Problem
-Wenn Gerard (Manager) eingeloggt ist, werden waehrend des Ladens seiner individuellen Navigationsberechtigungen kurzzeitig ALLE Manager-Navigationselemente angezeigt. Der Grund: Solange die `managerPaths`-Abfrage noch laeuft, ist `managerPaths = []` und `hasCustomPermissions = false`. Dadurch greift die Fallback-Logik "Manager ohne individuelle Berechtigungen sieht alles" -- und alle Menue-Eintraege werden sichtbar.
-
-Wenn die Daten dann geladen sind, verschwinden die nicht erlaubten Eintraege. Aber bei langsamer Verbindung oder Cache-Miss bleibt die falsche Anzeige laenger sichtbar.
-
-## Loesung
-Den Ladezustand (`isLoading`) der `useManagerNavPermissions`-Query beruecksichtigen. Solange die Berechtigungen noch geladen werden, soll die Navigation nur die absoluten Kern-Elemente anzeigen (alwaysVisible) -- nicht alles.
+## Ziel
+Da der Drucker beidseitig drucken kann, soll die Kellner-Tabelle immer auf Seite 2 beginnen. Seite 1 enthaelt die Zusammenfassung, Ausgaben und Vorschuesse. So ergibt sich ein sauberes Vorder-/Rueckseiten-Layout.
 
 ## Technische Aenderung
 
-### Datei: `src/components/layout/AppLayout.tsx`
+### Datei: `src/utils/pdfExport.ts`
 
-1. Den `isLoading`-Status aus dem `useManagerNavPermissions`-Hook extrahieren:
-```tsx
-const { data: managerPaths = [], isLoading: isLoadingPermissions } = useManagerNavPermissions(
-  isManager ? user?.staffId : undefined
-);
-```
+1. **Seiten-Loeschung entfernen** (Zeilen 280-284) -- der `while`-Loop, der alle Seiten nach Seite 1 loescht, wird entfernt.
 
-2. In der Filter-Logik den Ladezustand beruecksichtigen -- wenn noch geladen wird, nur alwaysVisible-Pfade zeigen:
-```tsx
-// Manager without custom permissions loaded yet - show only core items
-if (isManager && isLoadingPermissions) {
-  return alwaysVisibleForManager.includes(item.path);
-}
+2. **Seitenumbruch vor Kellner-Tabelle erzwingen** -- Direkt vor dem Kellner-Block (`if (data.waiterShifts.length > 0)`) wird ein `doc.addPage()` eingefuegt, damit die Kellner-Tabelle immer auf Seite 2 startet. Die `y`-Position wird auf den Seitenanfang zurueckgesetzt.
 
-// Manager without custom permissions (fully loaded, none configured)
-if (isManager) {
-  return item.minLevel !== 'admin';
-}
-```
+3. **Seitenzahlen im Footer** -- Analog zum Cash-Balance-PDF wird am Ende eine Schleife ueber alle Seiten eingefuegt, die "Seite X von Y" unten zentriert ausgibt.
 
-Damit wird verhindert, dass waehrend des Ladens alle Navigationspunkte kurz aufblitzen.
+### Seitenaufteilung
+
+- **Seite 1 (Vorderseite):** Header, Warnungen, Zusammenfassungstabelle, Bargeld, Ausgaben, Vorschuesse
+- **Seite 2 (Rueckseite):** Kellner-Tabelle (Name, Umsatz, Abgabezeit, TG Euro, TG %)
 
