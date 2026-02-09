@@ -900,42 +900,28 @@ export default function DailySummary() {
           {waiterShifts.map((shift) => {
             const submittedAt = formatSubmittedAt((shift as any).submitted_at);
             const hasData = (shift.pos_sales || 0) > 0 || (shift.cash_handed_in || 0) > 0;
-            const posSales = shift.pos_sales || 0;
-            const shares = shift.second_waiter_name ? 2 : 1;
-            const waiterPoolShare = shift.participates_in_pool ? tipPerWaiter * shares : 0;
-            const tipPercent = posSales > 0 && shift.participates_in_pool
-              ? (waiterPoolShare / posSales) * 100
-              : null;
             
             return (
-              <div key={shift.id} className="border-b border-border last:border-0 py-2">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{shift.waiter_name}</span>
-                  <div className="flex items-center gap-2">
-                    {hasData ? (
-                      <Badge variant="default" className="gap-1 text-xs">
-                        <CheckCircle2 className="w-3 h-3" />
-                        OK
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="gap-1 text-xs">
-                        <Clock className="w-3 h-3" />
-                        Offen
-                      </Badge>
-                    )}
-                    {submittedAt && (
-                      <span className="text-xs text-muted-foreground">
-                        {submittedAt}
-                      </span>
-                    )}
-                  </div>
+              <div key={shift.id} className="flex items-center justify-between py-1">
+                <span className="font-medium text-sm">{shift.waiter_name}</span>
+                <div className="flex items-center gap-2">
+                  {hasData ? (
+                    <Badge variant="default" className="gap-1 text-xs">
+                      <CheckCircle2 className="w-3 h-3" />
+                      OK
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      <Clock className="w-3 h-3" />
+                      Offen
+                    </Badge>
+                  )}
+                  {submittedAt && (
+                    <span className="text-xs text-muted-foreground hidden sm:inline">
+                      {submittedAt}
+                    </span>
+                  )}
                 </div>
-                {hasData && (
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                    <span>Umsatz: {posSales.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}</span>
-                    <span>TG: {tipPercent !== null ? `${tipPercent.toFixed(1).replace('.', ',')}%` : '---'}</span>
-                  </div>
-                )}
               </div>
             );
           })}
