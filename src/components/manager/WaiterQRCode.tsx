@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useRestaurants } from '@/hooks/useRestaurant';
 
-const BASE_URL = typeof window !== 'undefined' ? window.location.origin : 'https://tagesabrechnung.lovable.app';
+const PRODUCTION_URL = 'https://tagesabrechnung.lovable.app';
 
 export function WaiterQRCode() {
   const [copied, setCopied] = useState(false);
@@ -25,7 +25,7 @@ export function WaiterQRCode() {
   }, [restaurants, selectedSlug]);
 
   const selectedRestaurant = restaurants?.find(r => r.slug === selectedSlug);
-  const waiterUrl = `${BASE_URL}/${selectedSlug}/waiter`;
+  const waiterUrl = `${PRODUCTION_URL}/${selectedSlug}/waiter`;
 
   const handleCopyLink = async () => {
     try {
