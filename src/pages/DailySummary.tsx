@@ -1001,6 +1001,9 @@ export default function DailySummary() {
             <p className="text-xl lg:text-2xl font-semibold text-foreground mt-1">
               {format(selectedDate, "EEEE, d. MMMM yyyy", { locale: de })}
             </p>
+            {user?.name && (
+              <p className="text-sm text-muted-foreground mt-1">{user.name}</p>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <LayoutSwitcher value={layoutMode} onChange={handleLayoutChange} />
