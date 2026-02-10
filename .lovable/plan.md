@@ -1,29 +1,56 @@
 
 
-## PDF-Export auf eine Seite zusammenfuehren
+## Fix: Session-Erstellung bei Kellner-Selfservice absichern
 
-Aktuell wird die Kellner-Tabelle auf einer separaten Seite 2 gedruckt (`doc.addPage()`). Alles soll auf eine einzige Seite passen.
+### Problem
 
-### Aenderungen in `src/utils/pdfExport.ts`
+Wenn Mo auf "Abrechnung speichern" klickt, prueft der Code ob eine Session existiert. Wenn die Session-Abfrage noch nicht geladen hat oder ein Timing-Problem vorliegt, versucht der Code eine neue Session anzulegen. Da aber bereits eine Session fuer heute existiert (vom Manager erstellt), schlaegt das an der Datenbank-Einschraenkung `sessions_restaurant_date_unique` fehl.
 
-1. **`doc.addPage()` entfernen** (Zeile 240) -- die Kellner-Tabelle wird direkt nach den Ausgaben/Vorschuss-Tabellen auf derselben Seite weitergeschrieben
+Die DB-Logs zeigen 6 solcher Fehler in den letzten Minuten.
 
-2. **Schriftgroessen und Abstaende kompakter machen**, damit alles auf eine Seite passt:
-   - Header: Restaurantname von 28pt auf 20pt, Datum von 24pt auf 16pt
-   - Zeilenabstaende zwischen Sektionen reduzieren
-   - Summary-Tabelle: `cellPadding` verkleinern
-   - Die leere Spacer-Zeile (`['', '']`) entfernen
+### Loesung
 
-3. **Tabellenbreite auf volle Seitenbreite** statt 55% -- damit Kellner-Tabelle und Summary nebeneinander oder zumindest platzsparender dargestellt werden
+Die `useCreateSession`-Funktion so aendern, dass sie **zuerst prueft ob eine Session existiert** und diese zurueckgibt, anstatt blind ein INSERT zu machen. Das ist ein "upsert"-artiges Verhalten.
 
-4. **Seitennummerierung** bleibt bestehen, zeigt dann "Seite 1 von 1"
+### Aenderungen
+
+**1. `src/hooks/useSession.ts` -- `useCreateSession` absichern**
+
+Die `mutationFn` aendern: Vor dem INSERT erst ein SELECT machen. Falls die Session schon existiert, diese zurueckgeben statt eine neue zu erstellen.
+
+```text
+mutationFn: async ({ date, restaurantId, createdByName }) => {
+  const dateStr = format(date, 'yyyy-MM-dd');
+
+  // Erst pruefen ob Session schon existiert
+  const { data: existing } = await supabase
+    .from('sessions')
+    .select('*')
+    .eq('session_date', dateStr)
+    .eq('restaurant_id', restaurantId)
+    .maybeSingle();
+
+  if (existing) return existing;
+
+  // Nur erstellen wenn keine existiert
+  const { data, error } = await supabase
+    .from('sessions')
+    .insert({ ... })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+```
+
+**2. `src/pages/WaiterMobile.tsx` -- Zusaetzliche Absicherung**
+
+Den Save-Button deaktivieren solange die Session-Query noch laedt (`sessionLoading`), damit der Benutzer nicht zu frueh klicken kann.
 
 ### Ergebnis
 
-Ein einziges Blatt mit:
-- Header (Name + Datum)
-- Warnungen (falls vorhanden)
-- Zusammenfassung (Umsatz, KK, etc. bis Bargeld)
-- Ausgaben und Vorschuss (falls vorhanden)
-- Kellner-Tabelle mit Trinkgeld-Infos
+- Kein "duplicate key" Fehler mehr
+- Mo und andere Kellner koennen problemlos speichern, auch wenn die Session bereits vom Manager erstellt wurde
+- Keine Aenderung am bestehenden Verhalten fuer Manager
 
