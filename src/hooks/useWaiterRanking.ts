@@ -27,7 +27,7 @@ export function useWaiterRanking() {
       // 2. Load all waiter shifts
       const { data: allShifts, error: shiftsError } = await supabase
         .from('waiter_shifts')
-        .select('*');
+        .select('session_id, waiter_name, pos_sales, hilf_mahl, open_invoices, card_total, cash_handed_in, kitchen_tip, participates_in_pool');
       
       if (shiftsError) throw shiftsError;
       if (!allShifts || allShifts.length === 0) return [];

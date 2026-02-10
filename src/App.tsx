@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,27 +10,38 @@ import { DateProvider } from "@/contexts/DateContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SessionLockScreen } from "@/components/auth/SessionLockScreen";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
+import { Loader2 } from "lucide-react";
 
-import Login from "./pages/Login";
-import WaiterCashUp from "./pages/WaiterCashUp";
-import WaiterMobile from "./pages/WaiterMobile";
-// ManagerDashboard removed - functionality moved to DailySummary
-import KitchenTipSplit from "./pages/KitchenTipSplit";
-import DailySummary from "./pages/DailySummary";
-import Statistics from "./pages/Statistics";
-import History from "./pages/History";
-import StaffManagement from "./pages/StaffManagement";
-import CashBalance from "./pages/CashBalance";
-import WaiterQRPoster from "./pages/WaiterQRPoster";
-import Install from "./pages/Install";
-import NotFound from "./pages/NotFound";
-import OAuthCallback from "./pages/OAuthCallback";
-import { ConfirmLoginPage } from "./pages/ConfirmLoginPage";
-import PermissionManagement from "./pages/PermissionManagement";
+const Login = lazy(() => import("./pages/Login"));
+const WaiterCashUp = lazy(() => import("./pages/WaiterCashUp"));
+const WaiterMobile = lazy(() => import("./pages/WaiterMobile"));
+const KitchenTipSplit = lazy(() => import("./pages/KitchenTipSplit"));
+const DailySummary = lazy(() => import("./pages/DailySummary"));
+const Statistics = lazy(() => import("./pages/Statistics"));
+const History = lazy(() => import("./pages/History"));
+const StaffManagement = lazy(() => import("./pages/StaffManagement"));
+const CashBalance = lazy(() => import("./pages/CashBalance"));
+const WaiterQRPoster = lazy(() => import("./pages/WaiterQRPoster"));
+const Install = lazy(() => import("./pages/Install"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
+const ConfirmLoginPage = lazy(() => import("./pages/ConfirmLoginPage").then(m => ({ default: m.ConfirmLoginPage })));
+const PermissionManagement = lazy(() => import("./pages/PermissionManagement"));
+const RestaurantSelect = lazy(() => import("./pages/RestaurantSelect"));
 
-import RestaurantSelect from "./pages/RestaurantSelect";
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 2 * 60 * 1000,
+    },
+  },
+});
 
 // Wrapper component that provides restaurant context for restaurant-specific routes
 function RestaurantRoutes() {
@@ -83,25 +94,27 @@ function AppContent() {
   return (
     <>
       {isLocked && user && <SessionLockScreen />}
-      <Routes>
-        {/* Global routes (no restaurant context needed) */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/auth/callback" element={<OAuthCallback />} />
-        <Route path="/select-restaurant" element={<ProtectedRoute><RestaurantSelect /></ProtectedRoute>} />
-        <Route path="/install" element={<Install />} />
-        <Route path="/confirm-login/:token" element={<ConfirmLoginPage />} />
-        <Route path="/staff" element={<ProtectedRoute requiredLevel="admin"><StaffManagement /></ProtectedRoute>} />
-        <Route path="/permissions" element={<ProtectedRoute requiredLevel="admin"><PermissionManagement /></ProtectedRoute>} />
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          {/* Global routes (no restaurant context needed) */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/auth/callback" element={<OAuthCallback />} />
+          <Route path="/select-restaurant" element={<ProtectedRoute><RestaurantSelect /></ProtectedRoute>} />
+          <Route path="/install" element={<Install />} />
+          <Route path="/confirm-login/:token" element={<ConfirmLoginPage />} />
+          <Route path="/staff" element={<ProtectedRoute requiredLevel="admin"><StaffManagement /></ProtectedRoute>} />
+          <Route path="/permissions" element={<ProtectedRoute requiredLevel="admin"><PermissionManagement /></ProtectedRoute>} />
 
-        {/* Redirect root to restaurant selection */}
-        <Route path="/" element={<Navigate to="/select-restaurant" replace />} />
+          {/* Redirect root to restaurant selection */}
+          <Route path="/" element={<Navigate to="/select-restaurant" replace />} />
 
-        {/* Restaurant-specific routes */}
-        <Route path="/:restaurant/*" element={<RestaurantRoutes />} />
+          {/* Restaurant-specific routes */}
+          <Route path="/:restaurant/*" element={<RestaurantRoutes />} />
 
-        {/* 404 */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
     </>
   );
 }
