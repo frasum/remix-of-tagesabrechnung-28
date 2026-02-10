@@ -302,7 +302,7 @@ export default function WaiterMobile() {
                 {!isSubmitted && (
                 <Button 
                   onClick={handleSave} 
-                  disabled={isSaving || !restaurantId}
+                  disabled={isSaving || !restaurantId || sessionLoading}
                   className="w-full"
                   size="lg"
                 >
