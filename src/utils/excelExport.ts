@@ -55,7 +55,7 @@ export function generateCashBalanceExcel({ rows, deposits, month, year, restaura
     'Datum',
     'Tagesumsatz',
     'Kreditkarten',
-    'OrderSmart',
+    'SoUse',
     'Wolt',
     'Gutsch. EL',
     'FineDine',
