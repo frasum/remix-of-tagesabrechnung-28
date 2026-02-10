@@ -76,6 +76,7 @@ interface PDFExportData {
     cardTerminalMismatch: number;
     totalAdvances?: number;
     previousDeficit?: number;
+    remainingCash?: number;
   };
 }
 
@@ -187,6 +188,20 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   doc.text(formatCurrency(bargeldOhneHilf2), tableMarginLeft + tableWidth - 2, y, { align: 'right' });
 
   y += 6;
+
+  // Kassenbestand row (highlighted)
+  if (data.totals.remainingCash !== undefined) {
+    const rc = data.totals.remainingCash;
+    const fillColor: [number, number, number] = rc >= 0 ? [220, 252, 231] : [254, 226, 226];
+    doc.setFillColor(...fillColor);
+    doc.rect(tableMarginLeft, y - 4, tableWidth, 7, 'F');
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(0);
+    doc.text('Kassenbestand', tableMarginLeft + 2, y);
+    doc.text(formatCurrency(rc), tableMarginLeft + tableWidth - 2, y, { align: 'right' });
+    y += 10;
+  }
 
   // ========== AUSGABEN (if any) ==========
   if (data.expenses.length > 0) {

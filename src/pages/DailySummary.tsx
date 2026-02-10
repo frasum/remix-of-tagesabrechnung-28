@@ -39,6 +39,7 @@ import { StaffSelect } from '@/components/shared/StaffSelect';
 import { useLabels } from '@/hooks/useLabels';
 import { LabelSettings } from '@/components/settings/LabelSettings';
 import { usePreviousDayDeficit } from '@/hooks/usePreviousDayDeficit';
+import { useRemainingCash } from '@/hooks/useRemainingCash';
 
 export default function DailySummary() {
   const { selectedDate, setSelectedDate } = useSelectedDate();
@@ -91,6 +92,9 @@ export default function DailySummary() {
   
   // Previous day deficit
   const { data: previousDeficit = 0 } = usePreviousDayDeficit(selectedDate, restaurantId);
+
+  // Remaining cash (Kassenbestand)
+  const { remainingCash } = useRemainingCash(restaurantId, selectedDate);
 
   // Labels
   const { getLabel, allLabels, isFieldHidden, hiddenFields } = useLabels(restaurantId);
@@ -373,6 +377,7 @@ export default function DailySummary() {
         cardTerminalMismatch,
         totalAdvances,
         previousDeficit,
+        remainingCash,
       },
     });
     
@@ -459,6 +464,12 @@ export default function DailySummary() {
         value={bargeld}
         icon={<Euro className="w-5 h-5" />}
         variant={bargeld >= 0 ? 'success' : 'error'}
+      />
+      <StatCard
+        label="Kassenbestand"
+        value={remainingCash}
+        icon={<Wallet className="w-5 h-5" />}
+        variant={remainingCash >= 0 ? 'success' : 'error'}
       />
       <StatCard
         label="Tagesumsatz"
