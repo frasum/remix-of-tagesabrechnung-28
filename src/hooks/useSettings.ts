@@ -66,3 +66,47 @@ export function usePettyCash(restaurantId: string | null) {
     isUpdating,
   };
 }
+
+export function useInitialCashDeficit(restaurantId: string | null) {
+  const queryClient = useQueryClient();
+
+  const { data: initialDeficit, isLoading } = useQuery({
+    queryKey: ['initial-cash-deficit', restaurantId],
+    queryFn: async () => {
+      if (!restaurantId) return 0;
+
+      const { data, error } = await supabase
+        .from('restaurants')
+        .select('initial_cash_deficit')
+        .eq('id', restaurantId)
+        .single();
+
+      if (error) throw error;
+      return (data as any)?.initial_cash_deficit ?? 0;
+    },
+    enabled: !!restaurantId,
+  });
+
+  const { mutate: updateInitialDeficit, isPending: isUpdating } = useMutation({
+    mutationFn: async ({ amount, restaurantId: restId }: { amount: number; restaurantId: string }) => {
+      const { error } = await supabase
+        .from('restaurants')
+        .update({ initial_cash_deficit: amount } as any)
+        .eq('id', restId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['initial-cash-deficit', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['previous-day-deficit'] });
+      queryClient.invalidateQueries({ queryKey: ['cash-balance'] });
+    },
+  });
+
+  return {
+    initialDeficit: initialDeficit ?? 0,
+    isLoading,
+    updateInitialDeficit,
+    isUpdating,
+  };
+}

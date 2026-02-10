@@ -1,0 +1,1 @@
+ALTER TABLE public.restaurants ADD COLUMN initial_cash_deficit NUMERIC DEFAULT 0;

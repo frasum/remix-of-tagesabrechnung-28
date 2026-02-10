@@ -235,7 +235,6 @@ export default function ManagerDashboard() {
     formData.terminal_2_total -
     formData.ordersmart_revenue -
     formData.wolt_revenue -
-    formData.takeaway_total -
     formData.vouchers_redeemed -
     formData.finedine_vouchers -
     formData.einladung -
