@@ -26,7 +26,7 @@ export function useCashBalanceData(restaurantId: string | null) {
       // 1. Alle Sessions für dieses Restaurant laden
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
-        .select('*')
+        .select('id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss, sonstige_einnahme')
         .eq('restaurant_id', restaurantId)
         .order('session_date', { ascending: true });
 
@@ -38,7 +38,7 @@ export function useCashBalanceData(restaurantId: string | null) {
       // 2. Alle waiter_shifts laden (für offene Rechnungen)
       const { data: waiterShifts, error: shiftsError } = await supabase
         .from('waiter_shifts')
-        .select('*')
+        .select('session_id, open_invoices')
         .in('session_id', sessionIds);
 
       if (shiftsError) throw shiftsError;
@@ -46,7 +46,7 @@ export function useCashBalanceData(restaurantId: string | null) {
       // 3. Alle expenses laden
       const { data: expenses, error: expensesError } = await supabase
         .from('expenses')
-        .select('*')
+        .select('session_id, amount')
         .in('session_id', sessionIds);
 
       if (expensesError) throw expensesError;
@@ -54,7 +54,7 @@ export function useCashBalanceData(restaurantId: string | null) {
       // 4. Alle advances laden
       const { data: advancesData, error: advancesError } = await supabase
         .from('advances')
-        .select('*')
+        .select('session_id, amount')
         .in('session_id', sessionIds);
 
       if (advancesError) throw advancesError;
