@@ -12,7 +12,6 @@ import {
   Euro,
   BarChart3,
   LogOut,
-  Vault,
   Wallet,
   QrCode,
   ChevronDown,
@@ -48,7 +47,7 @@ const allNavItems: NavItem[] = [
   { path: '', label: 'Kellner Abrechnung', icon: Users, minLevel: 'staff' },
   { path: 'kitchen', label: 'Küchen Trinkgeld', icon: ChefHat, minLevel: 'manager' },
   { path: 'summary', label: 'Tagesabrechnung', icon: FileText, minLevel: 'manager' },
-  { path: 'register-balance', label: 'Tresor', icon: Vault, minLevel: 'manager' },
+  
   { path: 'statistics', label: 'Statistiken', icon: BarChart3, minLevel: 'manager' },
   { path: 'history', label: 'Verlauf', icon: History, minLevel: 'manager' },
   { path: 'cash-balance', label: 'Bargeldbestand', icon: Wallet, minLevel: 'manager' },

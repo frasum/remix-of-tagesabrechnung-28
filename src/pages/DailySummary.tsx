@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useSelectedDate } from '@/contexts/DateContext';
-import { Plus, FileText, Euro, CreditCard, Truck, Receipt, Download, Banknote, Vault, Trash2, Settings, Wallet, ClipboardList, Clock, CheckCircle2, AlertTriangle, FileDown, X } from 'lucide-react';
+import { Plus, FileText, Euro, CreditCard, Truck, Receipt, Download, Trash2, Settings, Wallet, ClipboardList, Clock, CheckCircle2, AlertTriangle, FileDown, X } from 'lucide-react';
 import { generateDailySummaryPDF } from '@/utils/pdfExport';
 import { isSessionLocked } from '@/utils/businessDate';
 import { SessionLockedBanner } from '@/components/shared/SessionLockedBanner';
@@ -21,8 +21,6 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRegisterTransfers } from '@/hooks/useRegisterTransfers';
-import { TransferDialog } from '@/components/register/TransferDialog';
 import { ExcelLayout } from '@/components/daily-summary/layouts/ExcelLayout';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { PdfPreview } from '@/components/shared/PdfPreview';
@@ -47,7 +45,7 @@ export default function DailySummary() {
   const { restaurantId, restaurantName } = useRestaurant();
   const { user } = useAuth();
   const locked = isSessionLocked(selectedDate, user?.permissionLevel || 'staff');
-  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  
 
   // Form state for editable fields
   const [formData, setFormData] = useState({
@@ -91,8 +89,6 @@ export default function DailySummary() {
   const deleteAdvance = useDeleteAdvance();
   
   // Cash balance hooks
-  const { transfers, balances, createTransfer, isCreating } = useRegisterTransfers(restaurantId);
-  const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
 
   // Labels
   const { getLabel, allLabels, isFieldHidden, hiddenFields } = useLabels(restaurantId);
@@ -279,17 +275,6 @@ export default function DailySummary() {
     totalAdvances -
     totalExpenses;
 
-  // Simplified daily cash balance calculation
-  const initialRestaurantBalance = balances.initialRestaurant; // 1.000 €
-  
-  const todaysVaultTransfers = useMemo(() => {
-    return transfers
-      .filter(t => t.direction === 'to_restaurant' && t.transfer_date === selectedDateStr)
-      .reduce((sum, t) => sum + t.amount, 0);
-  }, [transfers, selectedDateStr]);
-
-  const todaysRegisterBalance = initialRestaurantBalance + bargeld + todaysVaultTransfers;
-  const showCashBalanceCard = todaysRegisterBalance < initialRestaurantBalance; // nur zeigen wenn < 1.000 €
 
   // Format submission timestamp
   const formatSubmittedAt = (timestamp: string | null) => {
@@ -306,18 +291,6 @@ export default function DailySummary() {
     }
   };
 
-  const handleTransferSubmit = (data: {
-    transfer_date: string;
-    amount: number;
-    direction: 'to_restaurant' | 'to_safe';
-    reason: string | null;
-    created_by_name: string | null;
-    restaurant_id: string;
-  }) => {
-    createTransfer(data);
-    setShowTransferDialog(false);
-    toast({ title: 'Transfer erfasst', description: 'Der Transfer wurde gespeichert.' });
-  };
 
   const handleCreateSession = async () => {
     if (!restaurantId) return;
@@ -813,51 +786,6 @@ export default function DailySummary() {
     </Card>
   );
 
-  const cashBalanceCardComponent = showCashBalanceCard ? (
-    <Card className="border-warning/30 bg-warning/5 dark:bg-warning/10">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Banknote className="w-5 h-5" />
-          Kassenstand
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Anfangsbestand</span>
-          <span className="font-semibold tabular-nums">
-            {formatCurrency(initialRestaurantBalance)}
-          </span>
-        </div>
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">Bargeld heute</span>
-          <span className={`font-semibold tabular-nums ${bargeld >= 0 ? 'text-success' : 'text-warning'}`}>
-            {formatCurrency(bargeld)}
-          </span>
-        </div>
-        {todaysVaultTransfers > 0 && (
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Transfer Tresor</span>
-            <span className="font-semibold tabular-nums text-primary">
-              +{formatCurrency(todaysVaultTransfers)}
-            </span>
-          </div>
-        )}
-        <Separator />
-        <div className="flex justify-between items-center">
-          <span className="text-sm font-medium">Kassenstand</span>
-          <span className={`text-lg font-bold tabular-nums ${todaysRegisterBalance >= initialRestaurantBalance ? 'text-success' : 'text-destructive'}`}>
-            {formatCurrency(todaysRegisterBalance)}
-          </span>
-        </div>
-        {todaysRegisterBalance < initialRestaurantBalance && (
-          <Button onClick={() => setShowTransferDialog(true)} variant="outline" className="w-full gap-2">
-            <Vault className="w-4 h-4" />
-            Transfer vom Tresor
-          </Button>
-        )}
-      </CardContent>
-    </Card>
-  ) : null;
 
   const revenueCardComponent = (
     <Card>
@@ -1072,7 +1000,7 @@ export default function DailySummary() {
       warnings={warningsComponent}
       expenses={expensesComponent}
       advances={advancesComponent}
-      cashBalanceCard={cashBalanceCardComponent}
+      
       waiterShifts={waiterShifts}
       formData={formData}
       onFieldChange={(field, value) => updateField(field as keyof typeof formData, value)}
@@ -1160,16 +1088,6 @@ export default function DailySummary() {
         )}
       </div>
 
-      {/* Transfer Dialog */}
-      {restaurantId && (
-        <TransferDialog
-          open={showTransferDialog}
-          onOpenChange={setShowTransferDialog}
-          onSubmit={handleTransferSubmit}
-          restaurantId={restaurantId}
-          isPending={isCreating}
-        />
-      )}
 
       {/* PDF Preview Dialog */}
       <Dialog open={pdfPreviewOpen} onOpenChange={(open) => !open && handleClosePdfPreview()}>
