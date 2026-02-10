@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import type { Session, WaiterShift, CardTransaction, KitchenShift, Expense } from '@/types/database';
@@ -79,6 +80,32 @@ export function useUpdateSession() {
 }
 
 export function useWaiterShifts(sessionId: string | undefined) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const channel = supabase
+      .channel(`waiter-shifts-realtime-${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'waiter_shifts',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['waiter-shifts', sessionId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId, queryClient]);
+
   return useQuery({
     queryKey: ['waiter-shifts', sessionId],
     queryFn: async () => {
