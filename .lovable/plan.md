@@ -1,44 +1,31 @@
 
-
-# Fix: Restaurant-Kontext beim Login automatisch korrekt setzen
+# Fix: SoUse (Sonstige Einnahmen) wird doppelt gezaehlt
 
 ## Problem
-Wenn ein Nutzer sich abmeldet und ein anderer sich anmeldet (z.B. Admin -> Andre), bleiben die gecachten Restaurant-Daten des vorherigen Nutzers im Speicher. Andre sieht dann kurzzeitig das falsche Restaurant (z.B. "Spicery" statt "YUM") und muss manuell im Switcher umschalten.
-
-**Ursache:** Beim Logout wird der React Query Cache nicht geleert. Durch die 2-Minuten-Cache-Dauer (`staleTime`) werden die Restaurant-Daten des vorherigen Nutzers noch angezeigt.
+`sonstige_einnahme` ist bereits im Vectron-Gesamtumsatz (`pos_total`) enthalten. Aktuell wird es in der BARGELD-Formel nochmals addiert (`pos_total + sonstige_einnahme`), was zu einer **doppelten Zaehlung** fuehrt und das berechnete Bargeld zu hoch ausweist.
 
 ## Loesung
+`sonstige_einnahme` aus der Addition in der BARGELD-Formel entfernen. Es bleibt weiterhin als Eingabefeld sichtbar (zur Dokumentation), wird aber nicht mehr in die Berechnung einbezogen, da es bereits ueber `pos_total` erfasst ist.
 
-### 1. Cache beim Logout leeren (`src/contexts/AuthContext.tsx`)
-In der `logout`-Funktion den gesamten React Query Cache leeren, damit der naechste Nutzer frische Daten bekommt.
+## Betroffene Dateien (5 Stellen)
 
-Dazu muss der `QueryClient` importiert und `queryClient.clear()` beim Logout aufgerufen werden. Da der `QueryClient` in `App.tsx` erstellt wird und `AuthContext` innerhalb des `QueryClientProvider` liegt, kann `useQueryClient()` direkt verwendet werden.
+### 1. `src/pages/DailySummary.tsx` (Zeile ~268)
+- `+ formData.sonstige_einnahme` aus der BARGELD-Berechnung entfernen
 
-```text
-Aenderung in AuthProvider:
-- useQueryClient() importieren
-- In der logout-Funktion queryClient.clear() aufrufen
-```
+### 2. `src/hooks/useCashBalanceData.ts` (Zeile ~75)
+- `+ sonstigeEinnahme` aus der bargeld-Berechnung entfernen
 
-### 2. Restaurant-Switcher nur bei mehreren Restaurants anzeigen (`src/components/layout/AppLayout.tsx`)
-Aktuell ist der Restaurant-Name immer als Dropdown dargestellt, auch wenn der Nutzer nur ein einziges Restaurant hat. Das ist irritierend, weil es suggeriert, dass man etwas auswaehlen muss.
+### 3. `src/hooks/usePreviousDayDeficit.ts` (Zeile ~75)
+- `+ sonstigeEinnahme` aus der bargeld-Berechnung entfernen
 
-```text
-Aenderung:
-- Wenn restaurants.length <= 1: Restaurant-Name als einfacher Text (kein Dropdown)
-- Wenn restaurants.length > 1: Restaurant-Name als Dropdown wie bisher
-```
+### 4. `src/hooks/useStatistics.ts` (Zeile ~148)
+- `+ (session.sonstige_einnahme || 0)` aus der bargeld-Berechnung entfernen
 
-Dies betrifft sowohl den mobilen Header als auch die Desktop-Sidebar.
+### 5. `src/pages/ManagerDashboard.tsx` (Zeile ~234)
+- `+ formData.sonstige_einnahme` aus der bargeld-Berechnung entfernen
 
-## Technische Details
-
-### Datei 1: `src/contexts/AuthContext.tsx`
-- `useQueryClient` aus `@tanstack/react-query` importieren
-- In der `logout`-Funktion `queryClient.clear()` vor `setUser(null)` aufrufen
-
-### Datei 2: `src/components/layout/AppLayout.tsx`
-- Bedingung einfuegen: `restaurants.length > 1`
-  - Wenn ja: Dropdown-Menue wie bisher
-  - Wenn nein: einfaches `<span>` mit dem Restaurant-Namen (ohne ChevronDown, ohne klickbare Auswahl)
-- Gilt fuer beide Stellen (mobiler Header und Desktop-Sidebar)
+## Was sich NICHT aendert
+- Das Eingabefeld "Sonstige Einnahmen" bleibt bestehen (zur Dokumentation)
+- Der Wert wird weiterhin in der Datenbank gespeichert
+- Die Anzeige im Excel-Layout und PDF bleibt sichtbar
+- Nur die rechnerische Einbeziehung in die BARGELD-Formel wird entfernt
