@@ -1,30 +1,51 @@
 
 
-## Realtime-Updates fuer Kellner-Abrechnungen
+## Tresor-Feature komplett entfernen
 
-Wenn ein Kellner seine Abrechnung ueber den Selfservice einreicht oder aendert, soll die Manager-Ansicht (Kellner Abrechnung) automatisch aktualisiert werden -- ohne Neuladen.
+Das gesamte Tresor-Feature wird aus dem Code entfernt: Seite, Navigation, Komponenten, Hook und alle Referenzen in ManagerDashboard und DailySummary.
 
-### Aenderungen
+### Dateien loeschen
 
-**1. Datenbank: Realtime fuer `waiter_shifts` aktivieren**
+- `src/pages/RegisterBalance.tsx`
+- `src/components/register/TransferDialog.tsx`
+- `src/components/register/TransferList.tsx`
+- `src/components/register/RegisterCard.tsx`
+- `src/hooks/useRegisterTransfers.ts`
 
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.waiter_shifts;
-```
+### Dateien bearbeiten
 
-**2. `src/hooks/useSession.ts` -- `useWaiterShifts` erweitern**
+**1. `src/components/layout/AppLayout.tsx`**
+- Zeile 51 entfernen: `{ path: 'register-balance', label: 'Tresor', icon: Vault, minLevel: 'manager' }`
+- Import `Vault` entfernen (Zeile 15)
 
-Einen `useEffect` mit Realtime-Subscription in den bestehenden Hook einbauen:
+**2. `src/App.tsx`**
+- Import `RegisterBalance` entfernen (Zeile 30)
+- Route `register-balance` entfernen (Zeile 48)
 
-- Supabase-Channel auf `waiter_shifts` abonnieren (gefiltert auf die aktuelle `session_id`)
-- Bei jedem `INSERT`, `UPDATE` oder `DELETE` Event die React-Query-Daten per `queryClient.invalidateQueries` neu laden
-- Channel beim Unmount aufraeumen (`supabase.removeChannel`)
+**3. `src/types/permissions.ts`**
+- `'register-balance'` Eintrag aus `NAV_PERMISSIONS` entfernen
+- `{ path: 'register-balance', label: 'Tresor' }` aus `MANAGER_NAV_ITEMS` entfernen
 
-Der Hook bleibt fuer alle Konsumenten (WaiterCashUp, WaiterMobile, DailySummary) gleich -- alle profitieren automatisch vom Realtime-Update.
+**4. `src/pages/DailySummary.tsx`**
+- Import `useRegisterTransfers` und `TransferDialog` entfernen (Zeilen 24-25)
+- Import `Vault` aus lucide entfernen (Zeile 5)
+- State `showTransferDialog` entfernen (Zeile 50)
+- Hook-Aufruf `useRegisterTransfers` entfernen (Zeile 94)
+- Variablen `todaysVaultTransfers`, `todaysRegisterBalance`, `showCashBalanceCard`, `initialRestaurantBalance` entfernen (Zeilen 283-292)
+- Funktion `handleTransferSubmit` entfernen (Zeilen 309-320)
+- Kassenstand-Card und TransferDialog aus dem JSX entfernen
 
-### Ergebnis
+**5. `src/pages/ManagerDashboard.tsx`**
+- Import `useRegisterTransfers` und `TransferDialog` entfernen (Zeilen 20-21)
+- Import `Vault` aus lucide entfernen (Zeile 6)
+- State `showTransferDialog` entfernen (Zeile 38)
+- Hook-Aufruf `useRegisterTransfers` entfernen (Zeile 249)
+- Tresor-bezogene Variablen und Kassenstand-Logik entfernen
+- Funktion `handleTransferSubmit` entfernen
+- Kassenstand-Card und TransferDialog aus dem JSX entfernen
 
-- Manager sieht sofort, wenn ein Kellner seine Abrechnung einreicht oder aendert
-- Kein manuelles Neuladen noetig
-- Bestehende Funktionalitaet bleibt unveraendert
+### Nicht betroffen
+
+- Datenbank-Tabelle `register_transfers` bleibt bestehen
+- `usePettyCash` in `useSettings.ts` bleibt (wird vom Bargeldbestand-Feature genutzt)
 
