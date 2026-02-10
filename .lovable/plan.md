@@ -1,51 +1,51 @@
 
 
-## Tresor-Feature komplett entfernen
+## Vortags-Defizit automatisch uebertragen
 
-Das gesamte Tresor-Feature wird aus dem Code entfernt: Seite, Navigation, Komponenten, Hook und alle Referenzen in ManagerDashboard und DailySummary.
+Wenn der BARGELD-Betrag eines Tages negativ ist, soll dieses Defizit am naechsten Tag automatisch als Abzugsposten in der Sektion "Gutscheine & Sonstiges" erscheinen und in die BARGELD-Berechnung einfliessen. Das Ganze kettet sich: Ist auch Tag 2 negativ (inklusive Vortags-Defizit), wird das am Tag 3 uebertragen, usw.
 
-### Dateien loeschen
+### Wie es funktioniert
 
-- `src/pages/RegisterBalance.tsx`
-- `src/components/register/TransferDialog.tsx`
-- `src/components/register/TransferList.tsx`
-- `src/components/register/RegisterCard.tsx`
-- `src/hooks/useRegisterTransfers.ts`
+- **Montag**: BARGELD = -271,16 EUR
+- **Dienstag**: In "Gutscheine & Sonstiges" erscheint eine neue Zeile "Fehlbetrag Vortag: -271,16 EUR". Dieser Betrag wird von der BARGELD-Berechnung abgezogen.
+- Die Zeile erscheint **nur**, wenn der Vortag tatsaechlich negativ war.
 
-### Dateien bearbeiten
+### Technische Umsetzung
 
-**1. `src/components/layout/AppLayout.tsx`**
-- Zeile 51 entfernen: `{ path: 'register-balance', label: 'Tresor', icon: Vault, minLevel: 'manager' }`
-- Import `Vault` entfernen (Zeile 15)
+**1. Neuer Hook: Vortags-Bargeld laden**
 
-**2. `src/App.tsx`**
-- Import `RegisterBalance` entfernen (Zeile 30)
-- Route `register-balance` entfernen (Zeile 48)
+In `src/pages/DailySummary.tsx` wird ein zusaetzlicher Query eingefuegt, der die Session des Vortages laedt und deren BARGELD berechnet. Da sich das Defizit verketten soll, muss rekursiv zurueckgeschaut werden: Alle Sessions vor dem aktuellen Datum laden, chronologisch das Bargeld berechnen, und den letzten negativen Uebertrag ermitteln.
 
-**3. `src/types/permissions.ts`**
-- `'register-balance'` Eintrag aus `NAV_PERMISSIONS` entfernen
-- `{ path: 'register-balance', label: 'Tresor' }` aus `MANAGER_NAV_ITEMS` entfernen
+Konkret: Eine neue Hilfsfunktion `usePreviousDayDeficit(date, restaurantId)` erstellen, die:
+- Die Session des Vortages laedt (inkl. waiter_shifts, expenses, advances)
+- Das BARGELD berechnet (gleiche Formel wie in DailySummary)
+- Falls negativ, diesen Betrag als `previousDeficit` zurueckgibt
+- Falls der Vortag selbst einen Vortags-Defizit hatte, diesen einrechnet (Verkettung)
 
-**4. `src/pages/DailySummary.tsx`**
-- Import `useRegisterTransfers` und `TransferDialog` entfernen (Zeilen 24-25)
-- Import `Vault` aus lucide entfernen (Zeile 5)
-- State `showTransferDialog` entfernen (Zeile 50)
-- Hook-Aufruf `useRegisterTransfers` entfernen (Zeile 94)
-- Variablen `todaysVaultTransfers`, `todaysRegisterBalance`, `showCashBalanceCard`, `initialRestaurantBalance` entfernen (Zeilen 283-292)
-- Funktion `handleTransferSubmit` entfernen (Zeilen 309-320)
-- Kassenstand-Card und TransferDialog aus dem JSX entfernen
+**2. `src/hooks/usePreviousDayDeficit.ts` (neue Datei)**
 
-**5. `src/pages/ManagerDashboard.tsx`**
-- Import `useRegisterTransfers` und `TransferDialog` entfernen (Zeilen 20-21)
-- Import `Vault` aus lucide entfernen (Zeile 6)
-- State `showTransferDialog` entfernen (Zeile 38)
-- Hook-Aufruf `useRegisterTransfers` entfernen (Zeile 249)
-- Tresor-bezogene Variablen und Kassenstand-Logik entfernen
-- Funktion `handleTransferSubmit` entfernen
-- Kassenstand-Card und TransferDialog aus dem JSX entfernen
+```text
+- Laedt alle Sessions bis zum Vortag des gewaehlten Datums
+- Berechnet pro Tag das BARGELD (gleiche Logik wie useCashBalanceData)
+- Berechnet den verketteten Uebertrag: Wenn Tag N negativ ist, wird das Defizit auf Tag N+1 addiert
+- Gibt den Uebertrag fuer den aktuellen Tag zurueck (0 wenn Vortag positiv war)
+```
 
-### Nicht betroffen
+**3. `src/pages/DailySummary.tsx` anpassen**
 
-- Datenbank-Tabelle `register_transfers` bleibt bestehen
-- `usePettyCash` in `useSettings.ts` bleibt (wird vom Bargeldbestand-Feature genutzt)
+- Den neuen Hook einbinden: `const { data: previousDeficit = 0 } = usePreviousDayDeficit(selectedDate, restaurantId)`
+- `previousDeficit` in die BARGELD-Berechnung einbeziehen (wird abgezogen)
+- `previousDeficit` als neue Prop an `ExcelLayout` uebergeben
 
+**4. `src/components/daily-summary/layouts/ExcelLayout.tsx` anpassen**
+
+- Neue Prop `previousDeficit` (number, default 0)
+- In der Sektion "Gutscheine & Sonstiges": Wenn `previousDeficit < 0`, eine neue `ExcelReadonlyRow` anzeigen mit Label "Fehlbetrag Vortag" und dem negativen Wert
+- Der Wert ist bereits in der BARGELD-Berechnung enthalten (kommt ueber die `bargeld`-Prop)
+
+### Ergebnis
+
+- Negative Bargeld-Bestaende werden automatisch auf den Folgetag uebertragen
+- Die Zeile "Fehlbetrag Vortag" erscheint nur bei tatsaechlichem Defizit
+- Die Verkettung funktioniert ueber mehrere Tage hinweg
+- Kein manueller Eingriff noetig
