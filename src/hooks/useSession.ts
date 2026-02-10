@@ -31,6 +31,17 @@ export function useCreateSession() {
   return useMutation({
     mutationFn: async ({ date, restaurantId, createdByName }: { date: Date; restaurantId: string; createdByName?: string }) => {
       const dateStr = format(date, 'yyyy-MM-dd');
+
+      // Check if session already exists (prevents duplicate key error)
+      const { data: existing } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('session_date', dateStr)
+        .eq('restaurant_id', restaurantId)
+        .maybeSingle();
+
+      if (existing) return existing as Session;
+
       const { data, error } = await supabase
         .from('sessions')
         .insert({ session_date: dateStr, restaurant_id: restaurantId, created_by_name: createdByName, updated_by_name: createdByName })
