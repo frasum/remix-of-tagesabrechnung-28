@@ -1,31 +1,46 @@
 
-# Kellner immer auf die mobile Ansicht weiterleiten
+# Taeglicher Tagesumsatz per Telegram
 
-## Problem
-Die Weiterleitung nach dem Login in `RestaurantSelect.tsx` basiert auf der Bildschirmbreite (`useIsMobile`). Kellner mit groesseren Handys oder Tablets (>= 768px) werden faelschlicherweise auf die Desktop-Ansicht (`WaiterCashUp`) weitergeleitet. Ausserdem hat die Index-Route keine Berechtigungsbeschraenkung, sodass `staff`-Nutzer die Desktop-Ansicht sehen koennen.
+## Uebersicht
+Automatischer Versand einer taeglichen Umsatz-Zusammenfassung fuer beide Restaurants (Spicery und YUM) an deinen Telegram-Chat.
 
-## Loesung
+## Schritt 1: Secrets speichern
+Zwei Secrets werden sicher in Lovable Cloud hinterlegt:
+- `TELEGRAM_BOT_TOKEN`: `8262361702:AAFh1kGWAwgu6hHTExsKtoWTT9_70ZX9KTmY`
+- `TELEGRAM_CHAT_ID`: `6697169070`
 
-### 1. RestaurantSelect.tsx - Weiterleitung nach Rolle statt nur Bildschirmbreite
+## Schritt 2: Backend-Funktion erstellen
 
-Die Weiterleitung wird um die Berechtigungsstufe des Nutzers erweitert:
-- **staff**: Immer auf `/:slug/waiter` (egal welche Bildschirmgroesse)
-- **manager/admin**: Wie bisher basierend auf `isMobile`
+Neue Funktion `send-telegram-summary`, die:
+1. Alle Restaurants laedt
+2. Fuer das gestrige Datum die Session-Daten abruft (Umsatz, Bargeld, Kreditkarten)
+3. Eine formatierte Nachricht erstellt und per Telegram Bot API sendet
 
+Beispiel-Nachricht:
+```text
+Tagesumsatz 09.02.2026
+
+Spicery:
+  Umsatz: 3.245,80 EUR
+  Bargeld: 1.120,50 EUR
+  Karten: 1.890,30 EUR
+
+YUM:
+  Umsatz: 2.780,00 EUR
+  Bargeld: 980,20 EUR
+  Karten: 1.450,80 EUR
 ```
-Aktuell:  navigate(isMobile ? `/${slug}/waiter` : `/${slug}`)
-Neu:      navigate(isStaff || isMobile ? `/${slug}/waiter` : `/${slug}`)
-```
 
-Betroffen sind drei Stellen in der Datei (Zeilen 39, 49, 61).
+## Schritt 3: Automatischer taeglicher Versand
+Ein Cron-Job in der Datenbank, der die Funktion taeglich um 06:00 Uhr morgens aufruft.
 
-### 2. Index-Route absichern (optional, empfohlen)
+## Technische Details
 
-In `RestaurantRoutes` in `App.tsx` (Zeile 41) die Index-Route mit `requiredLevel="manager"` schuetzen, damit ein `staff`-Nutzer, der manuell `/:restaurant/` aufruft, automatisch zurueckgeleitet wird.
-
-## Betroffene Dateien
-
-| Datei | Aenderung |
+| Bereich | Aenderung |
 |---|---|
-| `src/pages/RestaurantSelect.tsx` | `user.permissionLevel` pruefen: Staff-Nutzer immer auf `/waiter` weiterleiten |
-| `src/App.tsx` | Index-Route (Zeile 41) mit `requiredLevel="manager"` absichern |
+| Secrets | `TELEGRAM_BOT_TOKEN` und `TELEGRAM_CHAT_ID` hinterlegen |
+| `supabase/functions/send-telegram-summary/index.ts` | Neue Funktion: Sessions abfragen, Nachricht formatieren, per Telegram API senden |
+| `supabase/config.toml` | Funktion registrieren mit `verify_jwt = false` (fuer Cron-Aufruf) |
+| Datenbank | `pg_cron` und `pg_net` Extensions aktivieren, Cron-Job anlegen (06:00 UTC) |
+
+Die Funktion kann auch manuell aufgerufen werden (z.B. zum Testen), indem ein optionaler `date`-Parameter uebergeben wird.
