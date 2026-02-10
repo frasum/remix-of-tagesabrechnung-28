@@ -75,6 +75,7 @@ interface PDFExportData {
     posMismatch: number;
     cardTerminalMismatch: number;
     totalAdvances?: number;
+    previousDeficit?: number;
   };
 }
 
@@ -152,6 +153,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     ['Personal', formatCurrency(data.totals.totalAdvances ?? data.session.vorschuss ?? 0)],
     [l('einladung', 'Einladung'), formatCurrency(data.session.einladung || 0)],
     [l('sonstige_einnahme', 'Sonstige Einnahme'), formatCurrency(data.session.sonstige_einnahme || 0)],
+    ...((data.totals.previousDeficit ?? 0) < 0 ? [['Fehlbetrag Vortag', formatCurrency(data.totals.previousDeficit!)]] : []),
     ['Bar Ausgaben', formatCurrency(data.totals.totalExpenses)],
     [l('hilf_mahl', 'HilfMahl'), formatCurrency(totalHilfMahl)],
   ];
