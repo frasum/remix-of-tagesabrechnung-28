@@ -1,56 +1,30 @@
 
 
-## Fix: Session-Erstellung bei Kellner-Selfservice absichern
+## Realtime-Updates fuer Kellner-Abrechnungen
 
-### Problem
-
-Wenn Mo auf "Abrechnung speichern" klickt, prueft der Code ob eine Session existiert. Wenn die Session-Abfrage noch nicht geladen hat oder ein Timing-Problem vorliegt, versucht der Code eine neue Session anzulegen. Da aber bereits eine Session fuer heute existiert (vom Manager erstellt), schlaegt das an der Datenbank-Einschraenkung `sessions_restaurant_date_unique` fehl.
-
-Die DB-Logs zeigen 6 solcher Fehler in den letzten Minuten.
-
-### Loesung
-
-Die `useCreateSession`-Funktion so aendern, dass sie **zuerst prueft ob eine Session existiert** und diese zurueckgibt, anstatt blind ein INSERT zu machen. Das ist ein "upsert"-artiges Verhalten.
+Wenn ein Kellner seine Abrechnung ueber den Selfservice einreicht oder aendert, soll die Manager-Ansicht (Kellner Abrechnung) automatisch aktualisiert werden -- ohne Neuladen.
 
 ### Aenderungen
 
-**1. `src/hooks/useSession.ts` -- `useCreateSession` absichern**
+**1. Datenbank: Realtime fuer `waiter_shifts` aktivieren**
 
-Die `mutationFn` aendern: Vor dem INSERT erst ein SELECT machen. Falls die Session schon existiert, diese zurueckgeben statt eine neue zu erstellen.
-
-```text
-mutationFn: async ({ date, restaurantId, createdByName }) => {
-  const dateStr = format(date, 'yyyy-MM-dd');
-
-  // Erst pruefen ob Session schon existiert
-  const { data: existing } = await supabase
-    .from('sessions')
-    .select('*')
-    .eq('session_date', dateStr)
-    .eq('restaurant_id', restaurantId)
-    .maybeSingle();
-
-  if (existing) return existing;
-
-  // Nur erstellen wenn keine existiert
-  const { data, error } = await supabase
-    .from('sessions')
-    .insert({ ... })
-    .select()
-    .single();
-
-  if (error) throw error;
-  return data;
-};
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.waiter_shifts;
 ```
 
-**2. `src/pages/WaiterMobile.tsx` -- Zusaetzliche Absicherung**
+**2. `src/hooks/useSession.ts` -- `useWaiterShifts` erweitern**
 
-Den Save-Button deaktivieren solange die Session-Query noch laedt (`sessionLoading`), damit der Benutzer nicht zu frueh klicken kann.
+Einen `useEffect` mit Realtime-Subscription in den bestehenden Hook einbauen:
+
+- Supabase-Channel auf `waiter_shifts` abonnieren (gefiltert auf die aktuelle `session_id`)
+- Bei jedem `INSERT`, `UPDATE` oder `DELETE` Event die React-Query-Daten per `queryClient.invalidateQueries` neu laden
+- Channel beim Unmount aufraeumen (`supabase.removeChannel`)
+
+Der Hook bleibt fuer alle Konsumenten (WaiterCashUp, WaiterMobile, DailySummary) gleich -- alle profitieren automatisch vom Realtime-Update.
 
 ### Ergebnis
 
-- Kein "duplicate key" Fehler mehr
-- Mo und andere Kellner koennen problemlos speichern, auch wenn die Session bereits vom Manager erstellt wurde
-- Keine Aenderung am bestehenden Verhalten fuer Manager
+- Manager sieht sofort, wenn ein Kellner seine Abrechnung einreicht oder aendert
+- Kein manuelles Neuladen noetig
+- Bestehende Funktionalitaet bleibt unveraendert
 
