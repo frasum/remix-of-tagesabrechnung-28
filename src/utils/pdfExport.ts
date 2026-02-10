@@ -90,20 +90,20 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   const l = (key: string, fallback: string) => data.labels?.[key] || fallback;
   const isHidden = (key: string) => data.hiddenFields?.includes(key) ?? false;
 
-  // ========== HEADER - centered, large ==========
+  // ========== HEADER - centered, compact ==========
   if (data.restaurantName) {
-    doc.setFontSize(28);
+    doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
     doc.text(data.restaurantName, pageWidth / 2, y, { align: 'center' });
-    y += 12;
+    y += 8;
   }
 
   const dateStr = format(new Date(data.session.session_date), "EEEE, d. MMMM", { locale: de });
-  doc.setFontSize(24);
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.text(dateStr, pageWidth / 2, y, { align: 'center' });
 
-  y += 6;
+  y += 5;
   doc.setFontSize(7);
   doc.setTextColor(128);
   const exportInfo = data.exportedBy
@@ -112,7 +112,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   doc.text(exportInfo, pageWidth / 2, y, { align: 'center' });
   doc.setTextColor(0);
 
-  y += 8;
+  y += 6;
 
   // ========== WARNINGS ==========
   const adjustedPosMismatch = data.totals.posMismatch - (data.session.takeaway_total || 0);
@@ -137,8 +137,8 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   const totalHilfMahl = data.totals.totalHilfMahl;
   const bargeldOhneHilf = bargeldMitHilf - totalHilfMahl;
 
-  const tableWidth = (pageWidth - 2 * margin) * 0.55;
-  const tableMarginLeft = (pageWidth - tableWidth) / 2;
+  const tableWidth = pageWidth - 2 * margin;
+  const tableMarginLeft = margin;
 
   const summaryRows: any[][] = [
     ['Umsatz', formatCurrency(data.session.pos_total || 0)],
@@ -154,7 +154,6 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     [l('sonstige_einnahme', 'Sonstige Einnahme'), formatCurrency(data.session.sonstige_einnahme || 0)],
     ['Bar Ausgaben', formatCurrency(data.totals.totalExpenses)],
     [l('hilf_mahl', 'HilfMahl'), formatCurrency(totalHilfMahl)],
-    ['', ''], // empty spacer row
   ];
 
   // Bargeld rows with highlight
@@ -169,7 +168,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     margin: { left: tableMarginLeft, right: tableMarginLeft },
     body: summaryRows,
     theme: 'plain',
-    bodyStyles: { fontSize: 9, cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 } },
+    bodyStyles: { fontSize: 8, cellPadding: { top: 1, bottom: 1, left: 2, right: 2 } },
     columnStyles: { 1: { halign: 'right' as const } },
     tableWidth: tableWidth,
   });
@@ -179,13 +178,13 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   const totalHilfMahl2 = data.totals.totalHilfMahl;
   const bargeldOhneHilf2 = bargeldMitHilf - totalHilfMahl2;
 
-  y = tableEndY + 6;
-  doc.setFontSize(9);
+  y = tableEndY + 4;
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.text('ohne hilfmahl', tableMarginLeft + 2, y);
   doc.text(formatCurrency(bargeldOhneHilf2), tableMarginLeft + tableWidth - 2, y, { align: 'right' });
 
-  y += 8;
+  y += 6;
 
   // ========== AUSGABEN (if any) ==========
   if (data.expenses.length > 0) {
@@ -235,10 +234,8 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     y = (doc as any).lastAutoTable.finalY + 4;
   }
 
-  // ========== PAGE 2: KELLNER-DETAILS TABLE ==========
+  // ========== KELLNER-DETAILS TABLE ==========
   if (data.waiterShifts.length > 0) {
-    doc.addPage();
-    y = 20;
     // Calculate tip per waiter share
     const poolParticipants = data.waiterShifts.reduce((count, w) => {
       if (!w.participates_in_pool) return count;
@@ -292,13 +289,13 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     const totalTipPercent = data.totals.kellnerUmsatz > 0
       ? (totalTipAll / data.totals.kellnerUmsatz) * 100
       : 0;
-    y += 6;
-    doc.setFontSize(9);
+    y += 4;
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.text(`Kellner-Pool: ${formatCurrency(data.totals.totalWaiterTip)}`, tableMarginLeft + 2, y);
-    y += 4;
+    y += 3;
     doc.text(`Küchen-Pool: ${formatCurrency(data.totals.totalKitchenTip)}`, tableMarginLeft + 2, y);
-    y += 5;
+    y += 4;
     doc.setFont('helvetica', 'bold');
     doc.text(
       `Ø Trinkgeld: ${formatCurrency(totalTipAll)} von ${formatCurrency(data.totals.kellnerUmsatz)} Umsatz = ${totalTipPercent.toFixed(1).replace('.', ',')}%`,
