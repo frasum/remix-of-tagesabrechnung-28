@@ -61,6 +61,7 @@ interface ExcelLayoutProps {
   locked?: boolean;
   getLabel?: (key: LabelKey) => string;
   isFieldHidden?: (key: LabelKey) => boolean;
+  previousDeficit?: number;
 }
 
 export function ExcelLayout({
@@ -88,6 +89,7 @@ export function ExcelLayout({
   locked,
   getLabel: gl,
   isFieldHidden: ifh,
+  previousDeficit = 0,
 }: ExcelLayoutProps) {
   const getLabel = gl || ((key: LabelKey) => key);
   const isFieldHidden = ifh || (() => false);
@@ -161,6 +163,7 @@ export function ExcelLayout({
                 {totalAdvances !== 0 && <ExcelReadonlyRow label="Vorschuss" value={totalAdvances} />}
                 <ExcelInputRow label={getLabel('einladung')} value={formData.einladung} onChange={(v) => onFieldChange('einladung', v)} disabled={locked} />
                 <ExcelInputRow label={getLabel('sonstige_einnahme')} value={formData.sonstige_einnahme} onChange={(v) => onFieldChange('sonstige_einnahme', v)} disabled={locked} />
+                {previousDeficit < 0 && <ExcelReadonlyRow label="Fehlbetrag Vortag" value={previousDeficit} />}
                 {totalExpenses !== 0 && <ExcelReadonlyRow label="Ausgaben" value={-totalExpenses} />}
               </tbody>
             </table>
