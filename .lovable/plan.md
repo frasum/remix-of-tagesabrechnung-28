@@ -1,43 +1,49 @@
 
 
-# FineDine-Feld pro Restaurant ausblenden
+# Labels und Ausblenden in der Kellnerabrechnung
 
 ## Ziel
-Das Feld "FineDine" soll fuer das Restaurant YUM ausgeblendet werden koennen, waehrend es in anderen Restaurants weiterhin sichtbar bleibt. Die Loesung soll flexibel sein, damit zukuenftig auch andere Felder pro Restaurant ein-/ausgeblendet werden koennen.
+Die Kellnerabrechnung (`WaiterCashUp`) bekommt die gleiche dynamische Label- und Ausblend-Funktionalitaet wie die Tagesabrechnung. Hardcodierte Labels werden durch `getLabel()` ersetzt, und ausgeblendete Felder werden im Formular und in der Tabelle nicht angezeigt.
 
-## Ansatz
-Das bestehende Settings-System wird um einen neuen Key `hidden_fields` erweitert. Dort wird pro Restaurant eine Liste von `LabelKey`-Werten gespeichert (z.B. `["finedine_vouchers"]`). Der bestehende `useLabels`-Hook wird erweitert, um auch diese Information bereitzustellen.
+## Aenderungen in `src/pages/WaiterCashUp.tsx`
 
-## Aenderungen
+### 1. `isFieldHidden` importieren
+- Aus dem bestehenden `useLabels`-Hook wird zusaetzlich `isFieldHidden` verwendet (ist bereits implementiert)
 
-### 1. Hook erweitern (`src/hooks/useLabels.ts`)
-- Neuen Settings-Key `hidden_fields` laden (gleiche `settings`-Tabelle)
-- Neue Funktion `isFieldHidden(key)` bereitstellen
-- Neue Mutation `saveHiddenFields` zum Speichern
+### 2. Hardcodierte Labels ersetzen
 
-### 2. UI-Integration (`src/components/daily-summary/layouts/ExcelLayout.tsx`)
-- FineDine-Zeile nur rendern, wenn `isFieldHidden('finedine_vouchers')` false ist
-- Das Feld erhaelt dann automatisch den Wert 0
+| Stelle | Aktuell | Wird zu |
+|---|---|---|
+| Zeile 331: Kartenzahlung-Label | `"Kartenzahlung (Kredit Karten)"` | `getLabel('card_total_gl')` |
+| Zeile 512: Tabellenkopf Kredit Karten | `"Kredit Karten"` | `getLabel('card_total_gl')` |
+| Zeile 515: Tabellenkopf Abgegeben | `"Abgegeben"` | `getLabel('cash_handed_in')` |
+| Zeile 353: Vorschau-Formeltext | Hardcodierte Begriffe | Dynamische Labels |
 
-### 3. Einstellungs-UI (`src/components/settings/LabelSettings.tsx`)
-- Pro Feld einen kleinen Toggle (Auge-Symbol) neben dem Label-Input hinzufuegen
-- Toggle steuert, ob das Feld angezeigt oder ausgeblendet wird
+### 3. Felder bedingt ausblenden
 
-### 4. Exporte anpassen
-- `src/utils/pdfExport.ts` - FineDine-Zeile nur einfuegen wenn nicht hidden
-- `src/utils/excelExport.ts` - FineDine-Spalte nur einfuegen wenn nicht hidden
+Folgende Felder im **Eingabeformular** werden mit `isFieldHidden()` umschlossen:
+- `hilf_mahl` - Eingabefeld wird ausgeblendet, Wert bleibt 0
+- `open_invoices` - Eingabefeld wird ausgeblendet, Wert bleibt 0
+- `card_total_gl` (fuer `card_total`) - Eingabefeld wird ausgeblendet, Wert bleibt 0
 
-### 5. DailySummary weiterreichen (`src/pages/DailySummary.tsx`)
-- `hiddenFields`-Liste an ExcelLayout und Export-Funktionen weiterreichen
+Folgende **Tabellenspalten** in der Uebersichtstabelle werden bedingt ausgeblendet:
+- `hilf_mahl` - Spalte und Zelle
+- `open_invoices` - Spalte und Zelle
+- `card_total_gl` - Spalte und Zelle
 
-## Betroffene Dateien
+### 4. Vorschau-Berechnung anpassen
+Die Formel-Beschreibung im grauen Vorschau-Kasten wird dynamisch zusammengebaut:
+- Nur sichtbare Felder werden in der Formel-Beschreibung erwaehnt
+- Die eigentliche Berechnung bleibt unveraendert (hidden Felder haben Wert 0)
+
+### 5. Logik
+- Wenn ein Feld hidden ist, wird das Eingabefeld nicht gerendert und der State-Wert bleibt 0
+- Die Berechnungen (`calculateExpected`, `calculateContribution`) funktionieren weiterhin korrekt
+- Beim Bearbeiten eines bestehenden Eintrags: hidden Felder werden nicht angezeigt, aber vorhandene Werte bleiben in der Datenbank erhalten
+
+## Betroffene Datei
 
 | Datei | Aenderung |
 |---|---|
-| `src/hooks/useLabels.ts` | `hidden_fields` laden, `isFieldHidden()` und `saveHiddenFields` bereitstellen |
-| `src/components/settings/LabelSettings.tsx` | Toggle pro Feld zum Ein-/Ausblenden |
-| `src/components/daily-summary/layouts/ExcelLayout.tsx` | Bedingte Anzeige von FineDine |
-| `src/utils/pdfExport.ts` | Bedingte Ausgabe von FineDine |
-| `src/utils/excelExport.ts` | Bedingte Ausgabe von FineDine |
-| `src/pages/DailySummary.tsx` | `hiddenFields` weiterreichen |
+| `src/pages/WaiterCashUp.tsx` | `isFieldHidden` nutzen, hardcodierte Labels ersetzen, bedingte Anzeige |
 
