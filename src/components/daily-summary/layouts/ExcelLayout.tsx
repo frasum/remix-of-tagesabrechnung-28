@@ -62,6 +62,7 @@ interface ExcelLayoutProps {
   getLabel?: (key: LabelKey) => string;
   isFieldHidden?: (key: LabelKey) => boolean;
   previousDeficit?: number;
+  remainingCash?: number;
 }
 
 export function ExcelLayout({
@@ -90,6 +91,7 @@ export function ExcelLayout({
   getLabel: gl,
   isFieldHidden: ifh,
   previousDeficit = 0,
+  remainingCash,
 }: ExcelLayoutProps) {
   const getLabel = gl || ((key: LabelKey) => key);
   const isFieldHidden = ifh || (() => false);
@@ -181,6 +183,22 @@ export function ExcelLayout({
                 </tbody>
               </table>
             </div>
+
+            {/* Kassenbestand */}
+            {remainingCash !== undefined && (
+              <div className={`border-b ${remainingCash >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
+                <table className="w-full">
+                  <tbody>
+                    <tr>
+                      <td className="px-3 py-1.5 font-semibold text-sm">Kassenbestand</td>
+                      <td className={`px-3 py-1.5 text-right tabular-nums font-semibold text-sm ${remainingCash >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {fmt(remainingCash)} €
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
 
           </div>
 
