@@ -38,6 +38,7 @@ import { useAdvances, useCreateAdvance, useDeleteAdvance } from '@/hooks/useAdva
 import { StaffSelect } from '@/components/shared/StaffSelect';
 import { useLabels } from '@/hooks/useLabels';
 import { LabelSettings } from '@/components/settings/LabelSettings';
+import { usePreviousDayDeficit } from '@/hooks/usePreviousDayDeficit';
 
 export default function DailySummary() {
   const { selectedDate, setSelectedDate } = useSelectedDate();
@@ -88,7 +89,8 @@ export default function DailySummary() {
   const createAdvance = useCreateAdvance();
   const deleteAdvance = useDeleteAdvance();
   
-  // Cash balance hooks
+  // Previous day deficit
+  const { data: previousDeficit = 0 } = usePreviousDayDeficit(selectedDate, restaurantId);
 
   // Labels
   const { getLabel, allLabels, isFieldHidden, hiddenFields } = useLabels(restaurantId);
@@ -273,7 +275,8 @@ export default function DailySummary() {
     formData.einladung -
     totalOpenInvoices -
     totalAdvances -
-    totalExpenses;
+    totalExpenses +
+    previousDeficit;
 
 
   // Format submission timestamp
@@ -1021,6 +1024,7 @@ export default function DailySummary() {
       locked={locked}
       getLabel={getLabel}
       isFieldHidden={isFieldHidden}
+      previousDeficit={previousDeficit}
     />
   );
 
