@@ -1037,6 +1037,7 @@ export default function DailySummary() {
       getLabel={getLabel}
       isFieldHidden={isFieldHidden}
       previousDeficit={previousDeficit}
+      remainingCash={remainingCash}
     />
   );
 
