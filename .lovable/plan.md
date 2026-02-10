@@ -1,80 +1,43 @@
 
-# Restaurant-spezifische Labels
+
+# FineDine-Feld pro Restaurant ausblenden
 
 ## Ziel
-Jedes Restaurant (z.B. Spicery, YUM) soll eigene Bezeichnungen fuer Felder wie "SoUse", "Wolt", "Umsatz Abschlag" etc. festlegen koennen. Die Labels werden in der Datenbank pro Restaurant gespeichert und ueberall in der App (UI, PDF-Export, Excel-Export) verwendet.
+Das Feld "FineDine" soll fuer das Restaurant YUM ausgeblendet werden koennen, waehrend es in anderen Restaurants weiterhin sichtbar bleibt. Die Loesung soll flexibel sein, damit zukuenftig auch andere Felder pro Restaurant ein-/ausgeblendet werden koennen.
 
-## Konzept
+## Ansatz
+Das bestehende Settings-System wird um einen neuen Key `hidden_fields` erweitert. Dort wird pro Restaurant eine Liste von `LabelKey`-Werten gespeichert (z.B. `["finedine_vouchers"]`). Der bestehende `useLabels`-Hook wird erweitert, um auch diese Information bereitzustellen.
 
-Standardmaessig werden die aktuellen Labels beibehalten. Ueber eine Einstellungsseite kann ein Manager/Admin die Labels pro Restaurant ueberschreiben. Nicht ueberschriebene Labels behalten ihren Standardwert.
+## Aenderungen
 
-## Technische Umsetzung
+### 1. Hook erweitern (`src/hooks/useLabels.ts`)
+- Neuen Settings-Key `hidden_fields` laden (gleiche `settings`-Tabelle)
+- Neue Funktion `isFieldHidden(key)` bereitstellen
+- Neue Mutation `saveHiddenFields` zum Speichern
 
-### 1. Datenbank - Settings-Tabelle nutzen
-Die bestehende `settings`-Tabelle wird verwendet mit einem neuen Key `label_overrides` pro Restaurant:
+### 2. UI-Integration (`src/components/daily-summary/layouts/ExcelLayout.tsx`)
+- FineDine-Zeile nur rendern, wenn `isFieldHidden('finedine_vouchers')` false ist
+- Das Feld erhaelt dann automatisch den Wert 0
 
-```json
-{
-  "key": "label_overrides",
-  "restaurant_id": "<restaurant-uuid>",
-  "value": {
-    "ordersmart_revenue": "SoUse",
-    "wolt_revenue": "Wolt",
-    "pos_total": "Umsatz Abschlag",
-    "takeaway_total": "Takeaway Abschlag",
-    "terminal_1": "Terminal 1",
-    "terminal_2": "Terminal 2",
-    "card_total_gl": "GL Kredit Karten",
-    "vouchers_sold": "Gutschein Verkauf",
-    "vouchers_redeemed": "Gutschein Eingeloest",
-    "finedine_vouchers": "FineDine",
-    "einladung": "Einladung",
-    "sonstige_einnahme": "Sonstige Einnahmen",
-    "kassiert_brutto": "Abzugebender Betrag",
-    "pos_sales": "Leistung",
-    "open_invoices": "Offene Rechnung",
-    "hilf_mahl": "Hilf Mahl",
-    "cash_handed_in": "Abgegebenes Bargeld",
-    "kitchen_tip": "Trinkgeld fuer Kueche"
-  }
-}
-```
+### 3. Einstellungs-UI (`src/components/settings/LabelSettings.tsx`)
+- Pro Feld einen kleinen Toggle (Auge-Symbol) neben dem Label-Input hinzufuegen
+- Toggle steuert, ob das Feld angezeigt oder ausgeblendet wird
 
-### 2. Neuer Hook: `useLabels`
-- Laedt die `label_overrides` aus der Settings-Tabelle fuer das aktuelle Restaurant
-- Stellt eine Funktion `getLabel(fieldKey)` bereit, die den ueberschriebenen oder den Standard-Wert zurueckgibt
-- Definiert alle Standard-Labels zentral in einer Map
+### 4. Exporte anpassen
+- `src/utils/pdfExport.ts` - FineDine-Zeile nur einfuegen wenn nicht hidden
+- `src/utils/excelExport.ts` - FineDine-Spalte nur einfuegen wenn nicht hidden
 
-### 3. Label-Verwaltung in den Einstellungen
-- Neuer Bereich auf der bestehenden Einstellungsseite oder im Manager-Dashboard
-- Tabelle mit allen verfuegbaren Labels: links der Feld-Name, rechts ein editierbares Textfeld
-- Speichern-Button, der die Aenderungen in die `settings`-Tabelle schreibt
+### 5. DailySummary weiterreichen (`src/pages/DailySummary.tsx`)
+- `hiddenFields`-Liste an ExcelLayout und Export-Funktionen weiterreichen
 
-### 4. Integration in bestehende Komponenten
-Folgende Dateien werden angepasst, um `getLabel()` statt hartcodierter Strings zu verwenden:
+## Betroffene Dateien
 
-- **`src/components/daily-summary/layouts/ExcelLayout.tsx`** - Alle Zeilen-Labels (Umsatz Abschlag, Terminal 1/2, SoUse, Wolt, etc.)
-- **`src/pages/WaiterCashUp.tsx`** - Tabellenkopf und Formular-Labels (Leistung, Abzugebender Betrag, Offene Rechnung, etc.)
-- **`src/utils/pdfExport.ts`** - PDF-Export-Labels
-- **`src/utils/excelExport.ts`** - Excel-Export-Spaltennamen
-- **`src/hooks/useCashBalanceData.ts`** / **`src/components/cash-balance/CashBalanceSummary.tsx`** - Bargeldbestand-Labels
-- **`src/hooks/useStatistics.ts`** - Statistik-Beschriftungen (z.B. "OrderSmart" in Delivery-Breakdown)
-
-### 5. Ablauf
-
-1. Hook `useLabels(restaurantId)` wird in relevanten Komponenten aufgerufen
-2. Beim ersten Laden werden Standard-Labels verwendet, bis die DB-Daten geladen sind
-3. Ueberschriebene Labels ersetzen die Standards
-4. Bei PDF/Excel-Export werden die Labels als Parameter uebergeben
-
-### Betroffene Dateien (Aenderungen)
 | Datei | Aenderung |
 |---|---|
-| `src/hooks/useLabels.ts` | **Neu** - Hook mit Standard-Labels und DB-Abfrage |
-| `src/components/settings/LabelSettings.tsx` | **Neu** - UI zur Label-Verwaltung |
-| `src/components/daily-summary/layouts/ExcelLayout.tsx` | Labels durch `getLabel()` ersetzen |
-| `src/pages/WaiterCashUp.tsx` | Labels durch `getLabel()` ersetzen |
-| `src/utils/pdfExport.ts` | Labels-Map als Parameter akzeptieren |
-| `src/utils/excelExport.ts` | Labels-Map als Parameter akzeptieren |
-| `src/pages/DailySummary.tsx` | Labels an Exports weiterreichen |
-| `src/pages/ManagerDashboard.tsx` oder Einstellungsseite | Link zur Label-Verwaltung |
+| `src/hooks/useLabels.ts` | `hidden_fields` laden, `isFieldHidden()` und `saveHiddenFields` bereitstellen |
+| `src/components/settings/LabelSettings.tsx` | Toggle pro Feld zum Ein-/Ausblenden |
+| `src/components/daily-summary/layouts/ExcelLayout.tsx` | Bedingte Anzeige von FineDine |
+| `src/utils/pdfExport.ts` | Bedingte Ausgabe von FineDine |
+| `src/utils/excelExport.ts` | Bedingte Ausgabe von FineDine |
+| `src/pages/DailySummary.tsx` | `hiddenFields` weiterreichen |
+
