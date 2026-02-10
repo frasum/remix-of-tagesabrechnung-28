@@ -25,7 +25,7 @@ interface ExcelLayoutProps {
   warnings: ReactNode;
   expenses: ReactNode;
   advances: ReactNode;
-  cashBalanceCard: ReactNode;
+  
   waiterShifts: WaiterShiftData[];
   formData: {
     pos_total: number;
@@ -67,7 +67,7 @@ export function ExcelLayout({
   warnings,
   expenses,
   advances,
-  cashBalanceCard,
+  
   waiterShifts,
   formData,
   onFieldChange,
@@ -181,7 +181,7 @@ export function ExcelLayout({
 
           </div>
 
-          {cashBalanceCard}
+          
         </div>
 
         {/* RIGHT COLUMN - Notizen + Ausgaben */}

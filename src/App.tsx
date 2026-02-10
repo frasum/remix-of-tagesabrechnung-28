@@ -27,7 +27,7 @@ import NotFound from "./pages/NotFound";
 import OAuthCallback from "./pages/OAuthCallback";
 import { ConfirmLoginPage } from "./pages/ConfirmLoginPage";
 import PermissionManagement from "./pages/PermissionManagement";
-import RegisterBalance from "./pages/RegisterBalance";
+
 import RestaurantSelect from "./pages/RestaurantSelect";
 
 const queryClient = new QueryClient();
@@ -45,7 +45,7 @@ function RestaurantRoutes() {
           <Route path="statistics" element={<ProtectedRoute requiredLevel="manager"><Statistics /></ProtectedRoute>} />
           <Route path="history" element={<ProtectedRoute requiredLevel="manager"><History /></ProtectedRoute>} />
           <Route path="cash-balance" element={<ProtectedRoute requiredLevel="manager"><CashBalance /></ProtectedRoute>} />
-          <Route path="register-balance" element={<ProtectedRoute requiredLevel="manager"><RegisterBalance /></ProtectedRoute>} />
+          
           <Route path="qr-poster" element={<ProtectedRoute requiredLevel="manager"><WaiterQRPoster /></ProtectedRoute>} />
         </Routes>
       </DateProvider>
