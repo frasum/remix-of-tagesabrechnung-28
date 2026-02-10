@@ -414,19 +414,20 @@ export default function DailySummary() {
   }
 
   // Render components for layout slots
-  const warningsComponent = waiterShifts.length > 0 && (Math.abs(posMismatch - formData.takeaway_total) >= 0.01 || Math.abs(cardTerminalMismatch) >= 0.01) && (
+  const adjustedPosDiff = posMismatch - formData.takeaway_total - formData.ordersmart_revenue - formData.wolt_revenue;
+  const warningsComponent = waiterShifts.length > 0 && (Math.abs(adjustedPosDiff) >= 0.01 || Math.abs(cardTerminalMismatch) >= 0.01) && (
     <div className="grid sm:grid-cols-2 gap-4">
-      {Math.abs(posMismatch - formData.takeaway_total) >= 0.01 && (
+      {Math.abs(adjustedPosDiff) >= 0.01 && (
         <Card className="border-destructive/30 bg-destructive/5">
           <CardContent className="py-4 flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
             <div>
               <p className="font-medium text-destructive">POS Differenz</p>
               <p className="text-sm text-muted-foreground">
-                POS Total ({formatCurrency(formData.pos_total)}) stimmt nicht mit Kellner-Umsätzen ({formatCurrency(kellnerUmsatz)}) + Takeaway ({formatCurrency(formData.takeaway_total)}) überein.
+                POS Total ({formatCurrency(formData.pos_total)}) stimmt nicht mit Kellner-Umsätzen ({formatCurrency(kellnerUmsatz)}) + Takeaway ({formatCurrency(formData.takeaway_total)}) + Plattformen überein.
               </p>
               <p className="text-sm font-semibold text-destructive mt-1">
-                Differenz: {formatCurrency(posMismatch - formData.takeaway_total)}
+                Differenz: {formatCurrency(adjustedPosDiff)}
               </p>
             </div>
           </CardContent>
