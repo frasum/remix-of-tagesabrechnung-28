@@ -412,18 +412,21 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          initial_cash_deficit: number | null
           name: string
           slug: string
         }
         Insert: {
           created_at?: string
           id?: string
+          initial_cash_deficit?: number | null
           name: string
           slug: string
         }
         Update: {
           created_at?: string
           id?: string
+          initial_cash_deficit?: number | null
           name?: string
           slug?: string
         }

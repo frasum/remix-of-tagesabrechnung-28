@@ -92,7 +92,6 @@ export function useCashBalanceData(restaurantId: string | null) {
           kreditkarten -
           ordersmart -
           wolt -
-          takeaway -
           gutscheineEL -
           finedine -
           einladung -

@@ -5,6 +5,7 @@ import { Landmark, Plus, TrendingDown, Wallet } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { PettyCashSetting } from './PettyCashSetting';
+import { InitialDeficitSetting } from './InitialDeficitSetting';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', {
@@ -48,7 +49,7 @@ export function CashBalanceSummary({
 
             <div className="space-y-3">
                 <PettyCashSetting />
-                
+                <InitialDeficitSetting />
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">

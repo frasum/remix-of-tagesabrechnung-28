@@ -18,16 +18,26 @@ export function usePreviousDayDeficit(date: Date, restaurantId: string | null) {
       // Load all sessions before the selected date (last 30 days max for performance)
       const lookbackDate = format(subDays(date, 30), 'yyyy-MM-dd');
 
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('sessions')
-        .select('*')
-        .eq('restaurant_id', restaurantId)
-        .gte('session_date', lookbackDate)
-        .lt('session_date', dateStr)
-        .order('session_date', { ascending: true });
+      const [sessionsResult, restaurantResult] = await Promise.all([
+        supabase
+          .from('sessions')
+          .select('*')
+          .eq('restaurant_id', restaurantId)
+          .gte('session_date', lookbackDate)
+          .lt('session_date', dateStr)
+          .order('session_date', { ascending: true }),
+        supabase
+          .from('restaurants')
+          .select('initial_cash_deficit')
+          .eq('id', restaurantId)
+          .single(),
+      ]);
 
-      if (sessionsError) throw sessionsError;
-      if (!sessions || sessions.length === 0) return 0;
+      if (sessionsResult.error) throw sessionsResult.error;
+      const sessions = sessionsResult.data;
+      const initialDeficit = (restaurantResult.data as any)?.initial_cash_deficit ?? 0;
+
+      if (!sessions || sessions.length === 0) return initialDeficit;
 
       const sessionIds = sessions.map(s => s.id);
 
@@ -47,7 +57,7 @@ export function usePreviousDayDeficit(date: Date, restaurantId: string | null) {
       const allAdvances = advancesResult.data || [];
 
       // Calculate BARGELD per day and chain deficits
-      let carryOver = 0;
+      let carryOver = initialDeficit;
 
       for (const session of sessions) {
         const shifts = allShifts.filter(s => s.session_id === session.id);
@@ -77,7 +87,6 @@ export function usePreviousDayDeficit(date: Date, restaurantId: string | null) {
           kreditkarten -
           ordersmart -
           wolt -
-          takeaway -
           gutscheineEL -
           finedine -
           einladung -
