@@ -139,7 +139,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   const summaryRows: any[][] = [
     ['Umsatz', formatCurrency(data.session.pos_total || 0)],
     ['KK', formatCurrency(terminalTotal)],
-    ['OrderSmart', formatCurrency(data.session.ordersmart_revenue || 0)],
+    ['SoUse', formatCurrency(data.session.ordersmart_revenue || 0)],
     ['Wolt', formatCurrency(data.session.wolt_revenue || 0)],
     ['Gutscheine', formatCurrency(data.session.vouchers_redeemed || 0)],
     ['FineDine', formatCurrency(data.session.finedine_vouchers || 0)],
@@ -521,7 +521,7 @@ export const generateCashBalancePDF = (data: CashBalancePDFData, options?: { pre
       'Datum',
       'Tagesumsatz',
       'Kreditkarten',
-      'OrderSmart',
+      'SoUse',
       'Wolt',
       'Gutsch. EL',
       'FineDine',
