@@ -1,55 +1,20 @@
 
 
-# Labels und Ausblenden in der PWA (WaiterMobile)
+# Label-Verwaltung nur fuer Admins sichtbar machen
 
-## Was wird gemacht
-Die mobile Kellner-Ansicht bekommt die gleiche dynamische Label- und Ausblend-Logik wie die Desktop-Version. Aenderungen in der Label-Verwaltung (Umbenennen, Ein-/Ausblenden) wirken sich dann automatisch auch auf die PWA aus.
+## Aenderung
 
-## Aenderungen in `src/pages/WaiterMobile.tsx`
+In `src/pages/DailySummary.tsx` (Zeile 1156) wird die Sichtbarkeitsbedingung der `LabelSettings`-Komponente eingeschraenkt:
 
-### 1. useLabels-Hook einbinden
-- `useLabels` mit der aktuellen `restaurantId` importieren
-- `getLabel` und `isFieldHidden` verwenden
-
-### 2. Labels dynamisch machen
-
-| Aktuell hartcodiert | Wird zu |
+| Aktuell | Neu |
 |---|---|
-| "Umsatz (POS Sales)" | `getLabel('pos_sales')` |
-| "Abzugebender Betrag (Kassiert Brutto)" | `getLabel('kassiert_brutto')` |
-| "Kartenzahlung" | `getLabel('card_total_gl')` |
-| "Hilf Mahl" | `getLabel('hilf_mahl')` |
-| "Offene Rechnung" | `getLabel('open_invoices')` |
-| "Bargeld abgegeben" | `getLabel('cash_handed_in')` |
+| `user?.permissionLevel && user.permissionLevel !== 'staff'` | `user?.permissionLevel === 'admin'` |
 
-### 3. Felder bedingt ausblenden
-Folgende Eingabefelder werden nur angezeigt, wenn sie nicht ausgeblendet sind:
-- `card_total_gl` (steuert das Kartenzahlung-Feld)
-- `hilf_mahl`
-- `open_invoices`
+Das bedeutet: Manager sehen die Label-Verwaltung nicht mehr, nur Admins haben Zugriff darauf. Die Labels und Ausblendungen, die ein Admin konfiguriert, gelten weiterhin fuer alle Nutzer (Manager, Kellner, PWA).
 
-Wenn ein Feld ausgeblendet ist, wird das Eingabefeld nicht gerendert und der Wert bleibt 0. Die Berechnungen (Erwartet, Kuechentipp, Trinkgeld) funktionieren weiterhin korrekt.
-
-## Technische Details
-
-### Betroffene Datei
+## Betroffene Datei
 
 | Datei | Aenderung |
 |---|---|
-| `src/pages/WaiterMobile.tsx` | `useLabels` importieren, hartcodierte Labels durch `getLabel()` ersetzen, Eingabefelder mit `isFieldHidden()` bedingt rendern |
-
-### Beispiel der Aenderung
-```typescript
-// Vorher:
-<Label>Kartenzahlung</Label>
-<CurrencyInput value={formData.card_total} ... />
-
-// Nachher:
-{!isFieldHidden('card_total_gl') && (
-  <div>
-    <Label>{getLabel('card_total_gl')}</Label>
-    <CurrencyInput value={formData.card_total} ... />
-  </div>
-)}
-```
+| `src/pages/DailySummary.tsx` | Zeile 1156: Bedingung auf `=== 'admin'` aendern |
 
