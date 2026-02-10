@@ -373,6 +373,7 @@ export default function DailySummary() {
         posMismatch,
         cardTerminalMismatch,
         totalAdvances,
+        previousDeficit,
       },
     });
     
