@@ -264,8 +264,7 @@ export default function DailySummary() {
   // BARGELD calculation - uses pos_total (Vectron total) as base
   const bargeld = 
     formData.pos_total +
-    formData.vouchers_sold +
-    formData.sonstige_einnahme -
+    formData.vouchers_sold -
     formData.terminal_1_total -
     formData.terminal_2_total -
     formData.ordersmart_revenue -
@@ -821,7 +820,7 @@ export default function DailySummary() {
             <TableRow className="border-t-2">
               <TableCell className="font-semibold py-2">Summe</TableCell>
               <TableCell className="text-right tabular-nums font-semibold text-success py-2">
-                {formatCurrency(formData.pos_total + formData.vouchers_sold + formData.sonstige_einnahme + totalHilfMahl)}
+                {formatCurrency(formData.pos_total + formData.vouchers_sold + totalHilfMahl)}
               </TableCell>
             </TableRow>
           </TableBody>

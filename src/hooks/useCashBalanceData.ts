@@ -84,11 +84,10 @@ export function useCashBalanceData(restaurantId: string | null) {
         const totalExpenses = sessionExpenses.reduce((sum, e) => sum + e.amount, 0);
 
         // BARGELD = Einnahmen - Abzüge + Vortags-Defizit
-        const sonstigeEinnahme = session.sonstige_einnahme || 0;
+        // Note: sonstige_einnahme is already included in pos_total (Vectron), so not added here
         const bargeld =
           tagesumsatz +
-          gutscheineVK +
-          sonstigeEinnahme -
+          gutscheineVK -
           kreditkarten -
           ordersmart -
           wolt -
