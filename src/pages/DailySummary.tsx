@@ -41,11 +41,13 @@ import { useLabels } from '@/hooks/useLabels';
 import { LabelSettings } from '@/components/settings/LabelSettings';
 import { usePreviousDayDeficit } from '@/hooks/usePreviousDayDeficit';
 import { useRemainingCash } from '@/hooks/useRemainingCash';
+import { useTelegramSettings } from '@/hooks/useTelegramSettings';
 
 export default function DailySummary() {
   const { selectedDate, setSelectedDate } = useSelectedDate();
   const { toast } = useToast();
   const { restaurantId, restaurantName } = useRestaurant();
+  const { settings } = useTelegramSettings();
   const { user } = useAuth();
   const locked = isSessionLocked(selectedDate, user?.permissionLevel || 'staff');
   
@@ -402,16 +404,18 @@ export default function DailySummary() {
       link.click();
       document.body.removeChild(link);
 
-      // Send Telegram notification (fire-and-forget)
-      supabase.functions.invoke('notify-pdf-export', {
-        body: {
-          date: format(selectedDate, 'yyyy-MM-dd'),
-          restaurant_name: restaurantName,
-          exported_by: user?.name,
-        },
-      }).catch((err) => console.error('Telegram notify failed:', err));
+      // Send Telegram notification if enabled (fire-and-forget)
+      if (settings?.show_pdf_export_notification !== false) {
+        supabase.functions.invoke('notify-pdf-export', {
+          body: {
+            date: format(selectedDate, 'yyyy-MM-dd'),
+            restaurant_name: restaurantName,
+            exported_by: user?.name,
+          },
+        }).catch((err) => console.error('Telegram notify failed:', err));
+      }
     }
-  }, [pdfPreview, selectedDate, restaurantName, user?.name]);
+  }, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification]);
 
   const handleClosePdfPreview = useCallback(() => {
     if (pdfPreview?.blobUrl) {

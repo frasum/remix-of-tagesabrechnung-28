@@ -21,6 +21,7 @@ const metricToggles = [
   { key: 'show_created_by', label: 'Erstellt von' },
   { key: 'show_waiters', label: 'Kellner-Details' },
   { key: 'show_kitchen', label: 'Küche-Details' },
+  { key: 'show_pdf_export_notification', label: 'PDF-Export Benachrichtigung' },
 ] as const;
 
 type MetricKey = typeof metricToggles[number]['key'];
@@ -38,6 +39,7 @@ function TelegramSettingsContent() {
     show_created_by: true,
     show_waiters: true,
     show_kitchen: true,
+    show_pdf_export_notification: true,
   });
   const [testDate, setTestDate] = useState(() => {
     const d = new Date();
@@ -49,14 +51,15 @@ function TelegramSettingsContent() {
     if (settings) {
       setExcludedRestaurants(settings.excluded_restaurants || []);
       setMetrics({
-        show_pos_total: settings.show_pos_total,
-        show_guest_count: settings.show_guest_count,
-        show_cash_balance: settings.show_cash_balance,
-        show_cash_details: settings.show_cash_details,
-        show_created_by: settings.show_created_by,
-        show_waiters: settings.show_waiters,
-        show_kitchen: settings.show_kitchen,
-      });
+         show_pos_total: settings.show_pos_total,
+         show_guest_count: settings.show_guest_count,
+         show_cash_balance: settings.show_cash_balance,
+         show_cash_details: settings.show_cash_details,
+         show_created_by: settings.show_created_by,
+         show_waiters: settings.show_waiters,
+         show_kitchen: settings.show_kitchen,
+         show_pdf_export_notification: settings.show_pdf_export_notification,
+       });
     }
   }, [settings]);
 
