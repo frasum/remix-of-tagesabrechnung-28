@@ -480,8 +480,8 @@ export function useWaiterTipAverages(restaurantId: string | null) {
             waiterAverages[name] = { totalPoolShare: 0, totalSales: 0, shiftsCount: 0 };
           }
           waiterAverages[name].totalPoolShare += sharePerWaiter;
-          // For team shifts, split sales 50/50 for average calculation
-          const salesShare = shift.second_waiter_name ? (shift.pos_sales || 0) / 2 : (shift.pos_sales || 0);
+          // For team shifts, use full sales as base for tip % calculation
+          const salesShare = shift.pos_sales || 0;
           waiterAverages[name].totalSales += salesShare;
           waiterAverages[name].shiftsCount += 1;
 
