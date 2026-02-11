@@ -361,6 +361,8 @@ export default function DailySummary() {
       })),
       restaurantName,
       exportedBy: user?.name,
+      createdByName: session?.created_by_name || undefined,
+      updatedByName: session?.updated_by_name || undefined,
       labels: allLabels,
       hiddenFields,
       totals: {
