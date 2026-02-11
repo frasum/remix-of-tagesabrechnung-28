@@ -10,7 +10,6 @@ import { DateProvider } from "@/contexts/DateContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SessionLockScreen } from "@/components/auth/SessionLockScreen";
 import { useInactivityTimeout } from "@/hooks/useInactivityTimeout";
-import { PWAUpdatePrompt } from "@/components/shared/PWAUpdatePrompt";
 import { Loader2 } from "lucide-react";
 
 const Login = lazy(() => import("./pages/Login"));
@@ -125,7 +124,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <PWAUpdatePrompt />
+      
       <BrowserRouter>
         <AuthProvider>
           <AppContent />
