@@ -454,9 +454,7 @@ export default function WaiterCashUp() {
                           const contribution = calculateContribution(shift);
                           const shiftTipShare = shift.participates_in_pool ? tipPerWaiter : 0;
                           const isTeam = !!shift.second_waiter_name;
-                          const personalSalesShare = isTeam
-                            ? (shift.pos_sales || 0) / 2 
-                            : (shift.pos_sales || 0);
+                           const personalSalesShare = shift.pos_sales || 0;
                           const currentTipPercent = personalSalesShare > 0 
                             ? (shiftTipShare / personalSalesShare) * 100 
                             : 0;
