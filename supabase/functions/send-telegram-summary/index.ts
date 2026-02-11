@@ -213,9 +213,10 @@ Deno.serve(async (req) => {
 });
 
 async function calculateCashBalance(supabase: any, restaurantId: string, upToDate: string): Promise<number | null> {
+  // 1. Load sessions with sonstige_einnahme
   const { data: sessions, error: sessionsError } = await supabase
     .from("sessions")
-    .select("id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss")
+    .select("id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss, sonstige_einnahme")
     .eq("restaurant_id", restaurantId)
     .lte("session_date", upToDate)
     .order("session_date", { ascending: true });
@@ -224,19 +225,24 @@ async function calculateCashBalance(supabase: any, restaurantId: string, upToDat
 
   const sessionIds = sessions.map((s: any) => s.id);
 
-  const [shiftsRes, expensesRes, advancesRes, settingsRes] = await Promise.all([
+  // 2. Load related data + initial_cash_deficit
+  const [shiftsRes, expensesRes, advancesRes, settingsRes, restaurantRes] = await Promise.all([
     supabase.from("waiter_shifts").select("session_id, open_invoices").in("session_id", sessionIds),
     supabase.from("expenses").select("session_id, amount").in("session_id", sessionIds),
     supabase.from("advances").select("session_id, amount").in("session_id", sessionIds),
     supabase.from("settings").select("value").eq("restaurant_id", restaurantId).eq("key", "petty_cash").maybeSingle(),
+    supabase.from("restaurants").select("initial_cash_deficit").eq("id", restaurantId).single(),
   ]);
 
   const waiterShifts = shiftsRes.data || [];
   const expenses = expensesRes.data || [];
   const advances = advancesRes.data || [];
   const pettyCash = settingsRes.data?.value ? Number(settingsRes.data.value) : 0;
+  const initialDeficit = restaurantRes.data?.initial_cash_deficit ?? 0;
 
-  let totalCash = 0;
+  // 3. Deficit chaining: compute bargeld per day
+  let carryOver = initialDeficit;
+  const dailyBargeld: number[] = [];
 
   for (const session of sessions) {
     const tagesumsatz = session.pos_total || 0;
@@ -247,6 +253,7 @@ async function calculateCashBalance(supabase: any, restaurantId: string, upToDat
     const finedine = session.finedine_vouchers || 0;
     const gutscheineVK = session.vouchers_sold || 0;
     const einladung = session.einladung || 0;
+    const sonstigeEinnahme = session.sonstige_einnahme || 0;
 
     const sessionShifts = waiterShifts.filter((s: any) => s.session_id === session.id);
     const sessionExpenses = expenses.filter((e: any) => e.session_id === session.id);
@@ -258,11 +265,25 @@ async function calculateCashBalance(supabase: any, restaurantId: string, upToDat
       ? sessionAdvances.reduce((sum: number, a: any) => sum + a.amount, 0)
       : (session.vorschuss || 0);
 
-    const bargeld = tagesumsatz + gutscheineVK - kreditkarten - ordersmart - wolt - gutscheineEL - finedine - einladung - totalOpenInvoices - vorschuss - totalExpenses;
-    totalCash += bargeld;
+    const rawBargeld = tagesumsatz + gutscheineVK + sonstigeEinnahme
+      - kreditkarten - ordersmart - wolt - gutscheineEL - finedine - einladung
+      - totalOpenInvoices - vorschuss - totalExpenses;
+
+    const bargeld = rawBargeld + carryOver;
+    carryOver = bargeld < 0 ? bargeld : 0;
+    dailyBargeld.push(bargeld);
   }
 
-  return totalCash + pettyCash;
+  // 4. Skimming: kassenbestand starts at pettyCash, excess is skimmed
+  let kassenbestand = pettyCash;
+  for (const bargeld of dailyBargeld) {
+    kassenbestand += bargeld;
+    if (kassenbestand > pettyCash) {
+      kassenbestand = pettyCash;
+    }
+  }
+
+  return kassenbestand;
 }
 
 function getYesterday(): string {
