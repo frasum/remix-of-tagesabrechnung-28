@@ -89,7 +89,7 @@ export function CashBalanceSummary({
 
           <Button onClick={onAddDeposit} className="gap-2 shrink-0">
             <Plus className="h-4 w-4" />
-            Einzahlung hinzufügen
+            BANKEINZAHLUNG
           </Button>
         </div>
       </CardContent>
