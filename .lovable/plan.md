@@ -1,38 +1,46 @@
 
-# Statistiken nach Restaurant filtern
 
-## Problem
-Die drei Hooks, die Daten fuer die Statistik-Seite laden, filtern nicht nach dem aktuell ausgewaehlten Restaurant. Beim Wechsel zwischen Restaurants (z.B. Spicery / YUM) bleiben die Daten identisch, weil alle Sessions aller Restaurants geladen werden.
+# Team-Schichten in zwei Zeilen aufteilen (mit korrekter Trinkgeld-%)
 
-Betroffen sind:
-- `useStatistics` -- Hauptstatistiken (Umsatz, Trinkgeld, Charts)
-- `useStatisticsComparison` -- Vergleich mit Vorperiode
-- `useMonthlyStaffTips` -- Monatliche Trinkgeld-Auswertung
+## Was wird geaendert
 
-## Loesung
+In der Trinkgeld-Pool-Tabelle auf der Kellner-Abrechnungsseite werden Team-Schichten (z.B. "Europe + Andi") in **zwei separate Zeilen** aufgeteilt.
 
-### 1. `useStatistics` anpassen
-- Parameter `restaurantId` hinzufuegen
-- In den `queryKey` aufnehmen, damit React Query bei Restaurant-Wechsel neu laedt
-- `.eq('restaurant_id', restaurantId)` zur Sessions-Abfrage hinzufuegen
+## Darstellung vorher vs. nachher
 
-### 2. `useStatisticsComparison` anpassen
-- Parameter `restaurantId` an den Hook und an `fetchPeriodStats` durchreichen
-- `.eq('restaurant_id', restaurantId)` zur Sessions-Abfrage hinzufuegen
-- In den `queryKey` aufnehmen
+```text
+VORHER:
+| Name            | Beitrag    | Anteil         | TG %  | Ø TG % |
+| Europe + Andi   | 106,34 EUR | 87,83 EUR x 2  | 13.0% | 13.0%  |
 
-### 3. `useMonthlyStaffTips` anpassen
-- Parameter `restaurantId` hinzufuegen
-- `.eq('restaurant_id', restaurantId)` zur Sessions-Abfrage hinzufuegen
-- In den `queryKey` aufnehmen
-- Query nur ausfuehren wenn `restaurantId` vorhanden (`enabled: !!restaurantId`)
+NACHHER:
+| Name            | Beitrag    | Anteil         | TG %  | Ø TG % |
+| Europe          |  53,17 EUR | 87,83 EUR      | 13.0% | 13.0%  |
+| Andi            |  53,17 EUR | 87,83 EUR      | 13.0% | 12.5%  |
+```
 
-### 4. `Statistics.tsx` (Seite) anpassen
-- `restaurantId` aus `useRestaurant()` an alle drei Hooks weitergeben
+## Berechnung pro Zeile
 
-### 5. `MonthlyTipBreakdown.tsx` (Komponente) anpassen
-- `useRestaurant()` importieren und `restaurantId` an `useMonthlyStaffTips` weitergeben
+Fuer jede Person einer Team-Schicht gilt:
 
-## Technische Details
+| Spalte | Berechnung | Erklaerung |
+|--------|-----------|------------|
+| **Beitrag** | `contribution / 2` | Der Gesamtbeitrag der Schicht wird halbiert |
+| **Anteil** | `tipPerWaiter` | Jeder bekommt seinen individuellen Pool-Anteil (ohne "x 2") |
+| **TG %** | `tipPerWaiter / (pos_sales / 2) * 100` | Trinkgeld-Prozent bezogen auf den halben Umsatz -- bleibt identisch fuer beide |
+| **Ø TG %** | Lookup in `waiterTipAverages` | Fuer den ersten Kellner wird `waiterTipAverages[waiter_name]` verwendet, fuer den zweiten `waiterTipAverages[second_waiter_name]` -- dadurch erhaelt jeder seinen eigenen historischen Durchschnitt |
 
-Alle drei Hooks erhalten `restaurantId: string | null` als Parameter. Die Supabase-Abfragen werden um `.eq('restaurant_id', restaurantId)` ergaenzt. Der `queryKey` enthaelt die `restaurantId`, sodass React Query bei jedem Restaurant-Wechsel automatisch neue Daten laedt.
+## Technische Umsetzung
+
+### Datei: `src/pages/WaiterCashUp.tsx` (Zeilen 453-501)
+
+- `waiterShifts.map()` wird zu `waiterShifts.flatMap()` geaendert
+- Bei Team-Schichten (`shift.second_waiter_name` vorhanden) werden zwei `TableRow`-Elemente erzeugt
+- Erste Zeile: Name des Haupt-Kellners, halber Beitrag, individueller Anteil, TG %, eigener Ø TG %
+- Zweite Zeile: Name des zweiten Kellners, halber Beitrag, individueller Anteil, TG %, eigener Ø TG %
+- Bei Einzel-Schichten bleibt alles wie bisher
+
+### Keine Aenderungen noetig in:
+- **PDF-Export** (`pdfExport.ts`) -- dort werden Team-Schichten bereits korrekt aufgeteilt
+- **Tagesabrechnung** (`DailySummary.tsx`) -- dort ebenfalls bereits implementiert
+- **Pool-Berechnung** -- `waiterShareCount`, `totalPool`, `tipPerWaiter` bleiben unveraendert, da Team-Schichten dort schon als 2 Anteile gezaehlt werden
