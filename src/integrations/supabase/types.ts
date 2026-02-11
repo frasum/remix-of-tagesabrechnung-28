@@ -672,6 +672,7 @@ export type Database = {
           show_created_by: boolean | null
           show_guest_count: boolean | null
           show_kitchen: boolean | null
+          show_pdf_export_notification: boolean | null
           show_pos_total: boolean | null
           show_waiters: boolean | null
           updated_at: string | null
@@ -687,6 +688,7 @@ export type Database = {
           show_created_by?: boolean | null
           show_guest_count?: boolean | null
           show_kitchen?: boolean | null
+          show_pdf_export_notification?: boolean | null
           show_pos_total?: boolean | null
           show_waiters?: boolean | null
           updated_at?: string | null
@@ -702,6 +704,7 @@ export type Database = {
           show_created_by?: boolean | null
           show_guest_count?: boolean | null
           show_kitchen?: boolean | null
+          show_pdf_export_notification?: boolean | null
           show_pos_total?: boolean | null
           show_waiters?: boolean | null
           updated_at?: string | null

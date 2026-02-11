@@ -1,0 +1,1 @@
+ALTER TABLE public.telegram_settings ADD COLUMN show_pdf_export_notification boolean DEFAULT true;
