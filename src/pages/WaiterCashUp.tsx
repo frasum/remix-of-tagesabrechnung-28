@@ -27,7 +27,8 @@ export default function WaiterCashUp() {
   const { selectedDate, setSelectedDate } = useSelectedDate();
   const { toast } = useToast();
   const { restaurantId } = useRestaurant();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const isAdmin = hasPermission('admin');
   const locked = isSessionLocked(selectedDate, user?.permissionLevel || 'staff');
 
   // Form state for new waiter
@@ -445,8 +446,8 @@ export default function WaiterCashUp() {
                           <TableHead>Name</TableHead>
                           <TableHead className="text-right">Beitrag</TableHead>
                           <TableHead className="text-right">Anteil</TableHead>
-                          <TableHead className="text-right">TG %</TableHead>
-                          <TableHead className="text-right">Ø TG %</TableHead>
+                          {isAdmin && <TableHead className="text-right">TG %</TableHead>}
+                          {isAdmin && <TableHead className="text-right">Ø TG %</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -477,12 +478,12 @@ export default function WaiterCashUp() {
                                 <TableCell className="text-right tabular-nums text-success">
                                   {shift.participates_in_pool ? formatCurrency(shiftTipShare) : <span className="text-muted-foreground">—</span>}
                                 </TableCell>
-                                <TableCell className="text-right tabular-nums">
+                                {isAdmin && <TableCell className="text-right tabular-nums">
                                   {shift.participates_in_pool ? `${currentTipPercent.toFixed(1)}%` : '—'}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums text-muted-foreground">
+                                </TableCell>}
+                                {isAdmin && <TableCell className="text-right tabular-nums text-muted-foreground">
                                   {avgData1 ? `${avgData1.avgTipPercent.toFixed(1)}%` : '—'}
-                                </TableCell>
+                                </TableCell>}
                               </TableRow>,
                               <TableRow key={`${shift.id}-2`}>
                                 <TableCell className="font-medium">
@@ -497,12 +498,12 @@ export default function WaiterCashUp() {
                                 <TableCell className="text-right tabular-nums text-success">
                                   {shift.participates_in_pool ? formatCurrency(shiftTipShare) : <span className="text-muted-foreground">—</span>}
                                 </TableCell>
-                                <TableCell className="text-right tabular-nums">
+                                {isAdmin && <TableCell className="text-right tabular-nums">
                                   {shift.participates_in_pool ? `${currentTipPercent.toFixed(1)}%` : '—'}
-                                </TableCell>
-                                <TableCell className="text-right tabular-nums text-muted-foreground">
+                                </TableCell>}
+                                {isAdmin && <TableCell className="text-right tabular-nums text-muted-foreground">
                                   {avgData2 ? `${avgData2.avgTipPercent.toFixed(1)}%` : '—'}
-                                </TableCell>
+                                </TableCell>}
                               </TableRow>
                             ];
                           }
@@ -522,12 +523,12 @@ export default function WaiterCashUp() {
                               <TableCell className="text-right tabular-nums text-success">
                                 {shift.participates_in_pool ? formatCurrency(shiftTipShare) : <span className="text-muted-foreground">—</span>}
                               </TableCell>
-                              <TableCell className="text-right tabular-nums">
+                              {isAdmin && <TableCell className="text-right tabular-nums">
                                 {shift.participates_in_pool ? `${currentTipPercent.toFixed(1)}%` : '—'}
-                              </TableCell>
-                              <TableCell className="text-right tabular-nums text-muted-foreground">
+                              </TableCell>}
+                              {isAdmin && <TableCell className="text-right tabular-nums text-muted-foreground">
                                 {avgData ? `${avgData.avgTipPercent.toFixed(1)}%` : '—'}
-                              </TableCell>
+                              </TableCell>}
                             </TableRow>
                           ];
                         })}
