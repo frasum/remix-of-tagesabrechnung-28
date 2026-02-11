@@ -94,8 +94,8 @@ export default function DailySummary() {
   // Previous day deficit
   const { data: previousDeficit = 0 } = usePreviousDayDeficit(selectedDate, restaurantId);
 
-  // Remaining cash (Kassenbestand)
-  const { remainingCash } = useRemainingCash(restaurantId, selectedDate);
+  // Remaining cash (Kassenbestand) with skimming
+  const { remainingCash, todaySkimAmount } = useRemainingCash(restaurantId, selectedDate);
 
   // Labels
   const { getLabel, allLabels, isFieldHidden, hiddenFields } = useLabels(restaurantId);
@@ -1045,6 +1045,7 @@ export default function DailySummary() {
       isFieldHidden={isFieldHidden}
       previousDeficit={previousDeficit}
       remainingCash={remainingCash}
+      todaySkimAmount={todaySkimAmount}
       createdByName={session?.created_by_name || undefined}
       updatedByName={session?.updated_by_name || undefined}
       guestCount={formData.guest_count}

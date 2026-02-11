@@ -65,6 +65,7 @@ interface ExcelLayoutProps {
   isFieldHidden?: (key: LabelKey) => boolean;
   previousDeficit?: number;
   remainingCash?: number;
+  todaySkimAmount?: number;
   createdByName?: string;
   updatedByName?: string;
   guestCount?: number;
@@ -98,6 +99,7 @@ export function ExcelLayout({
   isFieldHidden: ifh,
   previousDeficit = 0,
   remainingCash,
+  todaySkimAmount = 0,
   createdByName,
   updatedByName,
   guestCount = 0,
@@ -236,6 +238,24 @@ export function ExcelLayout({
                 </tbody>
               </table>
             </div>
+
+            {/* Abschöpfung */}
+            {todaySkimAmount > 0 && (
+              <div className="bg-amber-500/10 border-b">
+                <table className="w-full">
+                  <tbody>
+                    <tr>
+                      <td className="px-3 py-1.5 font-medium text-sm text-amber-700 dark:text-amber-400">
+                        ↗ Abschöpfung (Büro)
+                      </td>
+                      <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-sm text-amber-700 dark:text-amber-400">
+                        {fmt(todaySkimAmount)} €
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             {/* Kassenbestand */}
             {remainingCash !== undefined && (
