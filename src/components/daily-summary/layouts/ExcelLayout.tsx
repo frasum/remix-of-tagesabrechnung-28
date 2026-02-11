@@ -27,7 +27,7 @@ interface ExcelLayoutProps {
   warnings: ReactNode;
   expenses: ReactNode;
   advances: ReactNode;
-  
+
   waiterShifts: WaiterShiftData[];
   formData: {
     pos_total: number;
@@ -76,7 +76,7 @@ export function ExcelLayout({
   warnings,
   expenses,
   advances,
-  
+
   waiterShifts,
   formData,
   onFieldChange,
@@ -103,43 +103,43 @@ export function ExcelLayout({
   createdByName,
   updatedByName,
   guestCount = 0,
-  onGuestCountChange,
+  onGuestCountChange
 }: ExcelLayoutProps) {
   const getLabel = gl || ((key: LabelKey) => key);
   const isFieldHidden = ifh || (() => false);
   const fmt = (value: number) =>
-    new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
   const fmtCurrency = (value: number) =>
-    new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
+  new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 
   const terminalTotal = formData.terminal_1_total + formData.terminal_2_total;
 
   // Calculate expected cash per waiter
   const calcExpected = (w: WaiterShiftData) =>
-    (w.kassiert_brutto || 0) + (w.hilf_mahl || 0) - (w.open_invoices || 0) - (w.card_total || 0);
+  (w.kassiert_brutto || 0) + (w.hilf_mahl || 0) - (w.open_invoices || 0) - (w.card_total || 0);
 
   return (
     <div className="space-y-4">
       {warnings}
 
       {/* Session creator/editor info */}
-      {(createdByName || updatedByName) && (
-        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-          {createdByName && (
-            <span className="inline-flex items-center gap-1.5">
+      {(createdByName || updatedByName) &&
+      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          {createdByName &&
+        <span className="inline-flex items-center gap-1.5">
               <User className="w-3.5 h-3.5" />
               Erstellt von: <span className="font-medium text-foreground">{createdByName}</span>
             </span>
-          )}
-          {updatedByName && updatedByName !== createdByName && (
-            <span className="inline-flex items-center gap-1.5">
+        }
+          {updatedByName && updatedByName !== createdByName &&
+        <span className="inline-flex items-center gap-1.5">
               <PenLine className="w-3.5 h-3.5" />
               Bearbeitet von: <span className="font-medium text-foreground">{updatedByName}</span>
             </span>
-          )}
+        }
         </div>
-      )}
+      }
 
       {/* Main Excel-style two-column layout */}
       <div className="grid lg:grid-cols-[minmax(320px,2fr)_minmax(400px,3fr)] gap-4">
@@ -168,13 +168,13 @@ export function ExcelLayout({
                           onGuestCountChange?.(cleaned ? parseInt(cleaned, 10) : 0);
                         }}
                         className="h-7 text-sm border-primary/20 bg-primary/5 w-20 text-right"
-                        disabled={locked}
-                      />
-                      {guestCount > 0 && (
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        disabled={locked} />
+
+                      {guestCount > 0 &&
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
                           ⌀ {new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(formData.pos_total / guestCount)} €
                         </span>
-                      )}
+                      }
                     </div>
                   </td>
                 </tr>
@@ -240,12 +240,12 @@ export function ExcelLayout({
             </div>
 
             {/* Abschöpfung */}
-            {todaySkimAmount > 0 && (
-              <div className="bg-amber-500/10 border-b">
+            {todaySkimAmount > 0 &&
+            <div className="bg-amber-500/10 border-b">
                 <table className="w-full">
                   <tbody>
                     <tr>
-                      <td className="px-3 py-1.5 font-medium text-sm text-amber-700 dark:text-amber-400">Bargeld in die Abrechnung</td>
+                      <td className="px-3 py-1.5 font-medium text-sm text-amber-700 dark:text-amber-400">Bargeld mit der Abrechnung in den Tresor legen           </td>
                       <td className="px-3 py-1.5 text-right tabular-nums font-semibold text-sm text-amber-700 dark:text-amber-400">
                         {fmt(todaySkimAmount)} €
                       </td>
@@ -253,11 +253,11 @@ export function ExcelLayout({
                   </tbody>
                 </table>
               </div>
-            )}
+            }
 
             {/* Kassenbestand */}
-            {remainingCash !== undefined && (
-              <div className={`border-b ${remainingCash >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
+            {remainingCash !== undefined &&
+            <div className={`border-b ${remainingCash >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
                 <table className="w-full">
                   <tbody>
                     <tr>
@@ -269,7 +269,7 @@ export function ExcelLayout({
                   </tbody>
                 </table>
               </div>
-            )}
+            }
 
           </div>
 
@@ -290,8 +290,8 @@ export function ExcelLayout({
                 onChange={(e) => onFieldChange('notes', e.target.value)}
                 rows={3}
                 className="border-0 bg-transparent p-0 focus-visible:ring-0 resize-none"
-                disabled={locked}
-              />
+                disabled={locked} />
+
             </div>
           </div>
 
@@ -302,21 +302,21 @@ export function ExcelLayout({
           {advances}
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 // Helper components for compact Excel-style rows
 
-function ExcelInputRow({ label, value, onChange, disabled }: { label: string; value: number; onChange: (v: number) => void; disabled?: boolean }) {
+function ExcelInputRow({ label, value, onChange, disabled }: {label: string;value: number;onChange: (v: number) => void;disabled?: boolean;}) {
   return (
     <tr className="border-b last:border-b-0 hover:bg-muted/20 transition-colors">
       <td className="px-3 py-1.5 font-medium text-foreground">{label}</td>
       <td className="px-3 py-1.5 w-36">
         <CurrencyInput value={value} onChange={onChange} className="h-7 text-sm border-primary/20 bg-primary/5" disabled={disabled} />
       </td>
-    </tr>
-  );
+    </tr>);
+
 }
 
 function ExcelReadonlyRow({
@@ -324,16 +324,16 @@ function ExcelReadonlyRow({
   value,
   bold,
   highlight,
-  muted,
-}: {
-  label: string;
-  value: number;
-  bold?: boolean;
-  highlight?: 'warning' | 'error';
-  muted?: boolean;
-}) {
+  muted
+
+
+
+
+
+
+}: {label: string;value: number;bold?: boolean;highlight?: 'warning' | 'error';muted?: boolean;}) {
   const fmt = (v: number) =>
-    new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+  new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 
   return (
     <tr className={`border-b last:border-b-0 ${highlight === 'warning' ? 'bg-warning/10' : bold ? 'bg-muted/20' : ''}`}>
@@ -343,8 +343,8 @@ function ExcelReadonlyRow({
       <td className={`px-3 py-1.5 text-right tabular-nums w-36 ${bold ? 'font-semibold' : ''} ${highlight ? 'text-warning font-medium' : ''}`}>
         {fmt(value)} €
       </td>
-    </tr>
-  );
+    </tr>);
+
 }
 
 function WaiterRow({
@@ -355,17 +355,17 @@ function WaiterRow({
   bold,
   className,
   colorize,
-  renderCell,
-}: {
-  label: string;
-  shifts: WaiterShiftData[];
-  getValue: (w: WaiterShiftData) => number;
-  fmt: (v: number) => string;
-  bold?: boolean;
-  className?: string;
-  colorize?: boolean;
-  renderCell?: (w: WaiterShiftData) => ReactNode;
-}) {
+  renderCell
+
+
+
+
+
+
+
+
+
+}: {label: string;shifts: WaiterShiftData[];getValue: (w: WaiterShiftData) => number;fmt: (v: number) => string;bold?: boolean;className?: string;colorize?: boolean;renderCell?: (w: WaiterShiftData) => ReactNode;}) {
   return (
     <tr className={`border-b last:border-b-0 ${className || ''}`}>
       <td className={`px-3 py-1.5 ${bold ? 'font-semibold' : 'font-medium'} text-muted-foreground`}>
@@ -376,12 +376,12 @@ function WaiterRow({
         return (
           <td
             key={w.id}
-            className={`px-3 py-1.5 text-right tabular-nums ${bold ? 'font-semibold' : ''} ${colorize ? (val >= 0 ? 'text-success' : 'text-destructive') : ''}`}
-          >
+            className={`px-3 py-1.5 text-right tabular-nums ${bold ? 'font-semibold' : ''} ${colorize ? val >= 0 ? 'text-success' : 'text-destructive' : ''}`}>
+
             {renderCell ? renderCell(w) : `${fmt(val)}`}
-          </td>
-        );
+          </td>);
+
       })}
-    </tr>
-  );
+    </tr>);
+
 }
