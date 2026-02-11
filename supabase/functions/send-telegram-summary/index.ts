@@ -71,10 +71,23 @@ Deno.serve(async (req) => {
         .eq("session_id", session.id)
         .order("pos_sales", { ascending: false });
 
+      // Get kitchen shifts for this session
+      const { data: kitchenShifts } = await supabase
+        .from("kitchen_shifts")
+        .select("staff_name, shift_start, shift_end, hours_worked")
+        .eq("session_id", session.id)
+        .order("staff_name");
+
+      // Calculate cumulative cash balance
+      const cashBalance = await calculateCashBalance(supabase, restaurant.id, targetDate);
+
       const posTotal = session.pos_total || 0;
 
       lines.push(`*${restaurant.name}:*`);
       lines.push(`  Vectron: ${formatEur(posTotal)}`);
+      if (cashBalance !== null) {
+        lines.push(`  Kassenbestand: ${formatEur(cashBalance)}`);
+      }
       const managerName = session.created_by_name || session.updated_by_name;
       if (managerName) {
         lines.push(`  Erstellt von: ${managerName}`);
@@ -94,6 +107,16 @@ Deno.serve(async (req) => {
           }
         }
       }
+
+      if (kitchenShifts && kitchenShifts.length > 0) {
+        lines.push("");
+        lines.push("  Küche:");
+        for (const k of kitchenShifts) {
+          const hours = k.hours_worked ? `${k.hours_worked}h` : "";
+          lines.push(`  • ${k.staff_name} (${k.shift_start.slice(0, 5)}-${k.shift_end.slice(0, 5)}${hours ? ", " + hours : ""})`);
+        }
+      }
+
       lines.push("");
     }
 
@@ -128,6 +151,61 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+async function calculateCashBalance(supabase: any, restaurantId: string, upToDate: string): Promise<number | null> {
+  // Load all sessions up to targetDate
+  const { data: sessions, error: sessionsError } = await supabase
+    .from("sessions")
+    .select("id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss")
+    .eq("restaurant_id", restaurantId)
+    .lte("session_date", upToDate)
+    .order("session_date", { ascending: true });
+
+  if (sessionsError || !sessions || sessions.length === 0) return null;
+
+  const sessionIds = sessions.map((s: any) => s.id);
+
+  // Load waiter_shifts, expenses, advances in parallel
+  const [shiftsRes, expensesRes, advancesRes, settingsRes] = await Promise.all([
+    supabase.from("waiter_shifts").select("session_id, open_invoices").in("session_id", sessionIds),
+    supabase.from("expenses").select("session_id, amount").in("session_id", sessionIds),
+    supabase.from("advances").select("session_id, amount").in("session_id", sessionIds),
+    supabase.from("settings").select("value").eq("restaurant_id", restaurantId).eq("key", "petty_cash").maybeSingle(),
+  ]);
+
+  const waiterShifts = shiftsRes.data || [];
+  const expenses = expensesRes.data || [];
+  const advances = advancesRes.data || [];
+  const pettyCash = settingsRes.data?.value ? Number(settingsRes.data.value) : 0;
+
+  let totalCash = 0;
+
+  for (const session of sessions) {
+    const tagesumsatz = session.pos_total || 0;
+    const kreditkarten = (session.terminal_1_total || 0) + (session.terminal_2_total || 0);
+    const ordersmart = session.ordersmart_revenue || 0;
+    const wolt = session.wolt_revenue || 0;
+    const gutscheineEL = session.vouchers_redeemed || 0;
+    const finedine = session.finedine_vouchers || 0;
+    const gutscheineVK = session.vouchers_sold || 0;
+    const einladung = session.einladung || 0;
+
+    const sessionShifts = waiterShifts.filter((s: any) => s.session_id === session.id);
+    const sessionExpenses = expenses.filter((e: any) => e.session_id === session.id);
+    const sessionAdvances = advances.filter((a: any) => a.session_id === session.id);
+
+    const totalOpenInvoices = sessionShifts.reduce((sum: number, w: any) => sum + (w.open_invoices || 0), 0);
+    const totalExpenses = sessionExpenses.reduce((sum: number, e: any) => sum + e.amount, 0);
+    const vorschuss = sessionAdvances.length > 0
+      ? sessionAdvances.reduce((sum: number, a: any) => sum + a.amount, 0)
+      : (session.vorschuss || 0);
+
+    const bargeld = tagesumsatz + gutscheineVK - kreditkarten - ordersmart - wolt - gutscheineEL - finedine - einladung - totalOpenInvoices - vorschuss - totalExpenses;
+    totalCash += bargeld;
+  }
+
+  return totalCash + pettyCash;
+}
 
 function getYesterday(): string {
   const d = new Date();
