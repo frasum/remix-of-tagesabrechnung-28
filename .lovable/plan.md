@@ -1,107 +1,43 @@
 
+## Bargeldbestand-Tabelle: Fehlbetrag Vortag einbeziehen
 
-## Telegram-Einstellungen mit Metrik-Filtern
+### Problem
+Die taegliche Bargeld-Spalte in der Bargeldbestand-Tabelle (`useCashBalanceData`) berechnet das Bargeld pro Tag isoliert -- ohne den Fehlbetrag vom Vortag. Die Tagesabrechnung (`DailySummary`) rechnet den Fehlbetrag Vortag aber korrekt ein. Dadurch weichen die angezeigten Bargeld-Werte voneinander ab.
 
-### Uebersicht
-Erweiterung des bisherigen Plans um individuelle An/Aus-Schalter fuer jede Metrik, die in der Telegram-Nachricht gesendet wird. Der Admin kann granular steuern, welche Informationen im taeglichen Bericht erscheinen.
+### Loesung
+Den Fehlbetrag-Vortag-Mechanismus (deficit chaining) in `useCashBalanceData` einbauen. Wenn das Bargeld eines Tages negativ ist, wird dieser Betrag auf den naechsten Tag uebertragen -- genau wie in `usePreviousDayDeficit`.
 
-### Steuerbare Metriken
+### Technische Aenderung
 
-Folgende Metriken koennen einzeln aktiviert/deaktiviert werden:
+**Datei: `src/hooks/useCashBalanceData.ts`**
 
-| Metrik | Schluessel | Standard |
-|---|---|---|
-| Vectron (Tagesumsatz) | `show_pos_total` | An |
-| Gaeste + Durchschnittsverbrauch | `show_guest_count` | An |
-| Kassenbestand | `show_cash_balance` | An |
-| Erstellt von (Manager-Name) | `show_created_by` | An |
-| Kellner-Details (Umsatz, Abgabezeit) | `show_waiters` | An |
-| Kueche-Details (Schichten, Stunden) | `show_kitchen` | An |
-
-### Datenbankschema
-
-Neue Tabelle `telegram_settings` (Singleton):
+Nach der Berechnung des rohen `bargeld` pro Tag wird ein Deficit-Chaining durchgefuehrt:
 
 ```text
-telegram_settings
-  id                      uuid PK default gen_random_uuid()
-  bot_token               text NOT NULL default ''
-  chat_id                 text NOT NULL default ''
-  excluded_restaurants    uuid[] DEFAULT '{}'
-  show_pos_total          boolean DEFAULT true
-  show_guest_count        boolean DEFAULT true
-  show_cash_balance       boolean DEFAULT true
-  show_created_by         boolean DEFAULT true
-  show_waiters            boolean DEFAULT true
-  show_kitchen            boolean DEFAULT true
-  created_at              timestamptz DEFAULT now()
-  updated_at              timestamptz DEFAULT now()
+Vorher (aktuell):
+  bargeld = tagesumsatz + gutscheineVK + sonstigeEinnahme - abzuege
+  -> Jeder Tag isoliert
+
+Nachher:
+  rawBargeld = tagesumsatz + gutscheineVK + sonstigeEinnahme - abzuege
+  bargeld = rawBargeld + carryOver
+  carryOver = bargeld < 0 ? bargeld : 0
+  -> Fehlbetraege werden auf Folgetag uebertragen
 ```
 
-### Seitenaufbau (TelegramSettings)
+Zusaetzlich muss der `initial_cash_deficit` aus der `restaurants`-Tabelle geladen und als Startwert fuer `carryOver` verwendet werden (identisch zum Verhalten in `usePreviousDayDeficit`).
 
-```text
-+------------------------------------------+
-|  Telegram Einstellungen                  |
-+------------------------------------------+
-|  Verbindung                              |
-|  Bot-Token:    [**********]              |
-|  Chat-ID:      [123456789]               |
-+------------------------------------------+
-|  Inhalt der Nachricht                    |
-|  [x] Vectron (Tagesumsatz)              |
-|  [x] Gaeste + Durchschnittsverbrauch    |
-|  [x] Kassenbestand                       |
-|  [x] Erstellt von                        |
-|  [x] Kellner-Details                     |
-|  [x] Kueche-Details                      |
-+------------------------------------------+
-|  Ausgeschlossene Restaurants             |
-|  [ ] Yum                                 |
-|  [ ] Restaurant 2                        |
-+------------------------------------------+
-|  Test senden                             |
-|  Datum: [11.02.2026]      [Senden]       |
-+------------------------------------------+
-|              [Speichern]                 |
-+------------------------------------------+
-```
+**Ablauf:**
+1. `restaurants.initial_cash_deficit` laden (bereits in der DB vorhanden)
+2. Alle Zeilen chronologisch durchgehen
+3. Pro Tag: `bargeld = rawBargeld + carryOver`, dann `carryOver = bargeld < 0 ? bargeld : 0`
+4. Das Ergebnis-`bargeld` im Interface `CashBalanceRow` enthaelt nun den korrigierten Wert
 
-### Technische Umsetzung
+### Betroffene Stellen
+- **`src/hooks/useCashBalanceData.ts`**: Hauptaenderung -- deficit chaining einfuegen, `initial_cash_deficit` laden
+- Keine Aenderung an `CashBalance.tsx` oder `ExcelLayout.tsx` noetig -- die UI zeigt bereits `row.bargeld` an
 
-**1. Datenbank-Migration**
-- Neue Tabelle `telegram_settings` mit allen Feldern inkl. Toggle-Spalten
-- RLS: SELECT, INSERT, UPDATE erlaubt; DELETE nicht
-
-**2. Neue Dateien**
-
-- `src/pages/TelegramSettings.tsx` -- Formular mit Verbindungsdaten, Switch-Toggles fuer jede Metrik, Restaurant-Ausschluesse, Test-Senden-Button
-- `src/hooks/useTelegramSettings.ts` -- CRUD fuer `telegram_settings`, manuelles Senden
-
-**3. Bestehende Dateien aendern**
-
-- `src/App.tsx` -- Neue Route `/telegram` (ProtectedRoute, admin only)
-- `src/components/layout/AppLayout.tsx` -- Neuer Sidebar-Link "Telegram" im Admin-Bereich
-- `supabase/functions/send-telegram-summary/index.ts` -- Settings aus DB laden, Toggle-Felder auswerten (Abschnitte nur einbauen wenn `show_*` true), `excluded_restaurants` beruecksichtigen, Fallback auf Env-Secrets wenn DB leer
-
-**4. Edge Function Anpassung (Pseudocode)**
-
-```text
-settings = lade aus telegram_settings (erste Zeile)
-bot_token = settings.bot_token || env.TELEGRAM_BOT_TOKEN
-chat_id = settings.chat_id || env.TELEGRAM_CHAT_ID
-
-fuer jedes Restaurant (nicht in excluded_restaurants):
-  wenn settings.show_pos_total:  -> Vectron-Zeile
-  wenn settings.show_guest_count: -> Gaeste-Zeile
-  wenn settings.show_cash_balance: -> Kassenbestand-Zeile
-  wenn settings.show_created_by: -> Erstellt-von-Zeile
-  wenn settings.show_waiters: -> Kellner-Block
-  wenn settings.show_kitchen: -> Kueche-Block
-```
-
-### Was gleich bleibt
-- Bargeld/Kassenbestand-Berechnung in der Edge Function bleibt identisch
-- Bestehende Secrets funktionieren weiterhin als Fallback
-- Nachrichtenformat bleibt gleich, nur Abschnitte werden ein-/ausgeblendet
-
+### Auswirkungen
+- Die "Bargeld"-Spalte in der Bargeldbestand-Tabelle zeigt danach exakt die gleichen Werte wie die Tagesabrechnung
+- Die kumulative Berechnung (Zusammenfassung oben) und die Abschoepfungs-Logik in `useRemainingCash` muessen ebenfalls geprueft werden, da sie auf `row.bargeld` basieren -- durch die Aenderung enthalten diese Werte nun bereits den Fehlbetrag, was Doppelzaehlungen verursachen koennte
+- `useRemainingCash` summiert `row.bargeld` kumulativ und wendet Skimming an. Da der Fehlbetrag nun in `row.bargeld` eingerechnet ist, funktioniert die kumulative Logik weiterhin korrekt (negative Tage reduzieren den Kassenbestand automatisch)
