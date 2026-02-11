@@ -450,26 +450,70 @@ export default function WaiterCashUp() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {waiterShifts.map(shift => {
+                        {waiterShifts.flatMap(shift => {
                           const contribution = calculateContribution(shift);
                           const shiftTipShare = shift.participates_in_pool ? tipPerWaiter : 0;
-                          // Bei Team-Schichten: persönlicher Umsatzanteil = pos_sales / 2
-                          const personalSalesShare = shift.second_waiter_name 
+                          const isTeam = !!shift.second_waiter_name;
+                          const personalSalesShare = isTeam
                             ? (shift.pos_sales || 0) / 2 
                             : (shift.pos_sales || 0);
                           const currentTipPercent = personalSalesShare > 0 
                             ? (shiftTipShare / personalSalesShare) * 100 
                             : 0;
+
+                          if (isTeam) {
+                            const halfContribution = contribution / 2;
+                            const avgData1 = waiterTipAverages[shift.waiter_name];
+                            const avgData2 = waiterTipAverages[shift.second_waiter_name!];
+                            return [
+                              <TableRow key={`${shift.id}-1`}>
+                                <TableCell className="font-medium">
+                                  {shift.waiter_name}
+                                  {!shift.participates_in_pool && (
+                                    <span className="ml-2 text-xs text-muted-foreground">(kein Pool)</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className={`text-right tabular-nums ${halfContribution >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(halfContribution)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-success">
+                                  {shift.participates_in_pool ? formatCurrency(shiftTipShare) : <span className="text-muted-foreground">—</span>}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {shift.participates_in_pool ? `${currentTipPercent.toFixed(1)}%` : '—'}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-muted-foreground">
+                                  {avgData1 ? `${avgData1.avgTipPercent.toFixed(1)}%` : '—'}
+                                </TableCell>
+                              </TableRow>,
+                              <TableRow key={`${shift.id}-2`}>
+                                <TableCell className="font-medium">
+                                  {shift.second_waiter_name}
+                                  {!shift.participates_in_pool && (
+                                    <span className="ml-2 text-xs text-muted-foreground">(kein Pool)</span>
+                                  )}
+                                </TableCell>
+                                <TableCell className={`text-right tabular-nums ${halfContribution >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(halfContribution)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-success">
+                                  {shift.participates_in_pool ? formatCurrency(shiftTipShare) : <span className="text-muted-foreground">—</span>}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums">
+                                  {shift.participates_in_pool ? `${currentTipPercent.toFixed(1)}%` : '—'}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums text-muted-foreground">
+                                  {avgData2 ? `${avgData2.avgTipPercent.toFixed(1)}%` : '—'}
+                                </TableCell>
+                              </TableRow>
+                            ];
+                          }
+
                           const avgData = waiterTipAverages[shift.waiter_name];
-                          return (
+                          return [
                             <TableRow key={shift.id}>
                               <TableCell className="font-medium">
                                 {shift.waiter_name}
-                                {shift.second_waiter_name && (
-                                  <span className="text-muted-foreground text-xs ml-1">
-                                    + {shift.second_waiter_name}
-                                  </span>
-                                )}
                                 {!shift.participates_in_pool && (
                                   <span className="ml-2 text-xs text-muted-foreground">(kein Pool)</span>
                                 )}
@@ -478,17 +522,7 @@ export default function WaiterCashUp() {
                                 {formatCurrency(contribution)}
                               </TableCell>
                               <TableCell className="text-right tabular-nums text-success">
-                                {shift.participates_in_pool ? (
-                                  shift.second_waiter_name ? (
-                                    <>
-                                      {formatCurrency(shiftTipShare)} × 2
-                                    </>
-                                  ) : (
-                                    formatCurrency(shiftTipShare)
-                                  )
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
+                                {shift.participates_in_pool ? formatCurrency(shiftTipShare) : <span className="text-muted-foreground">—</span>}
                               </TableCell>
                               <TableCell className="text-right tabular-nums">
                                 {shift.participates_in_pool ? `${currentTipPercent.toFixed(1)}%` : '—'}
@@ -497,7 +531,7 @@ export default function WaiterCashUp() {
                                 {avgData ? `${avgData.avgTipPercent.toFixed(1)}%` : '—'}
                               </TableCell>
                             </TableRow>
-                          );
+                          ];
                         })}
                       </TableBody>
                     </Table>
