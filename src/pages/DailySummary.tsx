@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { format, isToday, isYesterday } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { useSelectedDate } from '@/contexts/DateContext';
@@ -400,8 +401,17 @@ export default function DailySummary() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      // Send Telegram notification (fire-and-forget)
+      supabase.functions.invoke('notify-pdf-export', {
+        body: {
+          date: format(selectedDate, 'yyyy-MM-dd'),
+          restaurant_name: restaurantName,
+          exported_by: user?.name,
+        },
+      }).catch((err) => console.error('Telegram notify failed:', err));
     }
-  }, [pdfPreview]);
+  }, [pdfPreview, selectedDate, restaurantName, user?.name]);
 
   const handleClosePdfPreview = useCallback(() => {
     if (pdfPreview?.blobUrl) {

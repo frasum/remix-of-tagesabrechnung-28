@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.send-telegram-summary]
 verify_jwt = false
+
+[functions.notify-pdf-export]
+verify_jwt = false
