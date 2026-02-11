@@ -60,6 +60,8 @@ interface PDFExportData {
   advances?: AdvanceEntry[];
   restaurantName?: string;
   exportedBy?: string;
+  createdByName?: string;
+  updatedByName?: string;
   labels?: Record<string, string>;
   hiddenFields?: string[];
   totals: {
@@ -108,9 +110,16 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   y += 5;
   doc.setFontSize(7);
   doc.setTextColor(128);
-  const exportInfo = data.exportedBy
-    ? `Erstellt: ${format(new Date(), "dd.MM.yyyy HH:mm", { locale: de })} von ${data.exportedBy}`
-    : `Erstellt: ${format(new Date(), "dd.MM.yyyy HH:mm", { locale: de })}`;
+  // Show session creator, editor, and export info
+  const parts: string[] = [];
+  if (data.createdByName) {
+    parts.push(`Erstellt von: ${data.createdByName}`);
+  }
+  if (data.updatedByName && data.updatedByName !== data.createdByName) {
+    parts.push(`Bearbeitet von: ${data.updatedByName}`);
+  }
+  parts.push(`Export: ${format(new Date(), "dd.MM.yyyy HH:mm", { locale: de })}${data.exportedBy ? ` von ${data.exportedBy}` : ''}`);
+  const exportInfo = parts.join(' · ');
   doc.text(exportInfo, pageWidth / 2, y, { align: 'center' });
   doc.setTextColor(0);
 
