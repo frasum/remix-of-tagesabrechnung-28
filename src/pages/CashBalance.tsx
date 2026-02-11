@@ -329,7 +329,7 @@ export default function CashBalance() {
                         <TableCell
                           className={cn(
                             'text-right tabular-nums font-bold',
-                            row.bargeld >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
+                            row.bargeld >= 0 ? 'text-success' : 'text-destructive'
                           )}
                         >
                           {formatCurrency(row.bargeld)}

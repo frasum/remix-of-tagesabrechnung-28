@@ -563,7 +563,7 @@ export default function ManagerDashboard() {
                 <CardContent>
                   <div>
                     <Label>Bargeld heute</Label>
-                    <div className={`text-2xl font-bold tabular-nums ${bargeldPreview >= 0 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <div className={`text-2xl font-bold tabular-nums ${bargeldPreview >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {formatCurrency(bargeldPreview)}
                     </div>
                   </div>
