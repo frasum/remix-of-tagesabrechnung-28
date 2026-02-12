@@ -1,39 +1,38 @@
 
+# Trinkgeld-Ranking ein-/ausschalten pro Restaurant
 
-# TG% bei Team-Schichten auf Gesamtumsatz berechnen
+## Uebersicht
 
-## Problem
+Ein neuer Toggle auf der Mitarbeiterverwaltungs-Seite ermoeglicht es, das "Trinkgeld Ranking" im Kellner-Selfservice (WaiterMobile) pro Restaurant ein- oder auszuschalten.
 
-Bei Team-Schichten wird die Trinkgeld-Prozentanzeige aktuell auf den halbierten Umsatz (pos_sales / 2) berechnet. Das fuehrt zu unrealistisch hohen Prozentwerten, weil jeder seinen vollen Anteil gegen nur die Haelfte des Umsatzes gerechnet bekommt.
+## Umsetzung
 
-## Loesung
+### 1. Datenbank: Setting speichern
 
-Die TG%-Berechnung fuer Team-Schichten soll den **vollen Schicht-Umsatz** (pos_sales) als Basis verwenden, nicht den halbierten.
+Die bestehende `settings`-Tabelle wird genutzt. Ein neuer Eintrag mit `key = 'show_tip_ranking'` und `value = { enabled: true/false }` pro `restaurant_id` speichert die Einstellung. Kein Schema-Update noetig.
 
-```text
-VORHER (halbierter Umsatz als Basis):
-| Europe | 53,17 EUR | 87,83 EUR | 21.5% | 13.0% |
-| Andi   | 53,17 EUR | 87,83 EUR | 21.5% | 12.5% |
+### 2. Neuer Hook: `useShowTipRanking`
 
-NACHHER (voller Umsatz als Basis):
-| Europe | 53,17 EUR | 87,83 EUR | 10.7% | 13.0% |
-| Andi   | 53,17 EUR | 87,83 EUR | 10.7% | 12.5% |
+Liest und schreibt das Setting `show_tip_ranking` aus der `settings`-Tabelle (gleiche Logik wie `usePettyCash`). Standardwert: `true` (Ranking ist standardmaessig sichtbar).
+
+### 3. UI: Toggle auf der Mitarbeiterverwaltung
+
+Unterhalb der Suchleiste/Filter auf `src/pages/StaffManagement.tsx` wird eine kompakte Zeile mit einem Switch eingefuegt:
+
+```
+[Toggle] Trinkgeld Ranking fuer Kellner anzeigen
 ```
 
-## Technische Aenderung
+Der Toggle nutzt den neuen Hook und ist an das aktuell gewaehlte Restaurant gebunden.
 
-### Datei: `src/pages/WaiterCashUp.tsx` (Zeilen 457-462)
+### 4. WaiterMobile: Ranking bedingt anzeigen
 
-Nur eine kleine Aenderung: `personalSalesShare` fuer Team-Schichten soll den vollen `pos_sales` verwenden statt `pos_sales / 2`:
+In `src/pages/WaiterMobile.tsx` wird der Hook ebenfalls verwendet. Wenn `enabled = false`, wird die `<TipRanking />`-Komponente nicht gerendert und der Ranking-Datenabruf uebersprungen.
 
-```typescript
-// VORHER:
-const personalSalesShare = isTeam
-  ? (shift.pos_sales || 0) / 2
-  : (shift.pos_sales || 0);
+## Betroffene Dateien
 
-// NACHHER:
-const personalSalesShare = shift.pos_sales || 0;
-```
-
-Da `personalSalesShare` nur fuer die TG%-Anzeige verwendet wird und der Beitrag separat berechnet wird, hat diese Aenderung keine Auswirkung auf andere Berechnungen. Alle anderen Spalten (Beitrag, Anteil, Ø TG%) bleiben unveraendert.
+| Datei | Aenderung |
+|-------|-----------|
+| `src/hooks/useSettings.ts` | Neuen `useShowTipRanking(restaurantId)` Hook hinzufuegen |
+| `src/pages/StaffManagement.tsx` | Switch-Toggle einfuegen |
+| `src/pages/WaiterMobile.tsx` | Ranking bedingt rendern |
