@@ -70,7 +70,13 @@ export function useWaiterRanking() {
         for (const shift of sessionShifts) {
           const name = shift.waiter_name;
           const sales = shift.pos_sales || 0;
-          const tipPercent = sales > 0 ? (sharePerWaiter / sales) * 100 : 0;
+          
+          // Berechne individuellen Trinkgeld-Beitrag (statt Pool-Anteil)
+          const expected = (shift.pos_sales || 0) + (shift.hilf_mahl || 0) 
+                           - (shift.open_invoices || 0) - (shift.card_total || 0);
+          const individualTip = (shift.cash_handed_in || 0) - expected - (shift.kitchen_tip || 0);
+          
+          const tipPercent = sales > 0 ? (individualTip / sales) * 100 : 0;
 
           if (!waiterData[name]) {
             waiterData[name] = [];
