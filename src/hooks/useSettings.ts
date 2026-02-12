@@ -67,6 +67,64 @@ export function usePettyCash(restaurantId: string | null) {
   };
 }
 
+export function useShowTipRanking(restaurantId: string | null) {
+  const queryClient = useQueryClient();
+
+  const { data: showTipRanking, isLoading } = useQuery({
+    queryKey: ['settings', 'show_tip_ranking', restaurantId],
+    queryFn: async () => {
+      if (!restaurantId) return true;
+
+      const { data, error } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'show_tip_ranking')
+        .eq('restaurant_id', restaurantId)
+        .maybeSingle();
+
+      if (error) throw error;
+      const value = data?.value as unknown as { enabled: boolean } | undefined;
+      return value?.enabled ?? true;
+    },
+    enabled: !!restaurantId,
+  });
+
+  const { mutate: updateShowTipRanking, isPending: isUpdating } = useMutation({
+    mutationFn: async ({ enabled, restaurantId: restId }: { enabled: boolean; restaurantId: string }) => {
+      const { data: existing } = await supabase
+        .from('settings')
+        .select('id')
+        .eq('key', 'show_tip_ranking')
+        .eq('restaurant_id', restId)
+        .single();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('settings')
+          .update({ value: { enabled } })
+          .eq('key', 'show_tip_ranking')
+          .eq('restaurant_id', restId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('settings')
+          .insert({ key: 'show_tip_ranking', value: { enabled }, restaurant_id: restId });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['settings', 'show_tip_ranking', restaurantId] });
+    },
+  });
+
+  return {
+    showTipRanking: showTipRanking ?? true,
+    isLoading,
+    updateShowTipRanking,
+    isUpdating,
+  };
+}
+
 export function useInitialCashDeficit(restaurantId: string | null) {
   const queryClient = useQueryClient();
 

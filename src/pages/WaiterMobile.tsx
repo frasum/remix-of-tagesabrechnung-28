@@ -19,6 +19,7 @@ import { useSession, useCreateSession, useWaiterShifts, useCreateWaiterShift, us
 import { useUpdateWaiterShiftWithAudit } from '@/hooks/useWaiterShiftAudit';
 import { useWaiterRanking } from '@/hooks/useWaiterRanking';
 import { useLabels } from '@/hooks/useLabels';
+import { useShowTipRanking } from '@/hooks/useSettings';
 import { AccountLinkingDialog } from '@/components/auth/AccountLinkingDialog';
 import { SecondWaiterSelect } from '@/components/shared/SecondWaiterSelect';
 
@@ -50,6 +51,7 @@ export default function WaiterMobile() {
   const updateWaiterShift = useUpdateWaiterShiftWithAudit();
   const { data: tipAverages = {}, isLoading: averagesLoading } = useWaiterTipAverages(restaurantId);
   const { data: rankings = [], isLoading: rankingsLoading } = useWaiterRanking();
+  const { showTipRanking } = useShowTipRanking(restaurantId);
 
   // Find current user's shift (case-insensitive comparison)
   const myShift = useMemo(() => {
@@ -320,11 +322,13 @@ export default function WaiterMobile() {
         </Card>
 
         {/* Ranking */}
-        <TipRanking
-          rankings={rankingItems}
-          currentUserName={staffName}
-          isLoading={rankingsLoading}
-        />
+        {showTipRanking && (
+          <TipRanking
+            rankings={rankingItems}
+            currentUserName={staffName}
+            isLoading={rankingsLoading}
+          />
+        )}
       </div>
 
       {/* Account Linking Dialog */}
