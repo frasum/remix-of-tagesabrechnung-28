@@ -11,6 +11,11 @@ import { StaffCard } from '@/components/staff/StaffCard';
 import { StaffDialog } from '@/components/staff/StaffDialogNative';
 
 import { useStaff, useCreateStaff, useUpdateStaff, useDeleteStaff, Staff, StaffInput, StaffRole } from '@/hooks/useStaff';
+import { useShowTipRanking } from '@/hooks/useSettings';
+import { useRestaurant } from '@/hooks/useRestaurant';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Trophy } from 'lucide-react';
 
 export default function StaffManagement() {
   const [filter, setFilter] = useState<StaffRole | 'all'>('all');
@@ -18,6 +23,9 @@ export default function StaffManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [deleteStaff, setDeleteStaff] = useState<Staff | null>(null);
+
+  const { restaurantId } = useRestaurant();
+  const { showTipRanking, updateShowTipRanking, isUpdating: isUpdatingRanking } = useShowTipRanking(restaurantId);
 
   const { data: allStaff = [], isLoading } = useStaff();
   const createMutation = useCreateStaff();
@@ -170,6 +178,25 @@ export default function StaffManagement() {
           </Tabs>
         </div>
 
+        {/* Tip Ranking Toggle */}
+        {restaurantId && (
+          <div className="flex items-center gap-3 rounded-lg border p-3 bg-card">
+            <Trophy className="w-5 h-5 text-primary shrink-0" />
+            <Label htmlFor="tip-ranking-toggle" className="flex-1 cursor-pointer text-sm font-medium">
+              Trinkgeld Ranking für Kellner anzeigen
+            </Label>
+            <Switch
+              id="tip-ranking-toggle"
+              checked={showTipRanking}
+              disabled={isUpdatingRanking}
+              onCheckedChange={(checked) => {
+                if (restaurantId) {
+                  updateShowTipRanking({ enabled: checked, restaurantId });
+                }
+              }}
+            />
+          </div>
+        )}
 
         {/* Staff List */}
         {filteredStaff.length === 0 ? (
