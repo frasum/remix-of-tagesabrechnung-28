@@ -1,43 +1,22 @@
 
 
-# register_transfers in die Bargeld-Berechnung integrieren
+## "Kassenbestand" durch "Wechselgeldbestand" ersetzen
 
-## Zusammenfassung
+Vier Stellen werden angepasst -- ueberall nur das Label, der angezeigte Wert und die Logik bleiben gleich:
 
-Der "Kassenbestand" in der Tagesabrechnung soll den **Wechselgeldbestand** widerspiegeln -- also idealerweise 2.000 EUR. Aktuell kann er darunter liegen, weil negative Tage den Bestand druecken und die bestehenden Korrekturbuchungen in `register_transfers` vom Code ignoriert werden.
+### 1. Tagesabrechnung StatCard (`src/pages/DailySummary.tsx`, Zeile 490)
+- Label: "Kassenbestand" wird zu "Wechselgeldbestand"
 
-Die Loesung: `register_transfers` in die Berechnung einbinden. Danach greifen die bereits vorhandenen Korrekturbuchungen (542,43 EUR fuer YUM, 768,72 EUR fuer Spicery vom 15.02.), und der Kassenbestand sollte auf 2.000 EUR kommen. Falls nicht exakt, werden die Betraege angepasst.
+### 2. Excel-Layout (`src/components/daily-summary/layouts/ExcelLayout.tsx`, Zeile 264)
+- Label: "Kassenbestand" wird zu "Wechselgeldbestand"
 
-## Was sich aendert
+### 3. PDF-Export (`src/utils/pdfExport.ts`, Zeile 215)
+- Label: "Kassenbestand" wird zu "Wechselgeldbestand"
 
-**Eine Datei**: `src/hooks/useCashBalanceData.ts`
+### 4. Telegram-Bericht (`supabase/functions/send-telegram-summary/index.ts`, Zeile 135)
+- Label: "Kassenbestand" wird zu "Wechselgeldbestand"
 
-Die Aenderung besteht aus zwei Teilen:
+### 5. Telegram-Einstellungen (`src/pages/TelegramSettings.tsx`, Zeile 19)
+- Label: "Kassenbestand" wird zu "Wechselgeldbestand"
 
-1. **Laden der register_transfers**: Zusaetzliche Abfrage an die `register_transfers`-Tabelle fuer das Restaurant
-2. **Einrechnung pro Tag**: Nach der Bargeld-Berechnung jeder Session werden Transfers desselben Datums addiert (`to_restaurant` = plus) oder abgezogen (`to_safe` = minus), bevor das Deficit Chaining greift
-
-## Was sich NICHT aendert
-
-- Die Skimming-Logik in `useRemainingCash.ts` bleibt exakt gleich
-- Bankeinzahlungen bleiben unberuehrt
-- Kein neues UI noetig
-- Keine neuen Datenbank-Eintraege noetig (Korrekturbuchungen existieren bereits)
-
-## Technisches Detail
-
-```text
-Aktuelle Berechnung pro Tag:
-  rawBargeld = Umsatz + GutscheineVK + Sonstige - Abzuege
-  bargeld = rawBargeld + carryOver
-
-Neue Berechnung pro Tag:
-  rawBargeld = Umsatz + GutscheineVK + Sonstige - Abzuege
-  transferEffect = SUM(to_restaurant) - SUM(to_safe) fuer diesen Tag
-  bargeld = rawBargeld + transferEffect + carryOver
-```
-
-## Verifikation
-
-Nach der Code-Aenderung wird geprueft, ob der Kassenbestand fuer beide Restaurants exakt 2.000 EUR betraegt. Falls die bestehenden Korrekturbuchungen nicht ausreichen, werden die Betraege in der Datenbank angepasst.
-
+Keine Logik-Aenderungen, keine neuen Abhaengigkeiten. Reine Label-Umbenennung an 5 Stellen.
