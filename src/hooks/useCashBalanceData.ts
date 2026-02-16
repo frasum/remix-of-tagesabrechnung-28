@@ -67,7 +67,15 @@ export function useCashBalanceData(restaurantId: string | null) {
 
       if (advancesError) throw advancesError;
 
-      // 4. Pro Session direkt die DB-Werte verwenden + Deficit Chaining
+      // 5. Register transfers laden
+      const { data: transfers, error: transfersError } = await supabase
+        .from('register_transfers')
+        .select('transfer_date, amount, direction')
+        .eq('restaurant_id', restaurantId);
+
+      if (transfersError) throw transfersError;
+
+      // 6. Pro Session direkt die DB-Werte verwenden + Deficit Chaining
       let carryOver = initialDeficit;
 
       return (sessions || []).map((session) => {
@@ -108,8 +116,14 @@ export function useCashBalanceData(restaurantId: string | null) {
           vorschuss -
           totalExpenses;
 
-        // Deficit Chaining: Fehlbetrag Vortag einrechnen
-        const bargeld = rawBargeld + carryOver;
+        // Transfer-Effekt für diesen Tag berechnen
+        const dayTransfers = (transfers || []).filter(t => t.transfer_date === session.session_date);
+        const transferEffect = dayTransfers.reduce((sum, t) => {
+          return t.direction === 'to_restaurant' ? sum + Number(t.amount) : sum - Number(t.amount);
+        }, 0);
+
+        // Deficit Chaining: Fehlbetrag Vortag + Transfers einrechnen
+        const bargeld = rawBargeld + transferEffect + carryOver;
         carryOver = bargeld < 0 ? bargeld : 0;
 
         return {
