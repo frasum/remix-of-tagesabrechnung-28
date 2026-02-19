@@ -20,7 +20,7 @@ export function useRemainingCash(restaurantId: string | null, selectedDate: Date
     let todaySkimAmount = 0;
 
     for (const row of filteredRows) {
-      kassenbestand += row.rawBargeld;
+      kassenbestand += row.rawBargeld ?? row.bargeld;
       let skim = 0;
       if (kassenbestand > pettyCash) {
         skim = kassenbestand - pettyCash;
