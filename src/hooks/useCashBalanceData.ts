@@ -15,6 +15,7 @@ export interface CashBalanceRow {
   vorschuss: number;
   ausgaben: number;
   bargeld: number;
+  rawBargeld: number;
 }
 
 export function useCashBalanceData(restaurantId: string | null) {
@@ -140,6 +141,7 @@ export function useCashBalanceData(restaurantId: string | null) {
           vorschuss,
           ausgaben: totalExpenses,
           bargeld,
+          rawBargeld: rawBargeld + transferEffect,
         };
       });
     },

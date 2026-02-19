@@ -60,7 +60,7 @@ export default function CashBalance() {
     
     let kassenbestand = pettyCash;
     for (const row of rows) {
-      kassenbestand += row.bargeld;
+      kassenbestand += row.rawBargeld;
       if (kassenbestand > pettyCash) {
         kassenbestand = pettyCash;
       }
