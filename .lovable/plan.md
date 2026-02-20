@@ -1,27 +1,38 @@
 
-# Takeaway-Anteil in Prozent anzeigen
 
-## Aenderung
-In der **TAKE AWAY**-Sektionsüberschrift im ExcelLayout wird der prozentuale Anteil des gesamten Takeaway-Umsatzes am POS-Gesamtumsatz angezeigt.
+# Tages-Rohwert fuer Bargeld anzeigen
 
-## Berechnung
-```
-Takeaway-Gesamt = takeaway_total + ordersmart_revenue + wolt_revenue
-Prozent = (Takeaway-Gesamt / pos_total) * 100
-```
+## Uebersicht
+In der Tagesabrechnung wird eine zusaetzliche Zeile eingefuegt, die den reinen Tages-Bargeldwert (ohne Fehlbetrag Vortag) anzeigt. So ist sofort erkennbar, ob der aktuelle Tag allein plus oder minus war -- unabhaengig von vorherigen Defiziten.
 
 ## Darstellung
-Die Prozentzahl erscheint dezent rechts neben dem "TAKE AWAY"-Titel in der gruenen Sektionsleiste:
+Direkt oberhalb der bestehenden BARGELD-Zeile erscheint eine neue Zeile:
 
-```
- TAKE AWAY                                    12,5 %
+```text
+Gutscheine & Sonstiges
+  ...
+  Fehlbetrag Vortag              -406,16 EUR
+  Ausgaben                        -50,00 EUR
+-----------------------------------------------
+  Tages-Bargeld                   128,06 EUR   <-- NEU (gruen/rot)
+-----------------------------------------------
+  BARGELD                        -278,10 EUR   (inkl. Vortag)
+  Abschoepfung                      ...
+  Wechselgeldbestand                ...
 ```
 
-Formatierung: kleiner, grauer Text (`text-xs text-muted-foreground`), rechtsbündig.
+- Positive Werte in Gruen, negative in Rot
+- Nur anzeigen, wenn ein Fehlbetrag Vortag existiert (sonst sind Tages-Bargeld und BARGELD identisch)
 
 ## Technische Details
 
+### Datei: `src/pages/DailySummary.tsx`
+- Neuen Wert `bargeldRaw` berechnen: gleiche Formel wie `bargeld`, aber OHNE `previousDeficit`
+- `bargeldRaw` als neue Prop an `ExcelLayout` uebergeben
+
 ### Datei: `src/components/daily-summary/layouts/ExcelLayout.tsx`
-- Zeile 198-199: Die Sektionsüberschrift wird um eine Prozentberechnung erweitert
-- Berechnung direkt inline aus `formData.takeaway_total`, `formData.ordersmart_revenue`, `formData.wolt_revenue` und `formData.pos_total`
-- Nur anzeigen wenn `pos_total > 0` (Division durch Null vermeiden)
+- Neue Prop `bargeldRaw` (optional, number) hinzufuegen
+- Neue Zeile "Tages-Bargeld" direkt vor dem bestehenden BARGELD-Block einfuegen
+- Nur anzeigen wenn `previousDeficit < 0` (sonst waere der Wert identisch mit BARGELD)
+- Farbkodierung: `text-success` bei >= 0, `text-destructive` bei < 0
+
