@@ -1,40 +1,29 @@
 
 
-## Problem
+## Wechselgeldbestand farblich anpassen
 
-Zwei Werte fehlen in der Tagesabrechnung:
+Der Wechselgeldbestand soll basierend auf dem Schwellenwert von 2.000 € eingefärbt werden:
 
-1. **Tages-Bargeld** (`bargeldRaw`): Wird absichtlich nur angezeigt, wenn ein Fehlbetrag vom Vortag existiert (`previousDeficit < 0`). An Tagen ohne Vortags-Defizit wird die Zeile ausgeblendet.
+- **Unter 2.000 €**: Roter Hintergrund mit roter Zahl (destructive)
+- **Ab 2.000 €**: Grüner Hintergrund mit grüner Zahl (success)
 
-2. **Wechselgeldbestand** (`remainingCash`): Sollte immer sichtbar sein (`remainingCash !== undefined`), da der Hook immer eine Zahl liefert. Eventuell gibt es ein Timing-Problem beim Rendering.
-
-## Loesung
-
-Beide Werte werden **immer** in der Tagesabrechnung angezeigt, unabhaengig davon ob ein Fehlbetrag vom Vortag existiert oder nicht.
-
-### Aenderungen
+### Änderung
 
 **Datei: `src/components/daily-summary/layouts/ExcelLayout.tsx`**
 
-1. **Tages-Bargeld immer anzeigen**: Die Bedingung `previousDeficit < 0 && bargeldRaw !== undefined` wird entfernt. Stattdessen wird die Zeile immer angezeigt (wenn `bargeldRaw` definiert ist), damit der Tageswert isoliert sichtbar bleibt.
+Die bestehende Logik für den Wechselgeldbestand prüft aktuell nur ob der Wert positiv oder negativ ist (`>= 0`). Diese Bedingung wird auf den Schwellenwert 2.000 € (bzw. den konfigurierten `pettyCash`-Wert) umgestellt.
 
-2. **Wechselgeldbestand immer anzeigen**: Die Bedingung `remainingCash !== undefined` bleibt bestehen, aber es wird sichergestellt, dass kein anderer Faktor die Anzeige verhindert. Zusaetzlich wird ein Fallback-Wert (`?? 0`) verwendet, um sicherzustellen, dass der Wert nie `undefined` ist.
-
-### Technische Details
+Da der `pettyCash`-Wert in diesem Layout nicht direkt verfügbar ist, wird ein fester Schwellenwert von 2.000 € verwendet — alternativ könnte `pettyCash` als neue Prop übergeben werden.
 
 ```text
-Vorher (Tages-Bargeld):
-  {previousDeficit < 0 && bargeldRaw !== undefined && <div>...</div>}
+Vorher:
+  className: (remainingCash ?? 0) >= 0 ? 'bg-success/10' : 'bg-destructive/10'
+  Textfarbe:  (remainingCash ?? 0) >= 0 ? 'text-success' : 'text-destructive'
 
-Nachher (Tages-Bargeld):
-  {bargeldRaw !== undefined && <div>...</div>}
-
-Vorher (Wechselgeldbestand):  
-  {remainingCash !== undefined && <div>...</div>}
-
-Nachher (Wechselgeldbestand):
-  <div>...</div>  (immer sichtbar, mit Fallback remainingCash ?? 0)
+Nachher:
+  className: (remainingCash ?? 0) >= 2000 ? 'bg-success/10' : 'bg-destructive/10'
+  Textfarbe:  (remainingCash ?? 0) >= 2000 ? 'text-success' : 'text-destructive'
 ```
 
-Damit sind beide Werte auf jeder Tagesabrechnung sichtbar, egal ob ein Fehlbetrag vom Vortag besteht oder nicht.
+Eine einzelne Zeile in der Datei wird angepasst — keine weiteren Änderungen nötig.
 
