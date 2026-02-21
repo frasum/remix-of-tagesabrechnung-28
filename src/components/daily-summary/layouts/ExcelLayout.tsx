@@ -255,7 +255,7 @@ export function ExcelLayout({
               <table className="w-full">
                 <tbody>
                   <tr>
-                    <td className="px-3 py-2.5 font-bold text-base">Differenz Wechselgeld </td>
+                    <td className="px-3 py-2.5 font-bold text-base">Differenz zum Wechselgeldbestand</td>
                     <td className={`px-3 py-2.5 text-right tabular-nums font-bold text-base ${bargeld >= 0 ? 'text-success' : 'text-destructive'}`}>
                       {fmt(bargeld)} €
                     </td>
