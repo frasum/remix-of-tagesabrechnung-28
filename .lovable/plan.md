@@ -1,40 +1,33 @@
 
 
-## Datenbankindizes fuer haeufig gefilterte Spalten
+## Fix: Timezone-Bug in der Wechselgeldbestand-Berechnung
 
-### Ist-Zustand
+### Ursache
 
-Die `sessions`-Tabelle hat bereits einen optimalen zusammengesetzten Unique-Index auf `(restaurant_id, session_date)` -- hier besteht kein Handlungsbedarf.
+In `useRemainingCash.ts` wird das Datum so formatiert:
 
-Allerdings fehlen Indizes auf den **Kind-Tabellen**, die bei fast jedem Seitenaufruf ueber `.in('session_id', sessionIds)` abgefragt werden. Das betrifft die Kassenuebersicht, Tagesabrechnung und Statistiken.
-
-### Fehlende Indizes
-
-| Tabelle | Spalte | Abfrage-Muster |
-|---|---|---|
-| `waiter_shifts` | `session_id` | Jede Tagesabrechnung, Statistik, Kassenuebersicht |
-| `expenses` | `session_id` | Kassenuebersicht, Statistik |
-| `advances` | `session_id` | Kassenuebersicht |
-| `kitchen_shifts` | `session_id` | Statistik, Kuechentrinkgeld |
-| `card_transactions` | `waiter_shift_id` | Kartenumsaetze pro Kellner |
-| `bank_deposits` | `restaurant_id` | Kassenuebersicht |
-
-### Aenderung
-
-Eine einzelne Datenbank-Migration mit 6 `CREATE INDEX`-Anweisungen:
-
-```sql
-CREATE INDEX idx_waiter_shifts_session ON waiter_shifts (session_id);
-CREATE INDEX idx_expenses_session ON expenses (session_id);
-CREATE INDEX idx_advances_session ON advances (session_id);
-CREATE INDEX idx_kitchen_shifts_session ON kitchen_shifts (session_id);
-CREATE INDEX idx_card_transactions_shift ON card_transactions (waiter_shift_id);
-CREATE INDEX idx_bank_deposits_restaurant ON bank_deposits (restaurant_id);
+```typescript
+const dateStr = selectedDate.toISOString().split('T')[0];
 ```
 
-### Auswirkung
+`toISOString()` konvertiert in **UTC-Zeit**. In der deutschen Zeitzone (CET, UTC+1) wird z.B. "21. Februar 00:00 Uhr" zu `"2026-02-20T23:00:00Z"` -- also zum **20. Februar**. Dadurch wird der aktuelle Tag aus der Berechnung ausgeschlossen, und der Wechselgeldbestand und die Abschoepfung stimmen nicht.
 
-- Spuerbar schnellere Ladezeiten bei Kassenuebersicht, Tagesabrechnung und Statistiken
-- Besonders relevant bei wachsender Datenmenge (viele Sessions/Schichten)
-- Kein Code-Aenderung noetig, nur Datenbank-Schema
+### Loesung
+
+`toISOString().split('T')[0]` durch `format(date, 'yyyy-MM-dd')` von date-fns ersetzen. Diese Funktion respektiert die lokale Zeitzone.
+
+### Betroffene Dateien
+
+| Datei | Zeile | Aenderung |
+|---|---|---|
+| `src/hooks/useRemainingCash.ts` | 12 | `toISOString().split('T')[0]` durch `format(selectedDate, 'yyyy-MM-dd')` ersetzen |
+| `src/utils/businessDate.ts` | 31, 32, 44, 45 | Gleiche Korrektur in `isBusinessToday` und `isSessionLocked` |
+| `src/pages/TelegramSettings.tsx` | 47 | Gleiche Korrektur fuer Default-Datum |
+
+### Technische Details
+
+- Import `format` aus `date-fns` in den betroffenen Dateien hinzufuegen
+- `format(date, 'yyyy-MM-dd')` gibt immer das Datum in der lokalen Zeitzone zurueck
+- `useSession.ts` nutzt bereits korrekt `format(date, 'yyyy-MM-dd')` -- das ist das Referenzmuster
+- Nach der Korrektur wird der 21. Februar korrekt einbezogen, was Wechselgeldbestand = 2.000 EUR und Abschoepfung = 400,86 EUR ergibt
 
