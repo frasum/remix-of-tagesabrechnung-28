@@ -80,6 +80,7 @@ interface PDFExportData {
     cardTerminalMismatch: number;
     totalAdvances?: number;
     previousDeficit?: number;
+    bargeldRaw?: number;
     remainingCash?: number;
   };
 }
@@ -172,6 +173,10 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     [l('sonstige_einnahme', 'Sonstige Einnahme'), formatCurrency(data.session.sonstige_einnahme || 0)],
     ...((data.totals.previousDeficit ?? 0) < 0 ? [['Fehlbetrag Vortag', formatCurrency(data.totals.previousDeficit!)]] : []),
     ['Bar Ausgaben', formatCurrency(data.totals.totalExpenses)],
+    ...((data.totals.previousDeficit ?? 0) < 0 && data.totals.bargeldRaw !== undefined ? [[
+      { content: 'Tages-Bargeld', styles: { fontStyle: 'bold' as const, textColor: data.totals.bargeldRaw >= 0 ? [22, 163, 74] as [number, number, number] : [220, 38, 38] as [number, number, number] } },
+      { content: formatCurrency(data.totals.bargeldRaw), styles: { fontStyle: 'bold' as const, halign: 'right' as const, textColor: data.totals.bargeldRaw >= 0 ? [22, 163, 74] as [number, number, number] : [220, 38, 38] as [number, number, number] } },
+    ]] : []),
     [l('hilf_mahl', 'HilfMahl'), formatCurrency(totalHilfMahl)],
   ];
 
