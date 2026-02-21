@@ -391,6 +391,7 @@ export default function DailySummary() {
         cardTerminalMismatch,
         totalAdvances,
         previousDeficit,
+        bargeldRaw,
         remainingCash,
       },
     });
