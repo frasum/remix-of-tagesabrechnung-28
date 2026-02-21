@@ -75,33 +75,50 @@ export function useCashBalanceData(restaurantId: string | null) {
 
       if (transfersError) throw transfersError;
 
-      // 6. Pro Session direkt die DB-Werte verwenden + Deficit Chaining
+      // 6. Build a unified date map (sessions + transfer-only days)
+      const sessionMap = new Map<string, typeof sessions[0]>();
+      for (const s of sessions) {
+        sessionMap.set(s.session_date, s);
+      }
+
+      // Find transfer dates that have no session
+      const transferOnlyDates = new Set<string>();
+      for (const t of (transfers || [])) {
+        if (!sessionMap.has(t.transfer_date)) {
+          transferOnlyDates.add(t.transfer_date);
+        }
+      }
+
+      // All dates sorted
+      const allDates = [...new Set([
+        ...sessions.map(s => s.session_date),
+        ...transferOnlyDates,
+      ])].sort();
+
       let carryOver = initialDeficit;
 
-      return (sessions || []).map((session) => {
-        const shifts = allShifts.filter((s) => s.session_id === session.id);
-        const sessionExpenses = allExpenses.filter((e) => e.session_id === session.id);
-        const sessionAdvances = allAdvances.filter((a) => a.session_id === session.id);
+      return allDates.map((date) => {
+        const session = sessionMap.get(date);
+        const shifts = session ? allShifts.filter((s) => s.session_id === session.id) : [];
+        const sessionExpenses = session ? allExpenses.filter((e) => e.session_id === session.id) : [];
+        const sessionAdvances = session ? allAdvances.filter((a) => a.session_id === session.id) : [];
 
-        // Direkt aus der Session-Tabelle
-        const tagesumsatz = session.pos_total || 0;
-        const kreditkarten = (session.terminal_1_total || 0) + (session.terminal_2_total || 0);
-        const ordersmart = session.ordersmart_revenue || 0;
-        const wolt = session.wolt_revenue || 0;
-        const gutscheineEL = session.vouchers_redeemed || 0;
-        const finedine = session.finedine_vouchers || 0;
-        const gutscheineVK = session.vouchers_sold || 0;
-        const einladung = session.einladung || 0;
-        const sonstigeEinnahme = session.sonstige_einnahme || 0;
+        const tagesumsatz = session?.pos_total || 0;
+        const kreditkarten = (session?.terminal_1_total || 0) + (session?.terminal_2_total || 0);
+        const ordersmart = session?.ordersmart_revenue || 0;
+        const wolt = session?.wolt_revenue || 0;
+        const gutscheineEL = session?.vouchers_redeemed || 0;
+        const finedine = session?.finedine_vouchers || 0;
+        const gutscheineVK = session?.vouchers_sold || 0;
+        const einladung = session?.einladung || 0;
+        const sonstigeEinnahme = session?.sonstige_einnahme || 0;
         const vorschuss = sessionAdvances.length > 0
           ? sessionAdvances.reduce((sum, a) => sum + a.amount, 0)
-          : (session.vorschuss || 0);
+          : (session?.vorschuss || 0);
 
-        // Aggregierte Werte
         const totalOpenInvoices = shifts.reduce((sum, w) => sum + (w.open_invoices || 0), 0);
         const totalExpenses = sessionExpenses.reduce((sum, e) => sum + e.amount, 0);
 
-        // BARGELD = Einnahmen - Abzüge (roh)
         const rawBargeld =
           tagesumsatz +
           gutscheineVK +
@@ -116,18 +133,16 @@ export function useCashBalanceData(restaurantId: string | null) {
           vorschuss -
           totalExpenses;
 
-        // Transfer-Effekt für diesen Tag berechnen
-        const dayTransfers = (transfers || []).filter(t => t.transfer_date === session.session_date);
+        const dayTransfers = (transfers || []).filter(t => t.transfer_date === date);
         const transferEffect = dayTransfers.reduce((sum, t) => {
           return t.direction === 'to_restaurant' ? sum + Number(t.amount) : sum - Number(t.amount);
         }, 0);
 
-        // Deficit Chaining: Fehlbetrag Vortag + Transfers einrechnen
         const bargeld = rawBargeld + transferEffect + carryOver;
         carryOver = bargeld < 0 ? bargeld : 0;
 
         return {
-          date: session.session_date,
+          date,
           kellnerUmsatz: tagesumsatz,
           kreditkarten,
           ordersmart,
