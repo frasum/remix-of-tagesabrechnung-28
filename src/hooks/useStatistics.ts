@@ -81,7 +81,7 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
       // Fetch sessions in the date range
       const { data: sessions, error: sessionsError } = await supabase
         .from('sessions')
-        .select('*')
+        .select('id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, takeaway_total, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss, sonstige_einnahme, card_total_gl')
         .eq('restaurant_id', restaurantId!)
         .gte('session_date', format(startDate, 'yyyy-MM-dd'))
         .lte('session_date', format(endDate, 'yyyy-MM-dd'))
@@ -97,9 +97,9 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
 
       if (sessionIds.length > 0) {
         const [shiftsResult, expResult, kitchenResult] = await Promise.all([
-          supabase.from('waiter_shifts').select('*').in('session_id', sessionIds),
-          supabase.from('expenses').select('*').in('session_id', sessionIds),
-          supabase.from('kitchen_shifts').select('*').in('session_id', sessionIds),
+          supabase.from('waiter_shifts').select('session_id, waiter_name, pos_sales, kassiert_brutto, card_total, hilf_mahl, open_invoices, cash_handed_in, differenz, kitchen_tip, participates_in_pool, second_waiter_name').in('session_id', sessionIds),
+          supabase.from('expenses').select('session_id, amount').in('session_id', sessionIds),
+          supabase.from('kitchen_shifts').select('session_id, staff_name, hours_worked').in('session_id', sessionIds),
         ]);
         waiterShifts = shiftsResult.data || [];
         expenses = expResult.data || [];

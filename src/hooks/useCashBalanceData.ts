@@ -24,22 +24,23 @@ export function useCashBalanceData(restaurantId: string | null) {
     queryFn: async (): Promise<CashBalanceRow[]> => {
       if (!restaurantId) return [];
 
-      // 0. initial_cash_deficit laden
-      const { data: restaurantData } = await supabase
-        .from('restaurants')
-        .select('initial_cash_deficit')
-        .eq('id', restaurantId)
-        .single();
-      const initialDeficit = (restaurantData as any)?.initial_cash_deficit ?? 0;
-      
-      // 1. Alle Sessions für dieses Restaurant laden
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('sessions')
-        .select('id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, takeaway_total, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss, sonstige_einnahme')
-        .eq('restaurant_id', restaurantId)
-        .order('session_date', { ascending: true });
+      // 0+1. Restaurant + Sessions parallel laden
+      const [restaurantResult, sessionsResult] = await Promise.all([
+        supabase
+          .from('restaurants')
+          .select('initial_cash_deficit')
+          .eq('id', restaurantId)
+          .single(),
+        supabase
+          .from('sessions')
+          .select('id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, takeaway_total, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss, sonstige_einnahme')
+          .eq('restaurant_id', restaurantId)
+          .order('session_date', { ascending: true }),
+      ]);
 
-      if (sessionsError) throw sessionsError;
+      const initialDeficit = (restaurantResult.data as any)?.initial_cash_deficit ?? 0;
+      const sessions = sessionsResult.data;
+      if (sessionsResult.error) throw sessionsResult.error;
       if (!sessions || sessions.length === 0) return [];
 
       const sessionIds = sessions.map(s => s.id);
