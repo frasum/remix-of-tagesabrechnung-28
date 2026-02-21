@@ -382,8 +382,8 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(60);
-    if (data.createdByName) {
-      doc.text(`Abgerechnet von: ${data.createdByName}`, pageWidth / 2, y, { align: 'center' });
+    if (data.exportedBy || data.createdByName) {
+      doc.text(`Abgerechnet von: ${data.exportedBy || data.createdByName}`, pageWidth / 2, y, { align: 'center' });
       y += 6;
     }
 
