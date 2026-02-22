@@ -1,44 +1,68 @@
 
 
-## PDF-Layout Verbesserung: Tagesabrechnung
+## PDF-Layout: Zwei-Spalten-Anordnung
 
-### Was wird geaendert
+### Idee
 
-Die flache Liste der Tagesabrechnung im PDF wird durch **Sektions-Ueberschriften** visuell gruppiert und die Bezeichnungen werden klarer gestaltet. **Null-Zeilen bleiben sichtbar** wie gewuenscht.
+Analog zur Web-Ansicht (ExcelLayout) werden die Daten im PDF nebeneinander angeordnet statt untereinander:
+
+```text
++---------------------------+---------------------------+
+| LINKE SPALTE              | RECHTE SPALTE             |
++---------------------------+---------------------------+
+| Umsatz                    | Kellner-Details           |
+|   POS-Umsatz    1.234 EUR |   Name  Umsatz  TG  TG%  |
+|   Gaeste: 45    oe 27 EUR |   ...                     |
+|                           |                           |
+| Kartenzahlung             | Trinkgeld-Aufschluesselung|
+|   KK (Terminal)   800 EUR |   Kellner-TG    xxx EUR   |
+|                           |   Kuechen-TG    xxx EUR   |
+| Take Away                 |                           |
+|   SoUse           100 EUR | Ausgaben (falls vorhanden)|
+|   Wolt             50 EUR |   Beschreibung  Betrag    |
+|                           |   ...                     |
+| Gutscheine & Abzuege      |                           |
+|   Gutscheine EL     0 EUR | Vorschuss (falls vorh.)   |
+|   ...                     |   Name          Betrag    |
+|                           |                           |
+| Ergebnis                  | Notizen                   |
+|   Tages-Bargeld   535 EUR |   Freitext...             |
+|   HilfMahl          0 EUR |                           |
+|   Differenz...    535 EUR |                           |
+|   Wechselgeldbestand      |                           |
++---------------------------+---------------------------+
+```
+
+### Vorteile
+
+- Kompakteres Layout, mehr Informationen auf einen Blick
+- Konsistent mit der Web-Ansicht
+- Bessere Nutzung der Seitenbreite (A4 bietet genug Platz)
 
 ### Aenderungen im Detail
 
-#### 1. Sektions-Ueberschriften (graue Header-Zeilen)
+#### Linke Spalte (ca. 45% Breite)
+Zusammenfassung mit Sektions-Headern (wie gerade implementiert):
+- Umsatz, Kartenzahlung, Take Away, Gutscheine & Abzuege, Ergebnis
+- Wechselgeldbestand-Zeile am Ende
 
-Analog zur farbigen Web-Ansicht werden graue Trennzeilen eingefuegt, die die Daten in logische Bloecke gliedern:
-
-| Sektion | Enthaltene Zeilen |
-|---|---|
-| **Umsatz** | POS-Umsatz, Gaeste/Durchschnittsverzehr |
-| **Kartenzahlung** | KK (Terminal) |
-| **Take Away** | SoUse/OrderSmart, Wolt |
-| **Gutscheine & Abzuege** | Gutscheine EL, FineDine, Gutscheine VK, Offen, Personal, Einladung, Sonstige Einnahme, Fehlbetrag Vortag, Bar Ausgaben |
-| **Ergebnis** | Tages-Bargeld, HilfMahl, Bargeld mit HilfMahl, ohne hilfmahl, Wechselgeldbestand |
-
-#### 2. Bezeichnungen anpassen
-
-- "Bargeld mit HilfMahl" wird zu **"Differenz zum Wechselgeldbestand"** (konsistent mit Web-Ansicht)
-- "ohne hilfmahl" wird nur angezeigt wenn HilfMahl ungleich 0 ist (da der Wert sonst identisch mit der Zeile darueber ist und keine Information bringt)
-
-#### 3. Visuelle Hierarchie
-
-- Sektions-Header: grauer Hintergrund (`fillColor: [241, 245, 249]`), Fettschrift, leicht groessere Schrift (8pt statt 7pt)
-- Ergebnis-Zeilen bleiben wie bisher hervorgehoben (Rahmen, Fettschrift)
-
-### Betroffene Datei
-
-| Datei | Aenderung |
-|---|---|
-| `src/utils/pdfExport.ts` | `summaryRows`-Aufbau (Zeilen 157-187): Sektions-Header einfuegen, Bezeichnung aendern, "ohne hilfmahl" bedingt anzeigen |
+#### Rechte Spalte (ca. 55% Breite)
+- Kellner-Details-Tabelle
+- Trinkgeld-Aufschluesselung
+- Ausgaben-Tabelle (falls vorhanden)
+- Vorschuss-Tabelle (falls vorhanden)
+- Notizen (falls vorhanden)
 
 ### Technische Umsetzung
 
-- Sektions-Header werden als eigene Zeilen im `summaryRows`-Array eingefuegt mit `styles: { fillColor: [241, 245, 249], fontStyle: 'bold', fontSize: 8 }` und `colSpan: 2`
-- Die bestehende Reihenfolge und Logik der Datenzeilen bleibt erhalten
-- Null-Zeilen werden **nicht** gefiltert
+| Datei | Aenderung |
+|---|---|
+| `src/utils/pdfExport.ts` | Zeilen ~148-400: Layout-Umbau auf zwei parallele Spalten |
+
+- Seitenbreite wird in zwei Haelften geteilt: `leftColWidth = tableWidth * 0.45`, `rightColWidth = tableWidth * 0.55`
+- Linke Spalte: `autoTable` mit `margin.left = margin`, `tableWidth = leftColWidth`
+- Rechte Spalte: `autoTable` mit `margin.left = margin + leftColWidth + gap`, `tableWidth = rightColWidth`
+- Beide Spalten starten auf gleicher Y-Position (`startY`)
+- Nach beiden Spalten wird `y = Math.max(leftEndY, rightEndY)` gesetzt fuer nachfolgende Inhalte (Abschnitt zum Ausschneiden)
+- Die bestehenden Sektions-Header und Formatierungen bleiben erhalten
 
