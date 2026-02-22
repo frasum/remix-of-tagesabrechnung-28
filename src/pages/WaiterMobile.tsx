@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { format } from 'date-fns';
 import { getBusinessDate } from '@/utils/businessDate';
 import { de } from 'date-fns/locale';
-import { Check, Loader2, CalendarDays, Link2 } from 'lucide-react';
+import { Check, Loader2, CalendarDays, Link2, AlertTriangle } from 'lucide-react';
 import { MobileLayout } from '@/components/layout/MobileLayout';
 import { PerformanceCard } from '@/components/waiter/PerformanceCard';
 import { TipRanking, RankingItem } from '@/components/waiter/TipRanking';
@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRestaurant } from '@/hooks/useRestaurant';
-import { useSession, useCreateSession, useWaiterShifts, useCreateWaiterShift, useWaiterTipAverages } from '@/hooks/useSession';
+import { useSession, useWaiterShifts, useCreateWaiterShift, useWaiterTipAverages } from '@/hooks/useSession';
 import { useUpdateWaiterShiftWithAudit } from '@/hooks/useWaiterShiftAudit';
 import { useWaiterRanking } from '@/hooks/useWaiterRanking';
 import { useLabels } from '@/hooks/useLabels';
@@ -45,7 +45,7 @@ export default function WaiterMobile() {
 
   // Data hooks
   const { data: session, isLoading: sessionLoading } = useSession(today, restaurantId);
-  const createSession = useCreateSession();
+  // Session creation removed - only managers can create sessions
   const { data: waiterShifts = [], isLoading: shiftsLoading } = useWaiterShifts(session?.id);
   const createWaiterShift = useCreateWaiterShift();
   const updateWaiterShift = useUpdateWaiterShiftWithAudit();
@@ -114,15 +114,10 @@ export default function WaiterMobile() {
   };
 
   const handleSave = async () => {
-    if (!restaurantId) return;
+    if (!restaurantId || !session?.id) return;
     
     try {
-      // Create session if not exists
-      let sessionId = session?.id;
-      if (!sessionId) {
-        const newSession = await createSession.mutateAsync({ date: today, restaurantId, createdByName: user?.name || undefined });
-        sessionId = newSession.id;
-      }
+      const sessionId = session.id;
 
       if (myShift) {
         await updateWaiterShift.mutateAsync({
@@ -148,9 +143,10 @@ export default function WaiterMobile() {
     }
   };
 
-  const isSaving = createSession.isPending || createWaiterShift.isPending || updateWaiterShift.isPending;
+  const isSaving = createWaiterShift.isPending || updateWaiterShift.isPending;
   const isLoading = sessionLoading || shiftsLoading;
   const isSubmitted = !!(myShift && (myShift as any).submitted_at);
+  const noSession = !sessionLoading && !session;
 
   // Transform rankings for TipRanking component
   const rankingItems: RankingItem[] = rankings.map(r => ({
@@ -193,6 +189,21 @@ export default function WaiterMobile() {
         />
 
         {/* Cash Up Form */}
+        {noSession ? (
+          <Card>
+            <CardContent className="py-12 text-center space-y-4">
+              <div className="mx-auto w-16 h-16 rounded-full bg-warning/10 flex items-center justify-center">
+                <AlertTriangle className="w-8 h-8 text-warning" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Keine Session eröffnet</h3>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+                  Für den {format(today, 'dd.MM.yyyy', { locale: de })} wurde noch keine Tagesabrechnung erstellt. Bitte wende dich an einen Manager.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -320,6 +331,7 @@ export default function WaiterMobile() {
             )}
           </CardContent>
         </Card>
+        )}
 
         {/* Ranking */}
         {showTipRanking && (
