@@ -34,6 +34,7 @@ export interface Session {
   // Tracking who created/updated
   created_by_name: string | null;
   updated_by_name: string | null;
+  guest_count: number | null;
 }
 
 export interface WaiterShift {

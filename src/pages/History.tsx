@@ -216,6 +216,7 @@ export default function History() {
                         <TableHead className="text-right">POS Total</TableHead>
                         <TableHead className="text-right">Kreditkarten (%)</TableHead>
                         <TableHead className="text-right">Take Away (%)</TableHead>
+                        <TableHead className="text-right">Gäste / Ø Verzehr</TableHead>
                         <TableHead className="text-right">Tages-Bargeld</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
@@ -243,6 +244,20 @@ export default function History() {
                               const posTotal = session.pos_total || 0;
                               const pct = posTotal > 0 ? (takeaway / posTotal * 100).toFixed(1) : '0.0';
                               return <>{formatCurrency(takeaway)} <span className="text-muted-foreground text-xs">({pct}%)</span></>;
+                            })()}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {(() => {
+                              const guestCount = session.guest_count || 0;
+                              if (guestCount === 0) return <span className="text-muted-foreground">–</span>;
+                              const takeaway = (session.takeaway_total || 0) + (session.ordersmart_revenue || 0) + (session.wolt_revenue || 0);
+                              const avg = ((session.pos_total || 0) - takeaway) / guestCount;
+                              return (
+                                <div>
+                                  <div>{guestCount} Gäste</div>
+                                  <div className="text-xs text-muted-foreground">Ø {formatCurrency(avg)}</div>
+                                </div>
+                              );
                             })()}
                           </TableCell>
                           <TableCell className={`text-right tabular-nums font-medium ${(cashByDate.get(session.session_date) ?? 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
