@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { History as HistoryIcon, Calendar, CheckCircle, XCircle, Eye, Trash2 } from 'lucide-react';
+import { History as HistoryIcon, Calendar, Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSelectedDate } from '@/contexts/DateContext';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -47,9 +47,7 @@ export default function History() {
     navigate(`/${restaurantSlug}/summary`);
   };
 
-  // Calculate quick stats
   const totalSessions = sessions.length;
-  const finalizedSessions = sessions.filter(s => s.is_finalized).length;
 
   const isConfirmValid = confirmText.toLowerCase() === 'löschen';
 
@@ -143,7 +141,7 @@ export default function History() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid gap-4">
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
@@ -153,19 +151,6 @@ export default function History() {
                 <div>
                   <p className="text-sm text-muted-foreground">Gesamt Sessions</p>
                   <p className="text-2xl font-display font-semibold">{totalSessions}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-success" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Abgeschlossen</p>
-                  <p className="text-2xl font-display font-semibold">{finalizedSessions}</p>
                 </div>
               </div>
             </CardContent>
@@ -220,7 +205,6 @@ export default function History() {
                         <TableHead className="text-right">POS Total</TableHead>
                          <TableHead className="text-right">Kredit Karten Terminal 1</TableHead>
                          <TableHead className="text-right">Kredit Karten Terminal 2</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -238,19 +222,6 @@ export default function History() {
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {formatCurrency(session.terminal_2_total || 0)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {session.is_finalized ? (
-                              <span className="inline-flex items-center gap-1 text-success text-xs font-medium">
-                                <CheckCircle className="w-3.5 h-3.5" />
-                                Abgeschlossen
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 text-muted-foreground text-xs font-medium">
-                                <XCircle className="w-3.5 h-3.5" />
-                                Offene Rechnung
-                              </span>
-                            )}
                           </TableCell>
                           <TableCell>
                             <Button
