@@ -381,13 +381,13 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     doc.setLineDashPattern([], 0);
     y += 20;
 
-    doc.setFontSize(11);
+    doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(80);
     doc.text('Wechselgeldbestand', pageWidth / 2, y, { align: 'center' });
-    y += 10;
+    y += 14;
 
-    doc.setFontSize(24);
+    doc.setFontSize(36);
     doc.setFont('helvetica', 'bold');
     if (rc >= 2000) {
       doc.setTextColor(22, 163, 74);
@@ -395,9 +395,9 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
       doc.setTextColor(220, 38, 38);
     }
     doc.text(formatCurrency(rc), pageWidth / 2, y, { align: 'center' });
-    y += 10;
+    y += 14;
 
-    doc.setFontSize(9);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(60);
     if (data.exportedBy || data.createdByName) {
