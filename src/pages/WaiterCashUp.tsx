@@ -250,7 +250,7 @@ export default function WaiterCashUp() {
               </p>
               <Button onClick={handleCreateSession} disabled={createSession.isPending || !restaurantId}>
                 <Plus className="w-4 h-4 mr-2" />
-                Session erstellen
+                Neue Abrechnung
               </Button>
             </CardContent>
           </Card>}
