@@ -154,16 +154,31 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   const tableWidth = pageWidth - 2 * margin;
   const tableMarginLeft = margin;
 
+  const sectionHeader = (title: string): any[] => [
+    { content: title, colSpan: 2, styles: { fillColor: [241, 245, 249] as [number, number, number], fontStyle: 'bold' as const, fontSize: 8, textColor: [51, 65, 85] as [number, number, number] } },
+  ];
+
   const summaryRows: any[][] = [
-    ['Umsatz', formatCurrency(data.session.pos_total || 0)],
+    // — Umsatz —
+    sectionHeader('Umsatz'),
+    ['POS-Umsatz', formatCurrency(data.session.pos_total || 0)],
     ...((data.session.guest_count ?? 0) > 0 ? [[
       `Gäste: ${data.session.guest_count}`,
       `⌀ ${formatCurrency(((data.session.pos_total || 0) - (data.session.takeaway_total || 0)) / data.session.guest_count!)} / Gast`
     ]] : []),
-    ['KK', formatCurrency(terminalTotal)],
+
+    // — Kartenzahlung —
+    sectionHeader('Kartenzahlung'),
+    ['KK (Terminal)', formatCurrency(terminalTotal)],
+
+    // — Take Away —
+    sectionHeader('Take Away'),
     [l('ordersmart_revenue', 'SoUse'), formatCurrency(data.session.ordersmart_revenue || 0)],
     [l('wolt_revenue', 'Wolt'), formatCurrency(data.session.wolt_revenue || 0)],
-    ['Gutscheine', formatCurrency(data.session.vouchers_redeemed || 0)],
+
+    // — Gutscheine & Abzüge —
+    sectionHeader('Gutscheine & Abzüge'),
+    ['Gutscheine EL', formatCurrency(data.session.vouchers_redeemed || 0)],
     ...(isHidden('finedine_vouchers') ? [] : [[l('finedine_vouchers', 'FineDine'), formatCurrency(data.session.finedine_vouchers || 0)]]),
     [l('vouchers_sold', 'Gutscheine VK'), formatCurrency(data.session.vouchers_sold || 0)],
     ['Offen', formatCurrency(data.totals.totalOpenInvoices)],
@@ -172,6 +187,9 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     [l('sonstige_einnahme', 'Sonstige Einnahme'), formatCurrency(data.session.sonstige_einnahme || 0)],
     ...((data.totals.previousDeficit ?? 0) < 0 ? [['Fehlbetrag Vortag', formatCurrency(data.totals.previousDeficit!)]] : []),
     ['Bar Ausgaben', formatCurrency(data.totals.totalExpenses)],
+
+    // — Ergebnis —
+    sectionHeader('Ergebnis'),
     ...(data.totals.bargeldRaw !== undefined ? [[
       { content: 'Tages-Bargeld', styles: { fontStyle: 'bold' as const, textColor: data.totals.bargeldRaw >= 0 ? [22, 163, 74] as [number, number, number] : [220, 38, 38] as [number, number, number] } },
       { content: formatCurrency(data.totals.bargeldRaw), styles: { fontStyle: 'bold' as const, halign: 'right' as const, textColor: data.totals.bargeldRaw >= 0 ? [22, 163, 74] as [number, number, number] : [220, 38, 38] as [number, number, number] } },
@@ -179,10 +197,9 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     [l('hilf_mahl', 'HilfMahl'), formatCurrency(totalHilfMahl)],
   ];
 
-  // Bargeld rows with highlight
-  const bargeldRowIndex = summaryRows.length;
+  // Bargeld row with highlight — renamed for clarity
   summaryRows.push([
-    { content: 'Bargeld mit HilfMahl', styles: { fontStyle: 'bold', fontSize: 9, fillColor: [255, 255, 255] as [number, number, number], lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number] } },
+    { content: 'Differenz zum Wechselgeldbestand', styles: { fontStyle: 'bold', fontSize: 9, fillColor: [255, 255, 255] as [number, number, number], lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number] } },
     { content: formatCurrency(bargeldMitHilf), styles: { fontStyle: 'bold', fontSize: 9, fillColor: [255, 255, 255] as [number, number, number], halign: 'right', lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number] } },
   ]);
 
@@ -202,12 +219,14 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   const bargeldOhneHilf2 = bargeldMitHilf - totalHilfMahl2;
 
   y = tableEndY + 2;
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ohne hilfmahl', tableMarginLeft + 2, y);
-  doc.text(formatCurrency(bargeldOhneHilf2), tableMarginLeft + tableWidth - 2, y, { align: 'right' });
 
-  y += 4;
+  if (Math.abs(totalHilfMahl2) >= 0.01) {
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ohne hilfmahl', tableMarginLeft + 2, y);
+    doc.text(formatCurrency(bargeldOhneHilf2), tableMarginLeft + tableWidth - 2, y, { align: 'right' });
+    y += 4;
+  }
 
   // Kassenbestand row (highlighted)
   if (data.totals.remainingCash !== undefined) {
