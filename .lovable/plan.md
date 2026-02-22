@@ -1,35 +1,72 @@
 
+## Problem: Veraltete Berechtigungen aus dem Cache
 
-# Neue Spalte: Gaeste / Ø Verzehr (kombiniert)
+### Ursache
 
-## Was wird hinzugefuegt
+Wenn sich ein Nutzer per PIN einloggt, wird das Benutzerprofil (einschliesslich `permissionLevel`) im `localStorage` gespeichert. Beim naechsten App-Start wird dieses gespeicherte Profil **ohne Aktualisierung** direkt verwendet (Zeilen 160-168 in `AuthContext.tsx`).
 
-Eine einzelne neue Spalte in der Verlaufstabelle, die beide Werte kompakt untereinander oder nebeneinander anzeigt:
+Das bedeutet:
+- Wenn sich die Berechtigungsstufe in der Datenbank aendert (z.B. von "manager" auf "admin"), zeigt die App weiterhin die **alte** Stufe an
+- Erst ein erneuter Login holt die aktuellen Daten vom Server
 
-| Datum | POS Total | Kreditkarten (%) | Take Away (%) | Gaeste / Ø Verzehr | Tages-Bargeld | |
+Bei OAuth-Nutzern wird das Profil beim App-Start aktualisiert -- bei PIN-Nutzern jedoch **nicht**.
 
-### Darstellung in der Zelle
+### Auswirkung
+
+- `isSessionLocked()` nutzt `permissionLevel` und sperrt aeltere Sessions fuer Nicht-Admins
+- Bestimmte UI-Elemente (z.B. Admin-Einstellungen) werden basierend auf `permissionLevel` ein-/ausgeblendet
+- Daten koennten veraltet dargestellt werden, weil der React-Query-Cache aus einer vorherigen Sitzung stammt
+
+### Loesung
+
+**Datei: `src/contexts/AuthContext.tsx`**
+
+Bei PIN-basierten Nutzern (die eine `staffId` haben, aber kein `isOAuthUser` sind) beim App-Start automatisch die Berechtigungen vom Server aktualisieren:
+
+1. Nach dem Laden des PIN-Nutzers aus dem `localStorage` (Zeile ~160) wird der Nutzer sofort angezeigt (fuer schnelle Ladezeiten)
+2. Im Hintergrund wird `refreshPermissions()` aufgerufen, um die aktuelle `permissionLevel` vom Server zu holen
+3. Falls sich die Stufe geaendert hat, wird der Nutzer-State und der `localStorage` aktualisiert
+
+Konkret wird der Block ab Zeile 160 erweitert:
 
 ```text
-42 Gaeste
-Ø 48,20 EUR
+Vorher:
+  // PIN-based user
+  if (isMounted) {
+    setUser(parsed);
+    setIsLoading(false);
+  }
+  return;
+
+Nachher:
+  // PIN-based user - show cached immediately, refresh permissions in background
+  if (isMounted) {
+    setUser(parsed);
+    setIsLoading(false);
+  }
+  // Background refresh of permission level
+  if (parsed.staffId) {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-user-role?staff_id=${parsed.staffId}`,
+        { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` } }
+      );
+      if (response.ok && isMounted) {
+        const roleData = await response.json();
+        const newLevel = roleData.permission_level || 'staff';
+        if (newLevel !== parsed.permissionLevel) {
+          const updated = { ...parsed, permissionLevel: newLevel };
+          setUser(updated);
+          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated));
+        }
+      }
+    } catch { /* silent - cached data is still usable */ }
+  }
+  return;
 ```
 
-- Erste Zeile: Anzahl Gaeste
-- Zweite Zeile (kleiner, muted): Durchschnittsverzehr pro Gast
-- Berechnung Durchschnitt: (POS Total - Takeaway) / Gaeste
-- Bei 0 Gaesten wird nur ein Strich angezeigt
+### Vorteile
 
-## Technische Details
-
-### Datei: `src/pages/History.tsx`
-
-1. **Tabellenkopf**: Eine neue `<TableHead>` Spalte "Gaeste / Ø Verzehr" nach "Take Away (%)" und vor "Tages-Bargeld" einfuegen (rechtsbuendig).
-
-2. **Tabellenzelle**: Eine neue `<TableCell>` mit zwei Zeilen:
-   - `session.guest_count` als Hauptwert anzeigen (z.B. "42 Gaeste")
-   - Darunter in kleiner, muted Schrift: Durchschnittsverzehr berechnen als `(posTotal - takeaway) / guestCount` und als Waehrung formatieren mit "Ø" Praefix
-   - Falls `guest_count` 0 oder nicht vorhanden: nur "–" anzeigen
-
-Keine zusaetzlichen Datenbank-Abfragen noetig, da `guest_count` bereits in der Session-Daten enthalten ist.
-
+- **Keine Verzoegerung**: Der Nutzer sieht sofort die gecachte Version (schneller Start)
+- **Aktualitaet**: Im Hintergrund werden Berechtigungen aktualisiert -- die UI passt sich automatisch an
+- **Fehlerresistent**: Bei Netzwerkproblemen funktioniert weiterhin der gecachte Wert
