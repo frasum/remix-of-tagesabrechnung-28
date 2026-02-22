@@ -299,7 +299,7 @@ export default function WaiterCashUp() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <Label>Kellner auswählen</Label>
+                  <Label>Mitarbeiter auswählen</Label>
                   <StaffSelect value={newWaiterName} onValueChange={setNewWaiterName} role="waiter" placeholder="Kellner wählen" excludeNames={waiterShifts.filter(s => s.id !== editingShiftId).map(s => s.waiter_name)} restaurantId={restaurantId} />
                 </div>
 
