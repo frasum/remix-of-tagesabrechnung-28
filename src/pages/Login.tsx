@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Lock } from 'lucide-react';
+import { ChefHat, Lock, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useWebAuthn } from '@/hooks/useWebAuthn';
 import { lovable } from '@/integrations/lovable/index';
 
 export default function Login() {
@@ -18,6 +19,37 @@ export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { isSupported: webAuthnSupported, hasCredential, authenticate: webAuthnAuthenticate, isLoading: webAuthnLoading } = useWebAuthn();
+
+  const handleBiometricLogin = async () => {
+    setIsLoading(true);
+    const result = await webAuthnAuthenticate();
+    setIsLoading(false);
+
+    if (result.success && result.user) {
+      // Use the same login flow as PIN - set user via AuthContext login-like mechanism
+      const authUser = {
+        id: result.user.id,
+        name: result.user.name,
+        role: result.user.role as 'waiter' | 'kitchen',
+        permissionLevel: (result.permission_level || 'staff') as 'staff' | 'manager' | 'admin',
+        staffId: result.user.id,
+      };
+      localStorage.setItem('spicery_auth_user', JSON.stringify(authUser));
+      toast({
+        title: 'Willkommen!',
+        description: `Biometrische Anmeldung erfolgreich als ${result.user.name}.`,
+      });
+      // Force page reload to pick up the new auth state
+      window.location.href = '/select-restaurant';
+    } else {
+      toast({
+        title: 'Biometrische Anmeldung fehlgeschlagen',
+        description: 'Bitte versuchen Sie es erneut oder melden Sie sich mit PIN an.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   // Redirect if already logged in (including OAuth users)
   useEffect(() => {
@@ -116,6 +148,27 @@ export default function Login() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {webAuthnSupported && hasCredential && (
+            <div className="mb-6">
+              <Button
+                type="button"
+                className="w-full h-14 text-base"
+                onClick={handleBiometricLogin}
+                disabled={isLoading || webAuthnLoading}
+              >
+                <Fingerprint className="w-6 h-6 mr-2" />
+                {isLoading ? 'Anmelden...' : 'Mit Face ID / Touch ID anmelden'}
+              </Button>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-muted"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Oder mit PIN</span>
+                </div>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>

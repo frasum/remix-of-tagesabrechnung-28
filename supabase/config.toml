@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.notify-pdf-export]
 verify_jwt = false
+
+[functions.webauthn-register]
+verify_jwt = false
+
+[functions.webauthn-authenticate]
+verify_jwt = false

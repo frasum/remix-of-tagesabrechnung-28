@@ -6,6 +6,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChefHat, MapPin } from 'lucide-react';
+import { WebAuthnRegistrationPrompt, shouldShowWebAuthnPrompt } from '@/components/auth/WebAuthnRegistrationPrompt';
 
 interface Restaurant {
   id: string;
@@ -19,6 +20,7 @@ export default function RestaurantSelect() {
   const isMobile = useIsMobile();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showWebAuthnPrompt, setShowWebAuthnPrompt] = useState(false);
   const isStaff = user?.permissionLevel === 'staff';
 
   useEffect(() => {
@@ -53,6 +55,11 @@ export default function RestaurantSelect() {
 
       setRestaurants(mapped);
       setIsLoading(false);
+
+      // Show WebAuthn prompt after loading restaurants
+      if (shouldShowWebAuthnPrompt()) {
+        setTimeout(() => setShowWebAuthnPrompt(true), 500);
+      }
     };
 
     fetchRestaurants();
@@ -96,6 +103,7 @@ export default function RestaurantSelect() {
           ))}
         </CardContent>
       </Card>
+      <WebAuthnRegistrationPrompt open={showWebAuthnPrompt} onOpenChange={setShowWebAuthnPrompt} />
     </div>
   );
 }
