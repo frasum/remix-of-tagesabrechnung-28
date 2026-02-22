@@ -321,7 +321,7 @@ async function calculateCashBalance(supabase: any, restaurantId: string, upToDat
 
     const bargeld = rawBargeld + carryOver;
     carryOver = bargeld < 0 ? bargeld : 0;
-    dailyBargeld.push(bargeld);
+    dailyBargeld.push(rawBargeld);
 
     if (date === upToDate) {
       targetDetails = {
