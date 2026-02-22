@@ -195,8 +195,8 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     ]] : []),
     [l('hilf_mahl', 'HilfMahl'), formatCurrency(totalHilfMahl)],
     [
-      { content: 'Differenz zum Wechselgeldbestand', styles: { fontStyle: 'bold', fontSize: 9, fillColor: [255, 255, 255] as [number, number, number], lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number] } },
-      { content: formatCurrency(bargeldMitHilf), styles: { fontStyle: 'bold', fontSize: 9, fillColor: [255, 255, 255] as [number, number, number], halign: 'right', lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number] } },
+      { content: 'Differenz zum Wechselgeldbestand', styles: { fontStyle: 'bold', fontSize: 7, fillColor: [255, 255, 255] as [number, number, number], lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number], cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 } } },
+      { content: formatCurrency(bargeldMitHilf), styles: { fontStyle: 'bold', fontSize: 7, fillColor: [255, 255, 255] as [number, number, number], halign: 'right', lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number], cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 } } },
     ],
   ];
 
