@@ -1,72 +1,67 @@
 
-## Problem: Veraltete Berechtigungen aus dem Cache
 
-### Ursache
+## Telegram Wechselgeldbestand-Berechnung korrigieren
 
-Wenn sich ein Nutzer per PIN einloggt, wird das Benutzerprofil (einschliesslich `permissionLevel`) im `localStorage` gespeichert. Beim naechsten App-Start wird dieses gespeicherte Profil **ohne Aktualisierung** direkt verwendet (Zeilen 160-168 in `AuthContext.tsx`).
+### Problem
 
-Das bedeutet:
-- Wenn sich die Berechtigungsstufe in der Datenbank aendert (z.B. von "manager" auf "admin"), zeigt die App weiterhin die **alte** Stufe an
-- Erst ein erneuter Login holt die aktuellen Daten vom Server
+Die Telegram Edge Function (`send-telegram-summary`) berechnet den Wechselgeldbestand falsch, weil sie nur Tage mit einer Session beruecksichtigt. Kassentransfers an Tagen ohne Session (z.B. Einlagen am Ruhetag) werden komplett ignoriert.
 
-Bei OAuth-Nutzern wird das Profil beim App-Start aktualisiert -- bei PIN-Nutzern jedoch **nicht**.
+Fuer Spicery fehlen:
+- 09.02.: Entnahme 1.104 EUR + Einlage 270 EUR (netto -834 EUR)
+- 15.02.: Einlage 6.346,22 EUR
 
-### Auswirkung
+Dadurch ergibt sich ein Wechselgeldbestand von ~1.086 EUR statt der korrekten 2.000 EUR.
 
-- `isSessionLocked()` nutzt `permissionLevel` und sperrt aeltere Sessions fuer Nicht-Admins
-- Bestimmte UI-Elemente (z.B. Admin-Einstellungen) werden basierend auf `permissionLevel` ein-/ausgeblendet
-- Daten koennten veraltet dargestellt werden, weil der React-Query-Cache aus einer vorherigen Sitzung stammt
+Die Web-App (`useCashBalanceData`) loest das bereits korrekt, indem sie Transfer-Only-Tage als eigene Eintraege in die Berechnung einbezieht.
 
 ### Loesung
 
-**Datei: `src/contexts/AuthContext.tsx`**
+**Datei: `supabase/functions/send-telegram-summary/index.ts`**
 
-Bei PIN-basierten Nutzern (die eine `staffId` haben, aber kein `isOAuthUser` sind) beim App-Start automatisch die Berechtigungen vom Server aktualisieren:
+Die Funktion `calculateCashBalance` (ab Zeile 238) wird angepasst, sodass sie -- genau wie die Web-App -- auch Transfer-Only-Tage beruecksichtigt:
 
-1. Nach dem Laden des PIN-Nutzers aus dem `localStorage` (Zeile ~160) wird der Nutzer sofort angezeigt (fuer schnelle Ladezeiten)
-2. Im Hintergrund wird `refreshPermissions()` aufgerufen, um die aktuelle `permissionLevel` vom Server zu holen
-3. Falls sich die Stufe geaendert hat, wird der Nutzer-State und der `localStorage` aktualisiert
+1. Alle Daten (Session-Tage + Transfer-Only-Tage) in eine sortierte Liste zusammenfuehren
+2. Fuer jeden Tag (mit oder ohne Session) die Bargeld-Berechnung durchfuehren
+3. Transfers werden korrekt zugeordnet, auch wenn kein Session-Eintrag existiert
 
-Konkret wird der Block ab Zeile 160 erweitert:
+### Technische Aenderungen
+
+Die `calculateCashBalance`-Funktion wird umgebaut:
 
 ```text
-Vorher:
-  // PIN-based user
-  if (isMounted) {
-    setUser(parsed);
-    setIsLoading(false);
+Vorher (vereinfacht):
+  for (const session of sessions) {
+    // Nur Tage MIT Session werden berechnet
+    // Transfers ohne passende Session werden ignoriert
   }
-  return;
 
 Nachher:
-  // PIN-based user - show cached immediately, refresh permissions in background
-  if (isMounted) {
-    setUser(parsed);
-    setIsLoading(false);
+  // 1. Session-Map nach Datum erstellen
+  const sessionMap = new Map();
+  for (const s of sessions) sessionMap.set(s.session_date, s);
+
+  // 2. Transfer-Only-Tage finden
+  const transferOnlyDates = new Set();
+  for (const t of transfers) {
+    if (!sessionMap.has(t.transfer_date)) transferOnlyDates.add(t.transfer_date);
   }
-  // Background refresh of permission level
-  if (parsed.staffId) {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-user-role?staff_id=${parsed.staffId}`,
-        { headers: { 'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` } }
-      );
-      if (response.ok && isMounted) {
-        const roleData = await response.json();
-        const newLevel = roleData.permission_level || 'staff';
-        if (newLevel !== parsed.permissionLevel) {
-          const updated = { ...parsed, permissionLevel: newLevel };
-          setUser(updated);
-          localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(updated));
-        }
-      }
-    } catch { /* silent - cached data is still usable */ }
+
+  // 3. Alle Daten sortiert durchlaufen
+  const allDates = [...new Set([
+    ...sessions.map(s => s.session_date),
+    ...transferOnlyDates
+  ])].sort();
+
+  for (const date of allDates) {
+    const session = sessionMap.get(date);
+    // Session-Werte (oder 0 wenn kein Session)
+    // + Transfer-Effekt fuer diesen Tag
+    // = korrekte Bargeld-Berechnung
   }
-  return;
 ```
 
-### Vorteile
+Dies entspricht exakt der Logik in `useCashBalanceData.ts` (Zeilen 81-120), die bereits korrekt arbeitet.
 
-- **Keine Verzoegerung**: Der Nutzer sieht sofort die gecachte Version (schneller Start)
-- **Aktualitaet**: Im Hintergrund werden Berechtigungen aktualisiert -- die UI passt sich automatisch an
-- **Fehlerresistent**: Bei Netzwerkproblemen funktioniert weiterhin der gecachte Wert
+### Erwartetes Ergebnis
+
+Nach der Aenderung berechnet Telegram den gleichen Wechselgeldbestand wie die Web-App (2.000 EUR fuer Spicery am 21.02.).
