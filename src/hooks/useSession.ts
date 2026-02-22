@@ -30,7 +30,11 @@ export function useCreateSession() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async ({ date, restaurantId, createdByName }: { date: Date; restaurantId: string; createdByName?: string }) => {
+    mutationFn: async ({ date, restaurantId, createdByName, permissionLevel }: { date: Date; restaurantId: string; createdByName?: string; permissionLevel?: string }) => {
+      // Only managers and admins can create sessions
+      if (permissionLevel && permissionLevel === 'staff') {
+        throw new Error('Keine Berechtigung. Bitte einen Manager bitten, die Session zu erstellen.');
+      }
       const dateStr = format(date, 'yyyy-MM-dd');
 
       // Check if session already exists (prevents duplicate key error)

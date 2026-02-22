@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRestaurant } from '@/hooks/useRestaurant';
-import { useSession, useCreateSession, useWaiterShifts, useCreateWaiterShift, useWaiterTipAverages } from '@/hooks/useSession';
+import { useSession, useWaiterShifts, useCreateWaiterShift, useWaiterTipAverages } from '@/hooks/useSession';
 import { useUpdateWaiterShiftWithAudit } from '@/hooks/useWaiterShiftAudit';
 import { useWaiterRanking } from '@/hooks/useWaiterRanking';
 import { useLabels } from '@/hooks/useLabels';
@@ -45,7 +45,7 @@ export default function WaiterMobile() {
 
   // Data hooks
   const { data: session, isLoading: sessionLoading } = useSession(today, restaurantId);
-  const createSession = useCreateSession();
+  
   const { data: waiterShifts = [], isLoading: shiftsLoading } = useWaiterShifts(session?.id);
   const createWaiterShift = useCreateWaiterShift();
   const updateWaiterShift = useUpdateWaiterShiftWithAudit();
@@ -117,11 +117,11 @@ export default function WaiterMobile() {
     if (!restaurantId) return;
     
     try {
-      // Create session if not exists
+      // Staff cannot create sessions - require manager to create one first
       let sessionId = session?.id;
       if (!sessionId) {
-        const newSession = await createSession.mutateAsync({ date: today, restaurantId, createdByName: user?.name || undefined });
-        sessionId = newSession.id;
+        toast({ title: 'Keine Session vorhanden', description: 'Bitte einen Manager bitten, die Session für heute zu erstellen.', variant: 'destructive' });
+        return;
       }
 
       if (myShift) {
@@ -148,7 +148,7 @@ export default function WaiterMobile() {
     }
   };
 
-  const isSaving = createSession.isPending || createWaiterShift.isPending || updateWaiterShift.isPending;
+  const isSaving = createWaiterShift.isPending || updateWaiterShift.isPending;
   const isLoading = sessionLoading || shiftsLoading;
   const isSubmitted = !!(myShift && (myShift as any).submitted_at);
 
