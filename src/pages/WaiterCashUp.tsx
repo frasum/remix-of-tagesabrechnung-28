@@ -4,7 +4,7 @@ import { useSelectedDate } from '@/contexts/DateContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSessionLocked } from '@/utils/businessDate';
 import { SessionLockedBanner } from '@/components/shared/SessionLockedBanner';
-import { Pencil, Percent, Plus, Trash2, User, Users, X } from 'lucide-react';
+import { AlertTriangle, Pencil, Percent, Plus, Trash2, User, Users, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { CurrencyInput } from '@/components/shared/CurrencyInput';
@@ -254,9 +254,15 @@ export default function WaiterCashUp() {
                   Neue Abrechnung
                 </Button>
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Bitte einen Manager bitten, die Session zu erstellen.
-                </p>
+                <div className="flex items-start gap-3 rounded-lg border border-warning/50 bg-warning/10 p-4 text-left max-w-md mx-auto">
+                  <AlertTriangle className="w-5 h-5 text-warning shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-foreground">Keine Abrechnung vorhanden</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Bitte wende dich an einen Manager, um die Abrechnung für diesen Tag zu starten.
+                    </p>
+                  </div>
+                </div>
               )}
             </CardContent>
           </Card>}
