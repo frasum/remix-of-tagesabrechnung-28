@@ -30,7 +30,7 @@ export default function KitchenTipSplit() {
   const { selectedDate, setSelectedDate } = useSelectedDate();
   const { toast } = useToast();
   const { restaurantId } = useRestaurant();
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const locked = isSessionLocked(selectedDate, user?.permissionLevel || 'staff');
 
   // Form state
@@ -58,7 +58,7 @@ export default function KitchenTipSplit() {
   const handleCreateSession = async () => {
     if (!restaurantId) return;
     try {
-      await createSession.mutateAsync({ date: selectedDate, restaurantId, createdByName: user?.name || undefined });
+      await createSession.mutateAsync({ date: selectedDate, restaurantId, createdByName: user?.name || undefined, permissionLevel: user?.permissionLevel });
       toast({ title: 'Session erstellt', description: `Session für ${format(selectedDate, 'dd.MM.yyyy')} wurde erstellt.` });
     } catch (error) {
       toast({ title: 'Fehler', description: 'Session konnte nicht erstellt werden.', variant: 'destructive' });
@@ -137,10 +137,16 @@ export default function KitchenTipSplit() {
               <p className="text-muted-foreground mb-4">
                 Noch keine Abrechnung für diesen Tag vorhanden.
               </p>
-              <Button onClick={handleCreateSession} disabled={createSession.isPending || !restaurantId}>
-                <Plus className="w-4 h-4 mr-2" />
-                Neue Abrechnung
-              </Button>
+              {hasPermission('manager') ? (
+                <Button onClick={handleCreateSession} disabled={createSession.isPending || !restaurantId}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Neue Abrechnung
+                </Button>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Bitte einen Manager bitten, die Session zu erstellen.
+                </p>
+              )}
             </CardContent>
           </Card>
         )}
