@@ -99,19 +99,13 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   const isHidden = (key: string) => data.hiddenFields?.includes(key) ?? false;
 
   // ========== HEADER - centered, compact ==========
-  if (data.restaurantName) {
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(data.restaurantName, pageWidth / 2, y, { align: 'center' });
-    y += 6;
-  }
-
   const dateStr = format(new Date(data.session.session_date), "EEEE, d. MMMM", { locale: de });
-  doc.setFontSize(11);
+  const headerText = data.restaurantName ? `${data.restaurantName}  ·  ${dateStr}` : dateStr;
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text(dateStr, pageWidth / 2, y, { align: 'center' });
+  doc.text(headerText, pageWidth / 2, y, { align: 'center' });
 
-  y += 4;
+  y += 7;
   doc.setFontSize(6);
   doc.setTextColor(128);
   const parts: string[] = [];
