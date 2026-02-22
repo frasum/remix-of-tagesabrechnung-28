@@ -379,7 +379,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     doc.setLineDashPattern([3, 3], 0);
     doc.line(margin, y, pageWidth - margin, y);
     doc.setLineDashPattern([], 0);
-    y += 8;
+    y += 20;
 
     doc.setFontSize(11);
     doc.setFont('helvetica', 'bold');
