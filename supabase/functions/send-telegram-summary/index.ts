@@ -266,32 +266,50 @@ async function calculateCashBalance(supabase: any, restaurantId: string, upToDat
     : 0;
   const initialDeficit = restaurantRes.data?.initial_cash_deficit ?? 0;
 
+  // Build session map by date
+  const sessionMap = new Map<string, any>();
+  for (const s of sessions) sessionMap.set(s.session_date, s);
+
+  // Find transfer-only dates (no session)
+  const transferOnlyDates = new Set<string>();
+  for (const t of transfers) {
+    if (!sessionMap.has(t.transfer_date)) transferOnlyDates.add(t.transfer_date);
+  }
+
+  // All dates sorted
+  const allDates = [...new Set([
+    ...sessions.map((s: any) => s.session_date),
+    ...transferOnlyDates,
+  ])].sort();
+
   let carryOver = initialDeficit;
   const dailyBargeld: number[] = [];
   let targetDetails: DayCashDetails | null = null;
 
-  for (const session of sessions) {
-    const tagesumsatz = session.pos_total || 0;
-    const kreditkarten = (session.terminal_1_total || 0) + (session.terminal_2_total || 0);
-    const ordersmart = session.ordersmart_revenue || 0;
-    const wolt = session.wolt_revenue || 0;
-    const gutscheineEL = session.vouchers_redeemed || 0;
-    const finedine = session.finedine_vouchers || 0;
-    const gutscheineVK = session.vouchers_sold || 0;
-    const einladung = session.einladung || 0;
-    const sonstigeEinnahme = session.sonstige_einnahme || 0;
+  for (const date of allDates) {
+    const session = sessionMap.get(date);
 
-    const sessionShifts = waiterShifts.filter((s: any) => s.session_id === session.id);
-    const sessionExpenses = expenses.filter((e: any) => e.session_id === session.id);
-    const sessionAdvances = advances.filter((a: any) => a.session_id === session.id);
+    const tagesumsatz = session?.pos_total || 0;
+    const kreditkarten = (session?.terminal_1_total || 0) + (session?.terminal_2_total || 0);
+    const ordersmart = session?.ordersmart_revenue || 0;
+    const wolt = session?.wolt_revenue || 0;
+    const gutscheineEL = session?.vouchers_redeemed || 0;
+    const finedine = session?.finedine_vouchers || 0;
+    const gutscheineVK = session?.vouchers_sold || 0;
+    const einladung = session?.einladung || 0;
+    const sonstigeEinnahme = session?.sonstige_einnahme || 0;
+
+    const sessionShifts = session ? waiterShifts.filter((s: any) => s.session_id === session.id) : [];
+    const sessionExpenses = session ? expenses.filter((e: any) => e.session_id === session.id) : [];
+    const sessionAdvances = session ? advances.filter((a: any) => a.session_id === session.id) : [];
 
     const totalOpenInvoices = sessionShifts.reduce((sum: number, w: any) => sum + (w.open_invoices || 0), 0);
     const totalExpenses = sessionExpenses.reduce((sum: number, e: any) => sum + e.amount, 0);
     const vorschuss = sessionAdvances.length > 0
       ? sessionAdvances.reduce((sum: number, a: any) => sum + a.amount, 0)
-      : (session.vorschuss || 0);
+      : (session?.vorschuss || 0);
 
-    const dayTransfers = transfers.filter((t: any) => t.transfer_date === session.session_date);
+    const dayTransfers = transfers.filter((t: any) => t.transfer_date === date);
     const transferEffect = dayTransfers.reduce((sum: number, t: any) => {
       return t.direction === 'to_restaurant' ? sum + Number(t.amount) : sum - Number(t.amount);
     }, 0);
@@ -305,7 +323,7 @@ async function calculateCashBalance(supabase: any, restaurantId: string, upToDat
     carryOver = bargeld < 0 ? bargeld : 0;
     dailyBargeld.push(bargeld);
 
-    if (session.session_date === upToDate) {
+    if (date === upToDate) {
       targetDetails = {
         kreditkarten,
         ordersmart,
