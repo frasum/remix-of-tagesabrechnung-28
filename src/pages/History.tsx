@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { History as HistoryIcon, Calendar, Eye, Trash2 } from 'lucide-react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelectedDate } from '@/contexts/DateContext';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -25,6 +26,7 @@ import { useSessionHistory, useDeleteAllSessions } from '@/hooks/useSession';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useToast } from '@/hooks/use-toast';
 import { AuditLogList } from '@/components/audit/AuditLogList';
+import { useCashBalanceData } from '@/hooks/useCashBalanceData';
 
 export default function History() {
   const navigate = useNavigate();
@@ -36,6 +38,15 @@ export default function History() {
   const [confirmText, setConfirmText] = useState('');
   const { data: sessions = [], isLoading } = useSessionHistory(restaurantId);
   const deleteAllSessions = useDeleteAllSessions(restaurantId);
+  const { data: cashRows = [] } = useCashBalanceData(restaurantId);
+
+  const cashByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const row of cashRows) {
+      map.set(row.date, row.rawBargeld);
+    }
+    return map;
+  }, [cashRows]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
@@ -205,6 +216,7 @@ export default function History() {
                         <TableHead className="text-right">POS Total</TableHead>
                          <TableHead className="text-right">Kredit Karten Terminal 1</TableHead>
                          <TableHead className="text-right">Kredit Karten Terminal 2</TableHead>
+                         <TableHead className="text-right">Tages-Bargeld</TableHead>
                         <TableHead></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -222,6 +234,9 @@ export default function History() {
                           </TableCell>
                           <TableCell className="text-right tabular-nums">
                             {formatCurrency(session.terminal_2_total || 0)}
+                          </TableCell>
+                          <TableCell className={`text-right tabular-nums font-medium ${(cashByDate.get(session.session_date) ?? 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                            {formatCurrency(cashByDate.get(session.session_date) ?? 0)}
                           </TableCell>
                           <TableCell>
                             <Button
