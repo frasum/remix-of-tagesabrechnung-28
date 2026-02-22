@@ -153,7 +153,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   const columnsStartY = y;
 
   const sectionHeader = (title: string): any[] => [
-    { content: title, colSpan: 2, styles: { fillColor: [241, 245, 249] as [number, number, number], fontStyle: 'bold' as const, fontSize: 8, textColor: [51, 65, 85] as [number, number, number] } },
+    { content: title, colSpan: 2, styles: { fillColor: [241, 245, 249] as [number, number, number], fontStyle: 'bold' as const, fontSize: 10, textColor: [51, 65, 85] as [number, number, number] } },
   ];
 
   // ===== LEFT COLUMN: Summary =====
@@ -189,8 +189,8 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     ]] : []),
     [l('hilf_mahl', 'HilfMahl'), formatCurrency(totalHilfMahl)],
     [
-      { content: 'Differenz zum Wechselgeldbestand', styles: { fontStyle: 'bold', fontSize: 7, fillColor: [255, 255, 255] as [number, number, number], lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number], cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 } } },
-      { content: formatCurrency(bargeldMitHilf), styles: { fontStyle: 'bold', fontSize: 7, fillColor: [255, 255, 255] as [number, number, number], halign: 'right', lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number], cellPadding: { top: 1.5, bottom: 1.5, left: 2, right: 2 } } },
+      { content: 'Differenz zum Wechselgeldbestand', styles: { fontStyle: 'bold', fontSize: 8, fillColor: [255, 255, 255] as [number, number, number], lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number], cellPadding: { top: 2, bottom: 2, left: 2, right: 2 } } },
+      { content: formatCurrency(bargeldMitHilf), styles: { fontStyle: 'bold', fontSize: 8, fillColor: [255, 255, 255] as [number, number, number], halign: 'right', lineWidth: 0.5, lineColor: [0, 0, 0] as [number, number, number], cellPadding: { top: 2, bottom: 2, left: 2, right: 2 } } },
     ],
   ];
 
@@ -199,7 +199,7 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
     margin: { left: leftX, right: pageWidth - leftX - leftColWidth },
     body: summaryRows,
     theme: 'plain',
-    bodyStyles: { fontSize: 7, cellPadding: { top: 0.5, bottom: 0.5, left: 2, right: 2 }, overflow: 'ellipsize' },
+    bodyStyles: { fontSize: 9, cellPadding: { top: 1, bottom: 1, left: 2, right: 2 }, overflow: 'ellipsize' },
     columnStyles: { 1: { halign: 'right' as const } },
     tableWidth: leftColWidth,
   });
