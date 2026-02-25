@@ -377,8 +377,9 @@ export default function Statistics() {
                             outerRadius={90}
                             paddingAngle={2}
                             dataKey="value"
-                            label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                            label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                             labelLine={true}
+                            fontSize={13}
                           >
                             {deliveryBreakdown.map((entry, index) => (
                               <Cell 
