@@ -172,10 +172,15 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
 
       // Note: delivery breakdown labels are static here; 
       // consumers should use getLabel() to display these names
+      const totalTakeaway = (sessions || []).reduce((sum, s) => sum + (s.takeaway_total || 0), 0);
+      const totalOrdersmart = (sessions || []).reduce((sum, s) => sum + (s.ordersmart_revenue || 0), 0);
+      const totalWolt = (sessions || []).reduce((sum, s) => sum + (s.wolt_revenue || 0), 0);
+      const vectronTakeaway = totalTakeaway - totalOrdersmart - totalWolt;
+
       const deliveryBreakdown: DeliveryBreakdown[] = [
-        { name: 'takeaway_total', value: (sessions || []).reduce((sum, s) => sum + (s.takeaway_total || 0), 0) },
-        { name: 'ordersmart_revenue', value: (sessions || []).reduce((sum, s) => sum + (s.ordersmart_revenue || 0), 0) },
-        { name: 'wolt_revenue', value: (sessions || []).reduce((sum, s) => sum + (s.wolt_revenue || 0), 0) },
+        { name: 'takeaway_total', value: Math.max(0, vectronTakeaway) },
+        { name: 'ordersmart_revenue', value: totalOrdersmart },
+        { name: 'wolt_revenue', value: totalWolt },
       ].filter(d => d.value > 0);
 
       // Calculate summary
