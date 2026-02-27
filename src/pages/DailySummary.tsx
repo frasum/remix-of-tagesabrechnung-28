@@ -419,6 +419,13 @@ export default function DailySummary() {
           },
         }).catch((err) => console.error('Telegram notify failed:', err));
       }
+
+      // Send settlement data to external system (fire-and-forget)
+      if (session?.id) {
+        supabase.functions.invoke('send-settlement', {
+          body: { session_id: session.id },
+        }).catch((err) => console.error('Settlement webhook failed:', err));
+      }
     }
   }, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification]);
 
