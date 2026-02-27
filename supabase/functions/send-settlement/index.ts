@@ -47,6 +47,7 @@ Deno.serve(async (req) => {
     const payload = {
       secret,
       restaurant_name: restaurant.name,
+      session_date: sessionRes.data.session_date,
       restaurant_id: sessionRes.data.restaurant_id,
       session: sessionRes.data,
       waiter_shifts: waiterRes.data ?? [],
