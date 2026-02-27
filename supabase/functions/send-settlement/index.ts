@@ -32,6 +32,23 @@ Deno.serve(async (req) => {
       supabase.from("advances").select("*").eq("session_id", session_id),
     ]);
 
+    // Fetch card transactions for each waiter shift
+    const waiterShifts = waiterRes.data ?? [];
+    const shiftIds = waiterShifts.map((s: { id: string }) => s.id);
+    let cardTransactions: Record<string, unknown[]> = {};
+    if (shiftIds.length > 0) {
+      const { data: cards } = await supabase
+        .from("card_transactions")
+        .select("*")
+        .in("waiter_shift_id", shiftIds);
+      for (const card of cards ?? []) {
+        if (!cardTransactions[card.waiter_shift_id]) {
+          cardTransactions[card.waiter_shift_id] = [];
+        }
+        cardTransactions[card.waiter_shift_id].push(card);
+      }
+    }
+
     if (sessionRes.error) throw sessionRes.error;
 
     // Look up restaurant name
@@ -56,9 +73,10 @@ Deno.serve(async (req) => {
       created_by_name: session.created_by_name,
       total_revenue,
       session,
-      waiter_shifts: waiterRes.data ?? [],
+      waiter_shifts: waiterShifts,
       kitchen_shifts: kitchenRes.data ?? [],
       advances: advancesRes.data ?? [],
+      card_transactions: cardTransactions,
     };
 
     const webhookRes = await fetch(
