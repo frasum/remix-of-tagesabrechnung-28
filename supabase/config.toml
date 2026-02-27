@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.manage-webauthn]
 verify_jwt = false
+
+[functions.send-settlement]
+verify_jwt = false
