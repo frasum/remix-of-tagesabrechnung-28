@@ -424,6 +424,12 @@ export default function DailySummary() {
       if (session?.id) {
         supabase.functions.invoke('send-settlement', {
           body: { session_id: session.id },
+        }).then(({ error }) => {
+          if (error) {
+            console.error('Settlement webhook failed:', error);
+          } else {
+            toast({ title: 'Abrechnung übermittelt', description: 'Die Daten wurden erfolgreich an die Zeiterfassung gesendet.' });
+          }
         }).catch((err) => console.error('Settlement webhook failed:', err));
       }
     }
