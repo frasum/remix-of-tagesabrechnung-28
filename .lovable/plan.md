@@ -2,19 +2,18 @@
 
 ## Problem
 
-Die Berechtigungsseite (`/permissions`) bleibt im Ladezustand hängen. Die Backend-Funktion `manage-nav-permissions` startet zwar, beendet aber nie ihre Ausführung (Timeout). Die Ursache ist eine nicht gepinnte Bibliotheks-Version im Import, die beim Laden hängenbleibt.
+The StaffCard displays two badges both labeled "Mitarbeiter" because:
+1. **Role badge**: "Mitarbeiter" (for role `waiter` or `both`)
+2. **Permission badge**: "Mitarbeiter" (for permission level `staff`)
 
-## Lösung
+These are two different concepts but share the same German label, making it look like a bug.
 
-Die Backend-Funktion `manage-nav-permissions` muss aktualisiert werden, um denselben Import-Stil wie die anderen funktionierenden Funktionen zu verwenden:
+## Fix
 
-### Schritt 1: Edge Function Import korrigieren
+Rename the permission level label from "Mitarbeiter" to "Basis" in `StaffCard.tsx` line 33, so the two badges are visually distinct:
 
-In `supabase/functions/manage-nav-permissions/index.ts`:
-- Import von `https://esm.sh/@supabase/supabase-js@2` auf `https://esm.sh/@supabase/supabase-js@2.38.4` pinnen (wie bei `validate-pin`)
-- `Deno.serve` beibehalten (das funktioniert), nur den Import fixenx
+- Role badge: `Mitarbeiter` / `Küche` (unchanged)
+- Permission badge: `Basis` / `Manager` / `Admin`
 
-### Technischer Hintergrund
-
-Andere funktionierende Edge Functions (z.B. `validate-pin`) verwenden eine gepinnte Version `@2.38.4`. Die `manage-nav-permissions`-Funktion importiert `@2` ohne feste Version, was zu einem Timeout beim Modulauflösung führen kann.
+This is a one-line change in `src/components/staff/StaffCard.tsx`.
 
