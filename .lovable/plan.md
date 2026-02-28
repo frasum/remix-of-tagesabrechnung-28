@@ -1,24 +1,22 @@
 
 
-## Plan: Takeaway-Prozent-Formel für YUM anpassen
+## Plan: Settlement-Webhook (Zeiterfassung) entfernen
 
-### Anforderung
-Für YUM soll die Formel `(takeaway_total + ordersmart_revenue) / pos_total * 100` verwendet werden — also ohne Wolt.
+### Betroffene Dateien
 
-### Aktuelle Logik
-In `ExcelLayout.tsx` wird bei `ordersmartInTakeaway === false` (YUM) derzeit `(takeaway + ordersmart + wolt) / pos * 100` gerechnet.
+**1. Edge Function löschen**
+- `supabase/functions/send-settlement/index.ts` löschen
 
-### Umsetzung
+**2. Config bereinigen** (`supabase/config.toml`)
+- Eintrag `[functions.send-settlement]` entfernen
 
-**Datei: `src/components/daily-summary/layouts/ExcelLayout.tsx`**
-- Die Formel im `else`-Zweig (wenn `ordersmartInTakeaway === false`, also YUM) ändern von:
-  ```
-  (takeaway_total + ordersmart_revenue + wolt_revenue) / pos_total * 100
-  ```
-  zu:
-  ```
-  (takeaway_total + ordersmart_revenue) / pos_total * 100
-  ```
+**3. Client-Code bereinigen** (`src/pages/DailySummary.tsx`)
+- `settlementSentRef` (Zeile 403) entfernen
+- Settlement-Block Zeilen 425–441 entfernen (der `send-settlement` invoke-Aufruf)
+- `session` aus den `useCallback`-Dependencies entfernen (Zeile 443)
 
-Eine Änderung an einer Stelle, eine Datei.
+### Nicht betroffen
+- `notify-pdf-export` (Telegram PDF-Benachrichtigung) — bleibt
+- `send-telegram-summary` (Tagesbericht) — bleibt
+- Datenbankspalte `last_settlement_sent_at` — kann bestehen bleiben, keine Breaking Changes
 
