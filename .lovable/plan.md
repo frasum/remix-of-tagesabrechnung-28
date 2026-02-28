@@ -1,31 +1,37 @@
 
 
-## Problem
+## Mitarbeiterverwaltung um Stammdaten erweitern
 
-Die meisten Staff-Einträge haben nur `name` befüllt. `first_name`, `last_name`, `nickname` und `perso_nr` sind NULL/0. Dadurch wird z.B. "Nok (0)" angezeigt statt vollständiger Daten.
+Die Felder `first_name`, `last_name`, `nickname` und `perso_nr` existieren in der Datenbank, werden aber im StaffDialog weder angezeigt noch bearbeitet. Das wird jetzt nachgeholt.
 
-## Lösung: Intelligentere Anzeige in BuchhaltungRow
+### 1. `src/hooks/useStaff.ts` — StaffInput erweitern
 
-Die Anzeige soll sich anpassen, je nachdem welche Daten vorhanden sind:
+Neue optionale Felder zu `StaffInput` hinzufuegen:
+- `first_name?: string`
+- `last_name?: string`  
+- `nickname?: string`
+- `perso_nr?: number`
 
-- **Wenn `first_name`/`last_name` vorhanden:** `Amonwan Phuthamma (BÄNG · 373)`
-- **Wenn nur `name` vorhanden und `perso_nr` > 0:** `Nok (123)`  
-- **Wenn nur `name` vorhanden und `perso_nr` = 0/NULL:** `Nok` (keine Klammer)
+In `useCreateStaff` und `useUpdateStaff`: Diese Felder aus `input` extrahieren und an die Supabase-Queries weitergeben (sie werden bereits durch `...staffData` erfasst, muessen nur aus dem Destructuring entfernt werden, damit sie nicht verloren gehen).
 
-### Änderung in `src/pages/zeiterfassung/buchhaltung/BuchhaltungRow.tsx`
+### 2. `src/components/staff/StaffDialogNative.tsx` — Formularfelder hinzufuegen
 
-Zeile 23-25: Klammer-Teil nur anzeigen wenn `nickname` oder `perso_nr` vorhanden:
+Neue State-Variablen: `firstName`, `lastName`, `nickname`, `persoNr`.
 
-```tsx
-{emp.first_name || emp.last_name ? `${emp.first_name} ${emp.last_name}`.trim() : emp.name}
-{(emp.nickname || emp.perso_nr) ? (
-  <span className="text-xs text-muted-foreground">
-    {" "}({emp.nickname ? `${emp.nickname} · ` : ""}{emp.perso_nr})
-  </span>
-) : null}
-```
+Neue Eingabefelder nach dem bestehenden "Name"-Feld:
+- **Vorname** (text input)
+- **Nachname** (text input)
+- **Spitzname** (text input) 
+- **Personalnummer** (number input)
 
-Damit verschwinden die hässlichen "(0)" bei unvollständigen Datensätzen.
+Beim Oeffnen des Dialogs die Werte aus `staff.first_name`, `staff.last_name`, `staff.nickname`, `staff.perso_nr` laden.
 
-Die fehlenden Stammdaten (Vor-/Nachname, Personalnummer) müssen separat in der Mitarbeiterverwaltung nachgepflegt werden — das ist kein automatischer Fix.
+Beim Speichern die neuen Felder an `onSave` uebergeben.
+
+### 3. `src/components/staff/StaffCard.tsx` — Anzeige verbessern
+
+Unter dem Namen zusaetzlich Vorname/Nachname und Personalnummer anzeigen, wenn vorhanden (als kleine Zusatzinfo).
+
+### Keine Datenbank-Aenderungen noetig
+Die Spalten `first_name`, `last_name`, `nickname`, `perso_nr` existieren bereits in der `staff`-Tabelle.
 
