@@ -1,13 +1,14 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-Deno.serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
@@ -18,7 +19,6 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
 
     if (req.method === 'GET') {
-      // Get permissions for a specific staff member or all managers
       const staffId = url.searchParams.get('staff_id');
 
       if (staffId) {
@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
         if (error) throw error;
 
-        return new Response(JSON.stringify({ paths: data.map(p => p.nav_path) }), {
+        return new Response(JSON.stringify({ paths: data.map((p: any) => p.nav_path) }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -59,7 +59,6 @@ Deno.serve(async (req) => {
       const body = await req.json();
       const { staff_id, paths, caller_staff_id } = body;
 
-      // Verify caller is admin
       if (!caller_staff_id) {
         return new Response(
           JSON.stringify({ error: 'Missing caller_staff_id' }),
@@ -92,7 +91,7 @@ Deno.serve(async (req) => {
 
       // Insert new permissions if any paths provided
       if (paths.length > 0) {
-        const rows = paths.map(nav_path => ({ staff_id, nav_path }));
+        const rows = paths.map((nav_path: string) => ({ staff_id, nav_path }));
         const { error: insertError } = await supabase
           .from('manager_nav_permissions')
           .insert(rows);
@@ -111,7 +110,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error('Error:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
