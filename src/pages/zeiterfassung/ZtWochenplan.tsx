@@ -87,7 +87,7 @@ function handleTimeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
 export default function ZtWochenplan() {
   const queryClient = useQueryClient();
   const { restaurantId } = useRestaurant();
-  const { selectedPeriodId, setSelectedPeriodId, selectedWeekId, setSelectedWeekId, periods, weeks } = useZt();
+  const { selectedPeriodId, setSelectedPeriodId, selectedWeekId, setSelectedWeekId, periods, weeks, isPeriodLocked } = useZt();
 
   const [editingTime, setEditingTime] = useState<Record<string, string>>({});
   const [absenceDialog, setAbsenceDialog] = useState<{
@@ -315,8 +315,7 @@ export default function ZtWochenplan() {
     };
   };
 
-  const selectedPeriod = periods?.find((p) => p.id === selectedPeriodId);
-  const isLocked = selectedPeriod?.status === "locked";
+  const isLocked = isPeriodLocked;
 
   if (!periods?.length) {
     return (

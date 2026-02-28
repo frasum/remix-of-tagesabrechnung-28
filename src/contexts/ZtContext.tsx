@@ -30,6 +30,7 @@ interface ZtContextType {
   periods: Period[] | undefined;
   weeks: Week[] | undefined;
   isPeriodsLoading: boolean;
+  isPeriodLocked: boolean;
 }
 
 const ZtContext = createContext<ZtContextType | null>(null);
@@ -90,6 +91,9 @@ export function ZtProvider({ children }: { children: React.ReactNode }) {
     setSelectedWeekId("");
   }, [selectedPeriodId]);
 
+  const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
+  const isPeriodLocked = selectedPeriod?.status === "locked";
+
   return (
     <ZtContext.Provider value={{
       selectedPeriodId,
@@ -99,6 +103,7 @@ export function ZtProvider({ children }: { children: React.ReactNode }) {
       periods,
       weeks,
       isPeriodsLoading,
+      isPeriodLocked,
     }}>
       {children}
     </ZtContext.Provider>
