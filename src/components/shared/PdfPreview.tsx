@@ -106,10 +106,13 @@ export function PdfPreview({ blobUrl, className, fileName, onPrint }: PdfPreview
     `);
     
     printWindow.document.close();
+    
+    // Fire onPrint immediately since print dialog blocks execution
+    onPrint?.();
+    
     printWindow.onload = () => {
       printWindow.focus();
       printWindow.print();
-      onPrint?.();
     };
   };
 
