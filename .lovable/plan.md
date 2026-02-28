@@ -1,11 +1,24 @@
 
 
-## Plan: "Erstellt von" korrigieren
+## Plan: "+"-Button sofort aktivieren wenn Beschreibung + Betrag ausgefüllt
 
-Die gestrige Session (`2026-02-27`, Restaurant `a1710390-ea4d-4bc2-b869-c0c047056b15`) hat `created_by_name: "Testmanager"` und `updated_by_name: "Frank"`.
+### Analyse
+Die Bedingung `disabled={!expenseDescription.trim() || expenseAmount <= 0}` ist bereits korrekt implementiert. Das Problem: `CurrencyInput` ruft `onChange` erst bei `onBlur` auf — solange man tippt, bleibt `expenseAmount` auf 0, und der Button bleibt deaktiviert.
 
 ### Umsetzung
-1. Per SQL-Update den `created_by_name` der Session `a93edc73-0ae8-4252-8608-8bff6c9f3c89` von "Testmanager" auf "Gerard" setzen.
 
-Keine Code-Änderungen nötig -- nur ein Daten-Update in der Datenbank.
+**Datei: `src/components/shared/CurrencyInput.tsx`**
+- In `handleChange` zusätzlich `onChange` mit dem geparsten Wert aufrufen, damit der Parent-State sofort aktualisiert wird (nicht erst bei Blur).
+
+```typescript
+const handleChange = (e) => {
+  const rawValue = e.target.value.replace(/[^0-9.,]/g, '');
+  setDisplayValue(rawValue);
+  // Sofort den Wert an Parent melden
+  const numValue = parseFloat(rawValue.replace(',', '.')) || 0;
+  onChange(numValue);
+};
+```
+
+Betrifft eine Stelle in einer Datei. Die Formatierung (z.B. "5" → "5,00") passiert weiterhin erst bei Blur.
 
