@@ -20,8 +20,8 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, isEven, onUp
   return (
     <tr className={`border-t border-border/50 hover:bg-primary/5 transition-colors ${rowBg}`}>
       <td className="px-2 py-1.5 font-medium whitespace-nowrap">
-        {emp.first_name || emp.last_name ? `${emp.first_name} ${emp.last_name}`.trim() : emp.name}{emp.nickname ? ` (${emp.nickname})` : ""}{" "}
-        <span className="text-xs text-muted-foreground tabular-nums">· {emp.perso_nr}</span>
+        {emp.first_name || emp.last_name ? `${emp.first_name} ${emp.last_name}`.trim() : emp.name}{" "}
+        <span className="text-xs text-muted-foreground">({emp.nickname ? `${emp.nickname} · ` : ""}{emp.perso_nr})</span>
       </td>
       <td className="text-center px-1 py-1.5 font-semibold tabular-nums bg-primary/5 border-l border-border/40">
         {formatHours(totals.gesamt)}
