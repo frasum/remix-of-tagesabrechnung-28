@@ -131,13 +131,24 @@ export function useCreateWaiterShift() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (shift: Omit<WaiterShift, 'id' | 'differenz' | 'kitchen_tip' | 'created_at' | 'submitted_at'>) => {
+    mutationFn: async (shift: Omit<WaiterShift, 'id' | 'differenz' | 'kitchen_tip' | 'created_at' | 'submitted_at' | 'shift_start' | 'shift_end' | 'hours_worked'> & { shift_start?: string }) => {
       // Normalize "none" value to null for second_waiter_name
+      const now = new Date();
+      const shiftEnd = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Berlin' });
+      const shiftStart = shift.shift_start || '16:00';
+      // Calculate hours worked from shift_start and shift_end
+      const [sh, sm] = shiftStart.split(':').map(Number);
+      const [eh, em] = shiftEnd.split(':').map(Number);
+      let hoursWorked = (eh * 60 + em - (sh * 60 + sm)) / 60;
+      if (hoursWorked < 0) hoursWorked += 24;
       const normalizedShift = {
         ...shift,
         second_waiter_name: shift.second_waiter_name === 'none' ? null : shift.second_waiter_name,
         participates_in_pool: shift.participates_in_pool ?? true,
-        submitted_at: new Date().toISOString(),
+        submitted_at: now.toISOString(),
+        shift_start: shiftStart,
+        shift_end: shiftEnd,
+        hours_worked: Math.round(hoursWorked * 100) / 100,
       };
       const { data, error } = await supabase
         .from('waiter_shifts')
@@ -183,10 +194,19 @@ export function useUpdateWaiterShift() {
   return useMutation({
     mutationFn: async ({ id, sessionId, ...updates }: { id: string; sessionId: string } & Partial<Omit<WaiterShift, 'id' | 'differenz' | 'kitchen_tip' | 'created_at' | 'submitted_at'>>) => {
       // Normalize "none" value to null for second_waiter_name
+      const now = new Date();
+      const shiftEnd = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Berlin' });
+      const shiftStart = (updates as any).shift_start || '16:00';
+      const [sh, sm] = shiftStart.split(':').map(Number);
+      const [eh, em] = shiftEnd.split(':').map(Number);
+      let hoursWorked = (eh * 60 + em - (sh * 60 + sm)) / 60;
+      if (hoursWorked < 0) hoursWorked += 24;
       const normalizedUpdates: Record<string, unknown> = {
         ...updates,
         second_waiter_name: updates.second_waiter_name === 'none' ? null : updates.second_waiter_name,
-        submitted_at: new Date().toISOString(),
+        submitted_at: now.toISOString(),
+        shift_end: shiftEnd,
+        hours_worked: Math.round(hoursWorked * 100) / 100,
       };
       // Only include participates_in_pool if provided
       if (updates.participates_in_pool !== undefined) {

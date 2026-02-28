@@ -32,10 +32,19 @@ export function useUpdateWaiterShiftWithAudit() {
       if (fetchError) throw fetchError;
       
       // 2. Normalize "none" value to null for second_waiter_name
+      const now = new Date();
+      const shiftEnd = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Europe/Berlin' });
+      const shiftStart = (updates as any).shift_start || oldData.shift_start || '16:00';
+      const [sh, sm] = shiftStart.split(':').map(Number);
+      const [eh, em] = shiftEnd.split(':').map(Number);
+      let hoursWorked = (eh * 60 + em - (sh * 60 + sm)) / 60;
+      if (hoursWorked < 0) hoursWorked += 24;
       const normalizedUpdates: Record<string, unknown> = {
         ...updates,
         second_waiter_name: updates.second_waiter_name === 'none' ? null : updates.second_waiter_name,
-        submitted_at: new Date().toISOString(),
+        submitted_at: now.toISOString(),
+        shift_end: shiftEnd,
+        hours_worked: Math.round(hoursWorked * 100) / 100,
       };
       
       // Only include participates_in_pool if provided

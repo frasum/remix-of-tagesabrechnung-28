@@ -756,6 +756,7 @@ export type Database = {
           created_at: string
           differenz: number | null
           hilf_mahl: number | null
+          hours_worked: number | null
           id: string
           kassiert_brutto: number | null
           kitchen_tip: number | null
@@ -764,6 +765,8 @@ export type Database = {
           pos_sales: number | null
           second_waiter_name: string | null
           session_id: string
+          shift_end: string | null
+          shift_start: string | null
           submitted_at: string | null
           updated_at: string | null
           waiter_name: string
@@ -774,6 +777,7 @@ export type Database = {
           created_at?: string
           differenz?: number | null
           hilf_mahl?: number | null
+          hours_worked?: number | null
           id?: string
           kassiert_brutto?: number | null
           kitchen_tip?: number | null
@@ -782,6 +786,8 @@ export type Database = {
           pos_sales?: number | null
           second_waiter_name?: string | null
           session_id: string
+          shift_end?: string | null
+          shift_start?: string | null
           submitted_at?: string | null
           updated_at?: string | null
           waiter_name: string
@@ -792,6 +798,7 @@ export type Database = {
           created_at?: string
           differenz?: number | null
           hilf_mahl?: number | null
+          hours_worked?: number | null
           id?: string
           kassiert_brutto?: number | null
           kitchen_tip?: number | null
@@ -800,6 +807,8 @@ export type Database = {
           pos_sales?: number | null
           second_waiter_name?: string | null
           session_id?: string
+          shift_end?: string | null
+          shift_start?: string | null
           submitted_at?: string | null
           updated_at?: string | null
           waiter_name?: string
