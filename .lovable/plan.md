@@ -1,24 +1,23 @@
 
 
-## Plan: "+"-Button sofort aktivieren wenn Beschreibung + Betrag ausgefüllt
+## Plan: Takeaway-Prozent-Formel für Spicery anpassen
 
-### Analyse
-Die Bedingung `disabled={!expenseDescription.trim() || expenseAmount <= 0}` ist bereits korrekt implementiert. Das Problem: `CurrencyInput` ruft `onChange` erst bei `onBlur` auf — solange man tippt, bleibt `expenseAmount` auf 0, und der Button bleibt deaktiviert.
+### Anforderung
+Im Restaurant "Spicery" soll die Takeaway-Prozent-Berechnung nur `takeaway_total / pos_total * 100` verwenden (ohne OrderSmart und Wolt). Für andere Restaurants bleibt die bisherige Formel bestehen.
 
 ### Umsetzung
 
-**Datei: `src/components/shared/CurrencyInput.tsx`**
-- In `handleChange` zusätzlich `onChange` mit dem geparsten Wert aufrufen, damit der Parent-State sofort aktualisiert wird (nicht erst bei Blur).
+**1. ExcelLayout Props erweitern** (`src/components/daily-summary/layouts/ExcelLayout.tsx`)
+- Neue optionale Prop `ordersmartInTakeaway?: boolean` hinzufügen
+- In der Takeaway-Sektion die Prozentberechnung anpassen:
+  - Wenn `ordersmartInTakeaway === true` (Standard): bisherige Formel `(takeaway + ordersmart + wolt) / pos * 100`
+  - Wenn `ordersmartInTakeaway === false` (Spicery): nur `takeaway / pos * 100`
 
-```typescript
-const handleChange = (e) => {
-  const rawValue = e.target.value.replace(/[^0-9.,]/g, '');
-  setDisplayValue(rawValue);
-  // Sofort den Wert an Parent melden
-  const numValue = parseFloat(rawValue.replace(',', '.')) || 0;
-  onChange(numValue);
-};
-```
+**2. Prop durchreichen** (`src/pages/DailySummary.tsx`)
+- `ordersmartInTakeaway={restaurant?.ordersmart_in_takeaway ?? true}` an `ExcelLayout` übergeben (Variable existiert bereits in der Datei)
 
-Betrifft eine Stelle in einer Datei. Die Formatierung (z.B. "5" → "5,00") passiert weiterhin erst bei Blur.
+### Hinweis
+Die Steuerung erfolgt über die bestehende Restaurant-Einstellung `ordersmart_in_takeaway`. Für Spicery steht diese auf `true` — d.h. die Logik muss invertiert sein: Wenn OrderSmart im Takeaway enthalten ist (`true`), dann ist es bereits in `takeaway_total` drin und darf **nicht** nochmal addiert werden. Die Formel wird dann `takeaway_total / pos_total * 100`.
+
+Alternativ, falls die Einstellung für Spicery nicht passend ist, kann ein fester Slug-Check (`restaurantSlug === 'spicery'`) verwendet werden.
 
