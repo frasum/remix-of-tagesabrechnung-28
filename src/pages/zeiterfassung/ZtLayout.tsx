@@ -7,8 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 const tabs = [
   { label: "Wochenplan", path: "" },
   { label: "Zusammenfassung", path: "zusammenfassung" },
-  // Weitere Tabs folgen später:
-  // { label: "Buchhaltung", path: "buchhaltung" },
+  { label: "Buchhaltung", path: "buchhaltung" },
   // { label: "Perioden", path: "perioden" },
 ];
 

@@ -98,6 +98,56 @@ export function countSickDays(shifts: { absence_type?: string | null }[]): numbe
   return shifts.filter(s => s.absence_type === 'krank').length;
 }
 
+/**
+ * Get sick date ranges from shifts grouped into consecutive day ranges.
+ */
+export function getSickDateRanges(
+  shifts: { absence_type?: string | null; shift_date?: string }[]
+): { from: string; to: string }[] {
+  const sickDates = shifts
+    .filter(s => s.absence_type === 'krank' && s.shift_date)
+    .map(s => s.shift_date!)
+    .sort();
+
+  if (!sickDates.length) return [];
+
+  const ranges: { from: string; to: string }[] = [];
+  let from = sickDates[0];
+  let prev = sickDates[0];
+
+  for (let i = 1; i < sickDates.length; i++) {
+    const curr = sickDates[i];
+    const prevDate = new Date(prev);
+    const currDate = new Date(curr);
+    const diffDays = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 1) {
+      prev = curr;
+    } else {
+      ranges.push({ from, to: prev });
+      from = curr;
+      prev = curr;
+    }
+  }
+  ranges.push({ from, to: prev });
+  return ranges;
+}
+
+/**
+ * Format sick date ranges for display.
+ * E.g. "25.02." or "25.02.–28.02. (4T)"
+ */
+export function formatSickRanges(ranges: { from: string; to: string }[]): string[] {
+  return ranges.map(r => {
+    const fromDate = new Date(r.from);
+    const toDate = new Date(r.to);
+    const fmtDay = (d: Date) =>
+      `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.`;
+    if (r.from === r.to) return fmtDay(fromDate);
+    const days = Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return `${fmtDay(fromDate)}–${fmtDay(toDate)} (${days}T)`;
+  });
+}
+
 export function getDepartmentColorClass(dept: string): string {
   switch (dept) {
     case "Küche": return "dept-kueche";
