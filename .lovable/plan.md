@@ -2,21 +2,24 @@
 
 ## Problem
 
-The `handleDownloadPdf` callback (line 436) is missing `session` and `toast` in its dependency array:
+Der Code-Fix (Hinzufügen von `session` und `toast` zur Dependency-Liste) ist im Quellcode korrekt angewendet. Aber:
 
-```
-}, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification]);
-```
+1. Die **veröffentlichte App** unter `tagesabrechnung.lovable.app` enthält möglicherweise noch den alten Code ohne den Fix
+2. Die **Vorschau-URL** enthält den aktuellen Code
 
-Because `session` is not a dependency, its value is captured as `null` from the initial render. When the PDF is downloaded, `session?.id` evaluates to `false` and the `send-settlement` call is skipped entirely.
+Um sicherzustellen, dass der Webhook zuverlässig funktioniert, und um das Problem zu debuggen, schlage ich zwei Maßnahmen vor:
 
-## Fix
+## Plan
 
-Add `session` and `toast` to the `useCallback` dependency array on line 436:
+### 1. Debug-Logging hinzufügen
+Ein `console.log` direkt vor der `if (session?.id)` Prüfung einbauen, damit wir sehen können, ob `session` zum Zeitpunkt des Downloads tatsächlich befüllt ist:
 
 ```typescript
-}, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification, session, toast]);
+console.log('handleDownloadPdf – session:', session?.id, 'pdfPreview:', !!pdfPreview);
 ```
 
-This is a one-line change that fixes the stale closure, ensuring the settlement webhook fires on every PDF export.
+Dies hilft beim nächsten Test sofort zu erkennen, ob der Webhook-Aufruf übersprungen wird.
+
+### 2. App neu veröffentlichen
+Nach dem Fix muss die App neu veröffentlicht werden, damit der Fix auch auf `tagesabrechnung.lovable.app` aktiv ist. Der Test sollte dann über die **Vorschau-URL** oder die **neu veröffentlichte App** erfolgen.
 
