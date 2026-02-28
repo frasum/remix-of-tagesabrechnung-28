@@ -1185,9 +1185,9 @@ export default function DailySummary() {
               <X className="w-4 h-4 mr-2" />
               Schließen
             </Button>
-            <Button onClick={handleDownloadPdf}>
+            <Button variant="destructive" onClick={handleDownloadPdf}>
               <Download className="w-4 h-4 mr-2" />
-              Herunterladen
+              Abrechnung abschließen
             </Button>
           </DialogFooter>
         </DialogContent>
