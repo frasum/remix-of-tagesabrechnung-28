@@ -12,7 +12,6 @@ export interface TelegramSettings {
   show_created_by: boolean;
   show_waiters: boolean;
   show_kitchen: boolean;
-  show_pdf_export_notification: boolean;
 }
 
 export function useTelegramSettings() {
@@ -23,7 +22,7 @@ export function useTelegramSettings() {
     queryFn: async (): Promise<TelegramSettings | null> => {
       const { data, error } = await supabase
         .from('telegram_settings')
-        .select('id, excluded_restaurants, show_pos_total, show_guest_count, show_cash_balance, show_cash_details, show_created_by, show_waiters, show_kitchen, show_pdf_export_notification')
+        .select('id, excluded_restaurants, show_pos_total, show_guest_count, show_cash_balance, show_cash_details, show_created_by, show_waiters, show_kitchen')
         .limit(1)
         .maybeSingle();
 
@@ -43,7 +42,6 @@ export function useTelegramSettings() {
         show_created_by: settings.show_created_by,
         show_waiters: settings.show_waiters,
         show_kitchen: settings.show_kitchen,
-        show_pdf_export_notification: settings.show_pdf_export_notification,
       };
 
       if (settings.id) {
