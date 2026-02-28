@@ -33,6 +33,7 @@ const TelegramSettings = lazy(() => import("./pages/TelegramSettings"));
 const ZtLayout = lazy(() => import("./pages/zeiterfassung/ZtLayout"));
 const ZtWochenplan = lazy(() => import("./pages/zeiterfassung/ZtWochenplan"));
 const ZtZusammenfassung = lazy(() => import("./pages/zeiterfassung/ZtZusammenfassung"));
+const ZtBuchhaltung = lazy(() => import("./pages/zeiterfassung/ZtBuchhaltung"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -66,6 +67,7 @@ function RestaurantRoutes() {
           <Route path="zeiterfassung" element={<ProtectedRoute requiredLevel="manager"><ZtLayout /></ProtectedRoute>}>
             <Route index element={<ZtWochenplan />} />
             <Route path="zusammenfassung" element={<ZtZusammenfassung />} />
+            <Route path="buchhaltung" element={<ZtBuchhaltung />} />
           </Route>
         </Routes>
       </DateProvider>
