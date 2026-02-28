@@ -1,33 +1,23 @@
 
 
-## Problem
+## Änderung: Namensanzeige in der Buchhaltung
 
-Die meisten Mitarbeiter haben nur das `name`-Feld befüllt (z.B. "Frank", "Adisorn"), aber `first_name` und `nickname` sind `NULL`. Der Wochenplan zeigt `emp.nickname || emp.first_name` — beide leer → keine Namen sichtbar.
+**Aktuelle Anzeige:** `Name (Spitzname) · Perso-Nr` — wobei Spitzname und Perso-Nr getrennt dargestellt werden.
 
-## Lösung
+**Gewünschte Anzeige:** `Vorname Nachname (Spitzname · Perso-Nr)`
 
-Zwei Änderungen:
+### Änderung in `src/pages/zeiterfassung/buchhaltung/BuchhaltungRow.tsx`
 
-### 1. `src/hooks/useZtEmployees.ts` — `name` Feld mit abfragen und im Mapping verwenden
-
-- `staff!inner(...)` Select um `name` erweitern
-- `ZtEmployee` Typ um `name: string` ergänzen
-- Im Mapping: `name: row.staff.name` hinzufügen
-
-### 2. `src/pages/zeiterfassung/Wochenplan.tsx` — Anzeigename mit `name` als Fallback
-
-Zeile 483 ändern von:
+Zeile 23 ändern von:
 ```tsx
-{emp.nickname || emp.first_name}
+{emp.first_name || emp.last_name ? `${emp.first_name} ${emp.last_name}`.trim() : emp.name}{emp.nickname ? ` (${emp.nickname})` : ""}{" "}
+<span className="text-xs text-muted-foreground tabular-nums">· {emp.perso_nr}</span>
 ```
 zu:
 ```tsx
-{emp.nickname || emp.first_name || emp.name}
+{emp.first_name || emp.last_name ? `${emp.first_name} ${emp.last_name}`.trim() : emp.name}{" "}
+<span className="text-xs text-muted-foreground">({emp.nickname ? `${emp.nickname} · ` : ""}{emp.perso_nr})</span>
 ```
 
-### 3. `src/hooks/useCrossRestaurantData.ts` — gleicher Fix für Cross-Restaurant-Ansicht
-
-`name` ebenfalls in den Employee-Map aufnehmen (Zeile ~112).
-
-Drei kleine Änderungen, kein Datenbankschema betroffen.
+Ergebnis: **Frank Müller (Franky · 1234)** oder **Frank Müller (1234)** wenn kein Spitzname vorhanden.
 
