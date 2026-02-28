@@ -1,47 +1,22 @@
 
 
-# Legende der Lieferplattformen erweitern
+## Problem
 
-## Änderungen in `src/pages/Statistics.tsx`
+The `handleDownloadPdf` callback (line 436) is missing `session` and `toast` in its dependency array:
 
-### 1. Prozentangaben in Klammern hinzufügen
-Jede Plattform in der Legende bekommt den Prozentanteil in Klammern neben dem Betrag.
-
-### 2. Gesamt-Takeaway-Summe anzeigen
-Unter der Legende eine Zeile mit dem Gesamtumsatz aller Lieferplattformen.
-
-### Datei: `src/pages/Statistics.tsx`, Zeilen 399-415
-
-Berechnung der Gesamtsumme und Prozentanteile:
-
-```tsx
-{/* Legend */}
-{deliveryBreakdown.length > 0 && (
-  <div className="space-y-3 mt-4">
-    <div className="flex flex-wrap justify-center gap-4">
-      {deliveryBreakdown.map((entry, index) => {
-        const total = deliveryBreakdown.reduce((sum, d) => sum + d.value, 0);
-        const percent = total > 0 ? ((entry.value / total) * 100).toFixed(0) : '0';
-        return (
-          <div key={entry.name} className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-            <span className="text-sm text-muted-foreground">{entry.name}</span>
-            <span className="text-sm font-medium tabular-nums">
-              {formatCurrency(entry.value)} ({percent}%)
-            </span>
-          </div>
-        );
-      })}
-    </div>
-    <div className="text-center border-t pt-2">
-      <span className="text-sm text-muted-foreground">Gesamt Takeaway: </span>
-      <span className="text-sm font-bold tabular-nums">
-        {formatCurrency(deliveryBreakdown.reduce((sum, d) => sum + d.value, 0))}
-      </span>
-    </div>
-  </div>
-)}
+```
+}, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification]);
 ```
 
-Keine weiteren Dateien betroffen.
+Because `session` is not a dependency, its value is captured as `null` from the initial render. When the PDF is downloaded, `session?.id` evaluates to `false` and the `send-settlement` call is skipped entirely.
+
+## Fix
+
+Add `session` and `toast` to the `useCallback` dependency array on line 436:
+
+```typescript
+}, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification, session, toast]);
+```
+
+This is a one-line change that fixes the stale closure, ensuring the settlement webhook fires on every PDF export.
 
