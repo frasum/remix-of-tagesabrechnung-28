@@ -24,6 +24,9 @@ verify_jwt = false
 [functions.send-telegram-summary]
 verify_jwt = false
 
+[functions.notify-pdf-export]
+verify_jwt = false
+
 [functions.webauthn-register]
 verify_jwt = false
 
@@ -31,4 +34,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.manage-webauthn]
+verify_jwt = false
+
+[functions.send-settlement]
 verify_jwt = false
