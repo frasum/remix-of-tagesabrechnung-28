@@ -400,8 +400,6 @@ export default function DailySummary() {
     setPdfPreviewOpen(true);
   };
 
-  const settlementSentRef = useRef<string | null>(null);
-
   const handleDownloadPdf = useCallback(() => {
     if (pdfPreview) {
       const link = document.createElement('a');
@@ -421,26 +419,8 @@ export default function DailySummary() {
           },
         }).catch((err) => console.error('Telegram notify failed:', err));
       }
-
-      // Send settlement data (deduplicated client-side per session)
-      if (session?.id && settlementSentRef.current !== session.id) {
-        settlementSentRef.current = session.id;
-        supabase.functions.invoke('send-settlement', {
-          body: { session_id: session.id },
-        }).then(({ error }) => {
-          if (error) {
-            console.error('Settlement webhook failed:', error);
-            settlementSentRef.current = null; // allow retry
-          } else {
-            toast({ title: 'Abrechnung übermittelt', description: 'Die Daten wurden erfolgreich an die Zeiterfassung gesendet.' });
-          }
-        }).catch((err) => {
-          console.error('Settlement webhook failed:', err);
-          settlementSentRef.current = null;
-        });
-      }
     }
-  }, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification, session, toast]);
+  }, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification]);
 
   const handleClosePdfPreview = useCallback(() => {
     if (pdfPreview?.blobUrl) {
