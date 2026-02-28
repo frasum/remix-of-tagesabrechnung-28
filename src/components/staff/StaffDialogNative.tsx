@@ -27,10 +27,6 @@ interface StaffDialogProps {
 export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: StaffDialogProps) {
   const { user } = useAuth();
   const [name, setName] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [nickname, setNickname] = useState('');
-  const [persoNr, setPersoNr] = useState('');
   const [role, setRole] = useState<StaffRole>('waiter');
   const [isActive, setIsActive] = useState(true);
   const [pinCode, setPinCode] = useState('');
@@ -42,7 +38,7 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
   const { data: unlinkedProfiles = [], isLoading: profilesLoading } = useUnlinkedProfiles();
   const { data: linkedProfiles = [], isLoading: linkedProfilesLoading } = useLinkedProfilesForStaff(staff?.id ?? null);
   const linkMutation = useAdminLinkAccount();
-  const { data: currentRole, isLoading: roleLoading } = useUserRole(staff?.id);
+  const { data: currentRole } = useUserRole(staff?.id);
   const updateRoleMutation = useUpdateUserRole();
 
   const didInitRef = useRef(false);
@@ -55,18 +51,12 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
     }
   }, [open]);
 
-  // Initialize form once when dialog opens (wait for currentRole to load for existing staff)
+  // Initialize form once when dialog opens
   useEffect(() => {
     if (!open || didInitRef.current) return;
-    // For existing staff, wait until the role query has finished loading
-    if (staff && roleLoading) return;
 
     if (staff) {
       setName(staff.name);
-      setFirstName(staff.first_name ?? '');
-      setLastName(staff.last_name ?? '');
-      setNickname(staff.nickname ?? '');
-      setPersoNr(staff.perso_nr != null ? String(staff.perso_nr) : '');
       setRole(staff.role);
       setIsActive(staff.is_active ?? true);
       setPinCode('');
@@ -74,10 +64,6 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       setPermissionLevel(currentRole || 'staff');
     } else {
       setName('');
-      setFirstName('');
-      setLastName('');
-      setNickname('');
-      setPersoNr('');
       setRole('waiter');
       setIsActive(true);
       setPinCode('');
@@ -86,7 +72,7 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
     }
 
     didInitRef.current = true;
-  }, [open, staff, restaurants, currentRole, roleLoading]);
+  }, [open, staff, restaurants, currentRole]);
 
   const handlePinChange = (value: string) => {
     setPinCode(value.replace(/\D/g, '').slice(0, 4));
@@ -102,32 +88,23 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
     e.preventDefault();
     if (!name.trim()) return;
 
-    // Update permission level FIRST (before staff save closes the dialog and triggers refetch)
-    if (staff && permissionLevel !== currentRole && user?.id) {
-      try {
-        await updateRoleMutation.mutateAsync({
-          staffId: staff.id,
-          permissionLevel,
-          callerStaffId: user.id,
-        });
-      } catch {
-        // Error toast is handled by the mutation's onError
-        return;
-      }
-    }
-
-    // Then save staff data (this closes the dialog and triggers the staff list refetch)
+    // Save staff data
     onSave({
       name: name.trim(),
       role,
       is_active: isActive,
       pin_code: pinCode.length === 4 ? pinCode : undefined,
       restaurant_ids: selectedRestaurants,
-      first_name: firstName.trim() || undefined,
-      last_name: lastName.trim() || undefined,
-      nickname: nickname.trim() || undefined,
-      perso_nr: persoNr ? Number(persoNr) : undefined,
     });
+
+    // Update permission level for existing staff
+    if (staff && permissionLevel !== currentRole && user?.id) {
+      updateRoleMutation.mutate({
+        staffId: staff.id,
+        permissionLevel,
+        callerStaffId: user.id,
+      });
+    }
   };
 
   const handleLink = () => {
@@ -169,51 +146,6 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
               placeholder="Max Mustermann"
               required
             />
-          </div>
-
-          {/* Vorname & Nachname */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="staff-firstname">Vorname</Label>
-              <Input
-                id="staff-firstname"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Vorname"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="staff-lastname">Nachname</Label>
-              <Input
-                id="staff-lastname"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Nachname"
-              />
-            </div>
-          </div>
-
-          {/* Spitzname & Personalnummer */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="staff-nickname">Spitzname</Label>
-              <Input
-                id="staff-nickname"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="Spitzname"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="staff-personr">Personalnummer</Label>
-              <Input
-                id="staff-personr"
-                type="number"
-                value={persoNr}
-                onChange={(e) => setPersoNr(e.target.value)}
-                placeholder="z.B. 101"
-              />
-            </div>
           </div>
 
           {/* Role - native select */}

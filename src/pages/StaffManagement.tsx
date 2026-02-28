@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, ChefHat, UtensilsCrossed, Search, Trophy, ChevronDown } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 import { GlobalLayout } from '@/components/layout/GlobalLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +32,7 @@ export default function StaffManagement() {
   const restaurantId = selectedRankingRestaurantId;
   const { showTipRanking, updateShowTipRanking, isUpdating: isUpdatingRanking } = useShowTipRanking(restaurantId);
 
-  const { data: allStaff = [], isLoading } = useStaff(undefined, { includeProfiles: true, includeRoles: true });
+  const { data: allStaff = [], isLoading } = useStaff();
   const createMutation = useCreateStaff();
   const updateMutation = useUpdateStaff();
   const deleteMutation = useDeleteStaff();
@@ -158,12 +156,10 @@ export default function StaffManagement() {
             </p>
           </div>
           
-          <div className="flex gap-2">
-            <Button onClick={handleOpenNew} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Neuer Mitarbeiter
-            </Button>
-          </div>
+          <Button onClick={handleOpenNew} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Neuer Mitarbeiter
+          </Button>
         </div>
 
         {/* Search and Filter */}

@@ -49,11 +49,11 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantId?: str
   const [waiterShiftsResult, kitchenShiftsResult] = await Promise.all([
     supabase
       .from('waiter_shifts')
-      .select('session_id, waiter_name, second_waiter_name, differenz, kitchen_tip, participates_in_pool')
+      .select('*')
       .in('session_id', sessionIds),
     supabase
       .from('kitchen_shifts')
-      .select('session_id, staff_name, hours_worked')
+      .select('*')
       .in('session_id', sessionIds),
   ]);
 

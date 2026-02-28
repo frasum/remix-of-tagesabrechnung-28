@@ -1,14 +1,13 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req: Request) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
@@ -19,6 +18,7 @@ serve(async (req: Request) => {
     const url = new URL(req.url);
 
     if (req.method === 'GET') {
+      // Get permissions for a specific staff member or all managers
       const staffId = url.searchParams.get('staff_id');
 
       if (staffId) {
@@ -29,7 +29,7 @@ serve(async (req: Request) => {
 
         if (error) throw error;
 
-        return new Response(JSON.stringify({ paths: data.map((p: any) => p.nav_path) }), {
+        return new Response(JSON.stringify({ paths: data.map(p => p.nav_path) }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -59,6 +59,7 @@ serve(async (req: Request) => {
       const body = await req.json();
       const { staff_id, paths, caller_staff_id } = body;
 
+      // Verify caller is admin
       if (!caller_staff_id) {
         return new Response(
           JSON.stringify({ error: 'Missing caller_staff_id' }),
@@ -91,7 +92,7 @@ serve(async (req: Request) => {
 
       // Insert new permissions if any paths provided
       if (paths.length > 0) {
-        const rows = paths.map((nav_path: string) => ({ staff_id, nav_path }));
+        const rows = paths.map(nav_path => ({ staff_id, nav_path }));
         const { error: insertError } = await supabase
           .from('manager_nav_permissions')
           .insert(rows);
@@ -110,7 +111,7 @@ serve(async (req: Request) => {
     });
   } catch (error) {
     console.error('Error:', error);
-    return new Response(JSON.stringify({ error: (error as Error).message }), {
+    return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

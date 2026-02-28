@@ -38,12 +38,3 @@ verify_jwt = false
 
 [functions.send-settlement]
 verify_jwt = false
-
-[functions.sync-staff-from-zt]
-verify_jwt = false
-
-[functions.validate-pin]
-verify_jwt = false
-
-[functions.update-pin]
-verify_jwt = false

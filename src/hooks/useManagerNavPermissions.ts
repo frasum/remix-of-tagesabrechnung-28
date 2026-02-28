@@ -1,57 +1,62 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 
 interface AllPermissions {
   [staffId: string]: string[];
 }
 
-// Hook to fetch all manager permissions (for admin page) - uses direct DB query
+// Hook to fetch all manager permissions (for admin page)
 export function useAllManagerNavPermissions() {
   return useQuery({
     queryKey: ['manager-nav-permissions-all'],
     queryFn: async (): Promise<AllPermissions> => {
-      const { data, error } = await supabase
-        .from('manager_nav_permissions')
-        .select('staff_id, nav_path');
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-nav-permissions`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+        }
+      );
 
-      if (error) {
-        console.error('Failed to fetch all manager nav permissions:', error);
+      if (!response.ok) {
+        console.error('Failed to fetch all manager nav permissions');
         return {};
       }
 
-      const grouped: Record<string, string[]> = {};
-      for (const row of data || []) {
-        if (!grouped[row.staff_id]) {
-          grouped[row.staff_id] = [];
-        }
-        grouped[row.staff_id].push(row.nav_path);
-      }
-      return grouped;
+      const data = await response.json();
+      return data.permissions || {};
     },
   });
 }
 
-// Hook to fetch permissions for a specific staff member - uses direct DB query
+// Hook to fetch permissions for a specific staff member
 export function useManagerNavPermissions(staffId: string | undefined) {
   return useQuery({
     queryKey: ['manager-nav-permissions', staffId],
     queryFn: async (): Promise<string[]> => {
       if (!staffId) return [];
 
-      const { data, error } = await supabase
-        .from('manager_nav_permissions')
-        .select('nav_path')
-        .eq('staff_id', staffId);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-nav-permissions?staff_id=${staffId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+        }
+      );
 
-      if (error) {
-        console.error('Failed to fetch manager nav permissions:', error);
+      if (!response.ok) {
+        console.error('Failed to fetch manager nav permissions');
         return [];
       }
 
-      return (data || []).map(p => p.nav_path);
+      const data = await response.json();
+      return data.paths || [];
     },
     enabled: !!staffId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
   });
 }
 

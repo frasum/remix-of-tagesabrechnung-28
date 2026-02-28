@@ -16,8 +16,7 @@ import {
   QrCode,
   ChevronDown,
   LucideIcon,
-  Send,
-  Clock
+  Send
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -53,7 +52,6 @@ const allNavItems: NavItem[] = [
   { path: 'history', label: 'Verlauf', icon: History, minLevel: 'manager' },
   { path: 'cash-balance', label: 'Bargeldbestand', icon: Wallet, minLevel: 'manager' },
   { path: 'qr-poster', label: 'QR-Poster', icon: QrCode, minLevel: 'manager' },
-  { path: 'zeiterfassung', label: 'Zeiterfassung', icon: Clock, minLevel: 'manager' },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -94,10 +92,6 @@ export function AppLayout({ children }: AppLayoutProps) {
       
       // Manager with custom permissions - check if path is allowed
       if (isManager && hasCustomPermissions) {
-        // For "Zeiterfassung" sidebar item, show if ANY ZT sub-area is allowed
-        if (item.path === 'zeiterfassung') {
-          return managerPaths.some(p => p.startsWith('zeiterfassung'));
-        }
         return managerPaths.includes(item.path);
       }
       

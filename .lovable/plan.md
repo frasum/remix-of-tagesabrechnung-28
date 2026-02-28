@@ -1,19 +1,22 @@
 
 
-## Problem
+## Plan: Settlement-Webhook (Zeiterfassung) entfernen
 
-The StaffCard displays two badges both labeled "Mitarbeiter" because:
-1. **Role badge**: "Mitarbeiter" (for role `waiter` or `both`)
-2. **Permission badge**: "Mitarbeiter" (for permission level `staff`)
+### Betroffene Dateien
 
-These are two different concepts but share the same German label, making it look like a bug.
+**1. Edge Function löschen**
+- `supabase/functions/send-settlement/index.ts` löschen
 
-## Fix
+**2. Config bereinigen** (`supabase/config.toml`)
+- Eintrag `[functions.send-settlement]` entfernen
 
-Rename the permission level label from "Mitarbeiter" to "Basis" in `StaffCard.tsx` line 33, so the two badges are visually distinct:
+**3. Client-Code bereinigen** (`src/pages/DailySummary.tsx`)
+- `settlementSentRef` (Zeile 403) entfernen
+- Settlement-Block Zeilen 425–441 entfernen (der `send-settlement` invoke-Aufruf)
+- `session` aus den `useCallback`-Dependencies entfernen (Zeile 443)
 
-- Role badge: `Mitarbeiter` / `Küche` (unchanged)
-- Permission badge: `Basis` / `Manager` / `Admin`
-
-This is a one-line change in `src/components/staff/StaffCard.tsx`.
+### Nicht betroffen
+- `notify-pdf-export` (Telegram PDF-Benachrichtigung) — bleibt
+- `send-telegram-summary` (Tagesbericht) — bleibt
+- Datenbankspalte `last_settlement_sent_at` — kann bestehen bleiben, keine Breaking Changes
 
