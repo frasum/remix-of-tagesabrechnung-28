@@ -1,38 +1,33 @@
 
 
-## Plan: AppLayout in ZtLayout einbinden
+## Problem
 
-### Problem
-`ZtLayout` rendert nur `ZtSubNav` + `<Outlet />`, ohne das `AppLayout` (Sidebar mit Hauptnavigation). Dadurch fehlt auf allen Zeiterfassungs-Seiten die Möglichkeit, zu anderen Bereichen zurückzukehren.
+Die meisten Mitarbeiter haben nur das `name`-Feld befüllt (z.B. "Frank", "Adisorn"), aber `first_name` und `nickname` sind `NULL`. Der Wochenplan zeigt `emp.nickname || emp.first_name` — beide leer → keine Namen sichtbar.
 
-### Lösung
-`ZtLayout` mit `AppLayout` umwickeln, sodass die Hauptnavigation sichtbar bleibt und die ZT-Sub-Navigation darunter erscheint.
+## Lösung
 
-### Änderung
+Zwei Änderungen:
 
-**`src/components/zeiterfassung/ZtLayout.tsx`** — `AppLayout` importieren und als äußeren Wrapper verwenden:
+### 1. `src/hooks/useZtEmployees.ts` — `name` Feld mit abfragen und im Mapping verwenden
 
+- `staff!inner(...)` Select um `name` erweitern
+- `ZtEmployee` Typ um `name: string` ergänzen
+- Im Mapping: `name: row.staff.name` hinzufügen
+
+### 2. `src/pages/zeiterfassung/Wochenplan.tsx` — Anzeigename mit `name` als Fallback
+
+Zeile 483 ändern von:
 ```tsx
-import { Outlet } from "react-router-dom";
-import { ZtSubNav } from "./ZtSubNav";
-import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { AppLayout } from "@/components/layout/AppLayout";
-
-export default function ZtLayout() {
-  return (
-    <ProtectedRoute requiredLevel="manager">
-      <AppLayout>
-        <div className="flex flex-col min-h-0 h-full">
-          <ZtSubNav />
-          <div className="flex-1 min-h-0 overflow-auto">
-            <Outlet />
-          </div>
-        </div>
-      </AppLayout>
-    </ProtectedRoute>
-  );
-}
+{emp.nickname || emp.first_name}
+```
+zu:
+```tsx
+{emp.nickname || emp.first_name || emp.name}
 ```
 
-Eine einzelne Datei-Änderung, keine weiteren Anpassungen nötig.
+### 3. `src/hooks/useCrossRestaurantData.ts` — gleicher Fix für Cross-Restaurant-Ansicht
+
+`name` ebenfalls in den Employee-Map aufnehmen (Zeile ~112).
+
+Drei kleine Änderungen, kein Datenbankschema betroffen.
 
