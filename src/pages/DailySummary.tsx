@@ -433,7 +433,7 @@ export default function DailySummary() {
         }).catch((err) => console.error('Settlement webhook failed:', err));
       }
     }
-  }, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification]);
+  }, [pdfPreview, selectedDate, restaurantName, user?.name, settings?.show_pdf_export_notification, session, toast]);
 
   const handleClosePdfPreview = useCallback(() => {
     if (pdfPreview?.blobUrl) {
