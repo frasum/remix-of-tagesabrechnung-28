@@ -364,6 +364,65 @@ export const generateDailySummaryPDF = (data: PDFExportData): { blobUrl: string;
   // ===== Merge Y positions from both columns =====
   y = Math.max(leftEndY, rightEndY) + 4;
 
+  // ========== KONTROLL-ABSCHNITT (zum Ausschneiden) ==========
+  if (data.totals.remainingCash !== undefined) {
+    const rc = data.totals.remainingCash;
+    
+    const pageHeight = doc.internal.pageSize.getHeight();
+    if (y + 45 > pageHeight - 10) {
+      doc.addPage();
+      y = 15;
+    }
+
+    // Dashed separator line
+    doc.setDrawColor(120);
+    doc.setLineDashPattern([3, 3], 0);
+    doc.line(margin, y, pageWidth - margin, y);
+    doc.setLineDashPattern([], 0);
+    y += 20;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(80);
+    doc.text('Wechselgeldbestand', pageWidth / 2, y, { align: 'center' });
+    y += 14;
+
+    doc.setFontSize(36);
+    doc.setFont('helvetica', 'bold');
+    if (rc >= 2000) {
+      doc.setTextColor(22, 163, 74);
+    } else {
+      doc.setTextColor(220, 38, 38);
+    }
+    doc.text(formatCurrency(rc), pageWidth / 2, y, { align: 'center' });
+    y += 14;
+
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(60);
+    if (data.exportedBy || data.createdByName) {
+      doc.text(`Abgerechnet von: ${data.exportedBy || data.createdByName}`, pageWidth / 2, y, { align: 'center' });
+      y += 5;
+    }
+
+    const dateStrControl = format(new Date(data.session.session_date), "EEEE, d. MMMM yyyy", { locale: de });
+    doc.text(`Datum: ${dateStrControl}`, pageWidth / 2, y, { align: 'center' });
+    doc.setTextColor(0);
+  }
+
+  // ========== Footer with page numbers ==========
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(128);
+    doc.text(
+      `Seite ${i} von ${pageCount}`,
+      pageWidth / 2,
+      doc.internal.pageSize.getHeight() - 10,
+      { align: 'center' }
+    );
+  }
   doc.setTextColor(0);
 
   const fileName = `Tagesabrechnung_${format(new Date(data.session.session_date), 'yyyy-MM-dd')}.pdf`;
