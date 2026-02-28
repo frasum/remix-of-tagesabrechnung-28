@@ -53,6 +53,9 @@ export interface WaiterShift {
   created_at: string;
   submitted_at: string | null;
   participates_in_pool: boolean;
+  shift_start: string | null;
+  shift_end: string | null;
+  hours_worked: number | null;
 }
 
 export interface CardTransaction {
