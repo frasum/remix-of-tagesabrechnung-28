@@ -1,34 +1,38 @@
 
 
-## Plan: ZT Sub-Navigation als Tab-Leiste
+## Plan: AppLayout in ZtLayout einbinden
 
-### Umsetzung
+### Problem
+`ZtLayout` rendert nur `ZtSubNav` + `<Outlet />`, ohne das `AppLayout` (Sidebar mit Hauptnavigation). Dadurch fehlt auf allen Zeiterfassungs-Seiten die Möglichkeit, zu anderen Bereichen zurückzukehren.
 
-**1. Neue Komponente `src/components/zeiterfassung/ZtSubNav.tsx` erstellen**
+### Lösung
+`ZtLayout` mit `AppLayout` umwickeln, sodass die Hauptnavigation sichtbar bleibt und die ZT-Sub-Navigation darunter erscheint.
 
-Eine horizontale Tab-Leiste mit 5 Links (Übersicht, Wochenplan, Zusammenfassung, Buchhaltung, Perioden), die `NavLink` aus `react-router-dom` nutzt. Aktiver Tab wird visuell hervorgehoben. Responsive -- scrollbar auf Mobile.
+### Änderung
 
-**2. ZT-Layout-Wrapper `src/components/zeiterfassung/ZtLayout.tsx` erstellen**
+**`src/components/zeiterfassung/ZtLayout.tsx`** — `AppLayout` importieren und als äußeren Wrapper verwenden:
 
-Wrapper-Komponente die `ZtSubNav` oben rendert und darunter `<Outlet />` für die aktive Unterseite. Wird als Layout-Route in `App.tsx` eingesetzt.
+```tsx
+import { Outlet } from "react-router-dom";
+import { ZtSubNav } from "./ZtSubNav";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { AppLayout } from "@/components/layout/AppLayout";
 
-**3. `App.tsx` Routen refactoren**
-
-Die 5 ZT-Routen werden unter eine gemeinsame Layout-Route verschachtelt:
-
-```text
-<Route path="zeiterfassung" element={<ZtLayout />}>
-  <Route index element={<ZtDashboard />} />
-  <Route path="wochenplan" element={<Wochenplan />} />
-  <Route path="zusammenfassung" element={<Zusammenfassung />} />
-  <Route path="buchhaltung" element={<ZtBuchhaltung />} />
-  <Route path="perioden" element={<Perioden />} />
-</Route>
+export default function ZtLayout() {
+  return (
+    <ProtectedRoute requiredLevel="manager">
+      <AppLayout>
+        <div className="flex flex-col min-h-0 h-full">
+          <ZtSubNav />
+          <div className="flex-1 min-h-0 overflow-auto">
+            <Outlet />
+          </div>
+        </div>
+      </AppLayout>
+    </ProtectedRoute>
+  );
+}
 ```
 
-Die `ProtectedRoute requiredLevel="manager"` Absicherung wird in `ZtLayout` einmal angewandt statt pro Route.
-
-**4. Einzelne ZT-Seiten anpassen**
-
-Aus jeder Seite den äußeren `<div className="space-y-6 p-4">` Wrapper und die `<h1>` Überschrift entfernen (wird vom Layout bereitgestellt) -- oder alternativ beibehalten falls jede Seite ihren eigenen Titel behalten soll.
+Eine einzelne Datei-Änderung, keine weiteren Anpassungen nötig.
 
