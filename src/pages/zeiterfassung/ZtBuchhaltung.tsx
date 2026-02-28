@@ -21,7 +21,7 @@ import type { Shift, PayrollNote } from "./buchhaltung/types";
 export default function ZtBuchhaltung() {
   const queryClient = useQueryClient();
   const { restaurantId } = useRestaurant();
-  const { selectedPeriodId, setSelectedPeriodId, periods, weeks } = useZt();
+  const { selectedPeriodId, setSelectedPeriodId, periods, weeks, isPeriodLocked } = useZt();
   const { data: employees } = useRestaurantEmployees(restaurantId);
 
   const weekIds = weeks?.map(w => w.id) ?? [];
@@ -170,6 +170,7 @@ export default function ZtBuchhaltung() {
                       note={note as PayrollNote | undefined}
                       shifts={empShifts}
                       isEven={isEven}
+                      isLocked={isPeriodLocked}
                       onUpsertNote={(params) => upsertNote.mutate(params)}
                     />
                   </React.Fragment>

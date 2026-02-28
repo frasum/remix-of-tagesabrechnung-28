@@ -12,10 +12,11 @@ interface BuchhaltungRowProps {
   note: PayrollNote | undefined;
   shifts: Shift[];
   isEven: boolean;
+  isLocked?: boolean;
   onUpsertNote: (params: { employee_id: string; field: string; value: any }) => void;
 }
 
-export default function BuchhaltungRow({ emp, totals, note, shifts, isEven, onUpsertNote }: BuchhaltungRowProps) {
+export default function BuchhaltungRow({ emp, totals, note, shifts, isEven, isLocked, onUpsertNote }: BuchhaltungRowProps) {
   const rowBg = isEven ? "bg-muted/30" : "";
 
   // Build display name: "Vorname Nachname (Spitzname · Personalnummer)"
@@ -52,6 +53,7 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, isEven, onUp
           inputMode="numeric"
           className="time-input-clean h-7 text-xs w-[65px] mx-auto text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           defaultValue={note?.vorschuss ?? 0}
+          disabled={isLocked}
           onBlur={(e) => onUpsertNote({ employee_id: emp.id, field: "vorschuss", value: Number(e.target.value) })}
         />
       </td>
@@ -59,6 +61,7 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, isEven, onUp
         <Textarea
           className="time-input-clean text-xs min-h-[28px] h-7 resize-none"
           defaultValue={note?.besonderheiten ?? ""}
+          disabled={isLocked}
           onBlur={(e) => onUpsertNote({ employee_id: emp.id, field: "besonderheiten", value: e.target.value })}
         />
       </td>
