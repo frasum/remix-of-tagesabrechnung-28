@@ -1,0 +1,35 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+export type RestaurantEmployee = {
+  id: string;
+  perso_nr: number | null;
+  first_name: string | null;
+  last_name: string | null;
+  nickname: string | null;
+  department: string;
+};
+
+export function useRestaurantEmployees(restaurantId: string) {
+  return useQuery({
+    queryKey: ["restaurant-employees", restaurantId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff_restaurants")
+        .select("zt_department, staff_id, staff!inner(id, perso_nr, first_name, last_name, nickname)")
+        .eq("restaurant_id", restaurantId)
+        .not("zt_department", "is", null);
+      if (error) throw error;
+
+      return (data as any[]).map((row: any) => ({
+        id: row.staff.id,
+        perso_nr: row.staff.perso_nr,
+        first_name: row.staff.first_name,
+        last_name: row.staff.last_name,
+        nickname: row.staff.nickname,
+        department: row.zt_department,
+      })) as RestaurantEmployee[];
+    },
+    enabled: !!restaurantId,
+  });
+}

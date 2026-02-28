@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Users, 
   Settings, 
-  ChefHat, 
+  ChefHat,
+  Clock,
   FileText, 
   History,
   UserCog,
@@ -52,6 +53,7 @@ const allNavItems: NavItem[] = [
   { path: 'history', label: 'Verlauf', icon: History, minLevel: 'manager' },
   { path: 'cash-balance', label: 'Bargeldbestand', icon: Wallet, minLevel: 'manager' },
   { path: 'qr-poster', label: 'QR-Poster', icon: QrCode, minLevel: 'manager' },
+  { path: 'zeiterfassung', label: 'Zeiterfassung', icon: Clock, minLevel: 'manager' },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {

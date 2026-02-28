@@ -1,0 +1,117 @@
+/**
+ * Core shift hour calculation logic.
+ * Handles midnight crossover, evening/night splits, and Sunday/holiday detection.
+ */
+
+export interface ShiftHours {
+  totalHours: number;
+  sundayHolidayHours: number;
+  eveningHours: number; // 20:00–24:00
+  nightHours: number;   // 00:00–end (after midnight)
+}
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function overlapMinutes(
+  shiftStart: number,
+  shiftEnd: number,
+  rangeStart: number,
+  rangeEnd: number
+): number {
+  const start = Math.max(shiftStart, rangeStart);
+  const end = Math.min(shiftEnd, rangeEnd);
+  return Math.max(0, end - start);
+}
+
+export function calculateShiftHours(
+  startTime: string | null,
+  endTime: string | null,
+  isSundayOrHoliday: boolean
+): ShiftHours {
+  if (!startTime || !endTime) {
+    return { totalHours: 0, sundayHolidayHours: 0, eveningHours: 0, nightHours: 0 };
+  }
+
+  const startMin = timeToMinutes(startTime);
+  const endMin = timeToMinutes(endTime);
+
+  let totalMinutes: number;
+  if (endMin > startMin) {
+    totalMinutes = endMin - startMin;
+  } else {
+    totalMinutes = (1440 - startMin) + endMin;
+  }
+
+  const totalHours = Math.round((totalMinutes / 60) * 100) / 100;
+
+  let eveningMinutes = 0;
+  let nightMinutes = 0;
+
+  if (endMin > startMin) {
+    eveningMinutes = overlapMinutes(startMin, endMin, 1200, 1440);
+  } else {
+    eveningMinutes = overlapMinutes(startMin, 1440, 1200, 1440);
+    nightMinutes = endMin;
+  }
+
+  const eveningHours = Math.round((eveningMinutes / 60) * 100) / 100;
+  const nightHours = Math.round((nightMinutes / 60) * 100) / 100;
+  const sundayHolidayHours = isSundayOrHoliday ? totalHours : 0;
+
+  return { totalHours, sundayHolidayHours, eveningHours, nightHours };
+}
+
+export function isSunday(date: Date): boolean {
+  return date.getDay() === 0;
+}
+
+export function formatHours(hours: number): string {
+  return hours.toFixed(2).replace(".", ",");
+}
+
+export const DEPARTMENT_ORDER = ["Küche", "GL", "Service"] as const;
+
+export function countVacationDays(
+  shifts: { absence_type?: string | null; week_id?: string; start_time?: string | null; end_time?: string | null }[]
+): number {
+  const byWeek: Record<string, typeof shifts> = {};
+  for (const s of shifts) {
+    const wk = s.week_id ?? "unknown";
+    (byWeek[wk] ??= []).push(s);
+  }
+
+  let total = 0;
+  for (const weekShifts of Object.values(byWeek)) {
+    const vacDays = weekShifts.filter(s => s.absence_type === 'urlaub').length;
+    const workDays = weekShifts.filter(s => s.start_time && s.end_time && !s.absence_type).length;
+    const freeDays = 7 - workDays - vacDays;
+    const overlap = Math.max(0, 2 - freeDays);
+    total += Math.max(0, vacDays - overlap);
+  }
+  return Math.round(total * 100) / 100;
+}
+
+export function countSickDays(shifts: { absence_type?: string | null }[]): number {
+  return shifts.filter(s => s.absence_type === 'krank').length;
+}
+
+export function getDepartmentColorClass(dept: string): string {
+  switch (dept) {
+    case "Küche": return "dept-kueche";
+    case "GL": return "dept-gl";
+    case "Service": return "dept-service";
+    default: return "";
+  }
+}
+
+export function getDepartmentBgClass(dept: string): string {
+  switch (dept) {
+    case "Küche": return "dept-kueche-light";
+    case "GL": return "dept-gl-light";
+    case "Service": return "dept-service-light";
+    default: return "";
+  }
+}
