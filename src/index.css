@@ -146,4 +146,41 @@
   .currency-input {
     @apply text-right tabular-nums;
   }
+
+  /* Department colors */
+  .dept-kueche { background-color: hsl(15 80% 50%); }
+  .dept-gl { background-color: hsl(220 60% 50%); }
+  .dept-service { background-color: hsl(145 60% 40%); }
+  .dept-kueche-light { background-color: hsl(15 80% 95%); }
+  .dept-gl-light { background-color: hsl(220 60% 95%); }
+  .dept-service-light { background-color: hsl(145 60% 95%); }
+
+  /* Wochenplan table styles */
+  .wochenplan-table .zebra-even > td {
+    @apply bg-muted/30;
+  }
+  .wochenplan-table .zebra-even > td.sticky-name {
+    @apply bg-muted/50;
+  }
+  .wochenplan-table .sunday-col {
+    @apply bg-destructive/5;
+  }
+  .wochenplan-table .inactive-day {
+    @apply bg-muted/20;
+  }
+  .wochenplan-table .day-separator {
+    @apply border-l border-border/50;
+  }
+  .wochenplan-table .dept-header-row td {
+    @apply bg-background;
+  }
+  .wochenplan-table .time-input-clean {
+    @apply border-transparent bg-transparent shadow-none ring-0 focus-visible:ring-1 focus-visible:bg-background;
+  }
+  .wochenplan-table .totals-col {
+    @apply bg-muted/20;
+  }
+  .wochenplan-table .totals-header {
+    @apply bg-muted;
+  }
 }

@@ -30,6 +30,8 @@ const ConfirmLoginPage = lazy(() => import("./pages/ConfirmLoginPage").then(m =>
 const PermissionManagement = lazy(() => import("./pages/PermissionManagement"));
 const RestaurantSelect = lazy(() => import("./pages/RestaurantSelect"));
 const TelegramSettings = lazy(() => import("./pages/TelegramSettings"));
+const ZtLayout = lazy(() => import("./pages/zeiterfassung/ZtLayout"));
+const ZtWochenplan = lazy(() => import("./pages/zeiterfassung/ZtWochenplan"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -60,6 +62,9 @@ function RestaurantRoutes() {
           <Route path="cash-balance" element={<ProtectedRoute requiredLevel="manager"><CashBalance /></ProtectedRoute>} />
           
           <Route path="qr-poster" element={<ProtectedRoute requiredLevel="manager"><WaiterQRPoster /></ProtectedRoute>} />
+          <Route path="zeiterfassung" element={<ProtectedRoute requiredLevel="manager"><ZtLayout /></ProtectedRoute>}>
+            <Route index element={<ZtWochenplan />} />
+          </Route>
         </Routes>
       </DateProvider>
     </RestaurantProvider>
