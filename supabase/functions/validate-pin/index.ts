@@ -113,17 +113,26 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    // Check rate limiting - count recent failed attempts for this identifier
+    // Run rate-limit check and staff lookup in PARALLEL for speed
     const lockoutTime = new Date(Date.now() - LOCKOUT_MINUTES * 60 * 1000).toISOString();
-    const { count: recentAttempts } = await supabase
-      .from("auth_attempts")
-      .select("*", { count: "exact", head: true })
-      .eq("identifier", name.toLowerCase())
-      .eq("success", false)
-      .gte("attempted_at", lockoutTime);
+    const [rateLimitResult, staffResult] = await Promise.all([
+      supabase
+        .from("auth_attempts")
+        .select("*", { count: "exact", head: true })
+        .eq("identifier", name.toLowerCase())
+        .eq("success", false)
+        .gte("attempted_at", lockoutTime),
+      supabase
+        .from("staff")
+        .select("id, name, role, is_active")
+        .eq("name", name)
+        .eq("is_active", true)
+        .single(),
+    ]);
+
+    const recentAttempts = rateLimitResult.count;
 
     if (recentAttempts !== null && recentAttempts >= MAX_ATTEMPTS) {
-      // Log the blocked attempt
       await supabase.from("auth_attempts").insert({
         identifier: name.toLowerCase(),
         attempted_at: new Date().toISOString(),
@@ -142,16 +151,10 @@ serve(async (req: Request) => {
       );
     }
 
-    // Find staff member by name
-    const { data: staffData, error: staffError } = await supabase
-      .from("staff")
-      .select("id, name, role, is_active")
-      .eq("name", name)
-      .eq("is_active", true)
-      .single();
+    const staffData = staffResult.data;
+    const staffError = staffResult.error;
 
     if (staffError || !staffData) {
-      // Log failed attempt
       await supabase.from("auth_attempts").insert({
         identifier: name.toLowerCase(),
         attempted_at: new Date().toISOString(),
@@ -170,15 +173,24 @@ serve(async (req: Request) => {
       );
     }
 
-    // Get PIN from protected staff_pins table
-    const { data: pinData, error: pinError } = await supabase
-      .from("staff_pins")
-      .select("pin_code")
-      .eq("staff_id", staffData.id)
-      .single();
+    // Get PIN and permission level in PARALLEL
+    const [pinResult, roleResult] = await Promise.all([
+      supabase
+        .from("staff_pins")
+        .select("pin_code")
+        .eq("staff_id", staffData.id)
+        .single(),
+      supabase
+        .from("user_roles")
+        .select("permission_level")
+        .eq("staff_id", staffData.id)
+        .single(),
+    ]);
+
+    const pinData = pinResult.data;
+    const pinError = pinResult.error;
 
     if (pinError || !pinData || pinData.pin_code !== pin_code) {
-      // Log failed attempt
       await supabase.from("auth_attempts").insert({
         identifier: name.toLowerCase(),
         attempted_at: new Date().toISOString(),
@@ -197,19 +209,14 @@ serve(async (req: Request) => {
       );
     }
 
-    // Log successful attempt
-    await supabase.from("auth_attempts").insert({
+    // Log success (fire-and-forget, don't await)
+    supabase.from("auth_attempts").insert({
       identifier: name.toLowerCase(),
       attempted_at: new Date().toISOString(),
       success: true,
     });
 
-    // Fetch permission level from user_roles table
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("permission_level")
-      .eq("staff_id", staffData.id)
-      .single();
+    const roleData = roleResult.data;
 
     const permissionLevel = roleData?.permission_level || "staff";
 
