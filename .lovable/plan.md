@@ -1,25 +1,32 @@
 
 
-## Problem
+## Analyse: Zusätzliche Auslöser für den Settlement-Webhook
 
-Der Code-Fix (Hinzufügen von `session` und `toast` zur Dependency-Liste) ist im Quellcode korrekt angewendet. Aber:
+Aktuell wird `send-settlement` nur beim PDF-Download ausgelöst. Das ist fragil, weil der Webhook übersprungen wird, wenn jemand das PDF nur in der Vorschau ansieht oder die Abrechnung ohne PDF-Export abschließt.
 
-1. Die **veröffentlichte App** unter `tagesabrechnung.lovable.app` enthält möglicherweise noch den alten Code ohne den Fix
-2. Die **Vorschau-URL** enthält den aktuellen Code
+## Mögliche zusätzliche Trigger
 
-Um sicherzustellen, dass der Webhook zuverlässig funktioniert, und um das Problem zu debuggen, schlage ich zwei Maßnahmen vor:
+### 1. Beim Finalisieren der Tagesabrechnung
+Der natürlichste Zeitpunkt. Wenn die Session als `is_finalized = true` markiert wird, sind alle Daten vollständig. Der Webhook wird unabhängig vom PDF-Export ausgelöst.
 
-## Plan
+### 2. Beim Öffnen der PDF-Vorschau (statt nur beim Download)
+Bereits beim Generieren der Vorschau sind alle Daten vorhanden. Vorteil: Deckt auch den Fall ab, dass jemand nur die Vorschau öffnet ohne herunterzuladen.
 
-### 1. Debug-Logging hinzufügen
-Ein `console.log` direkt vor der `if (session?.id)` Prüfung einbauen, damit wir sehen können, ob `session` zum Zeitpunkt des Downloads tatsächlich befüllt ist:
+### 3. Deduplizierung
+Bei mehreren Triggern (z.B. Finalisieren + PDF-Download) muss sichergestellt werden, dass der Webhook nicht doppelt ausgelöst wird. Aktuell wird er bereits zweimal aufgerufen (siehe Netzwerk-Logs: zwei POST-Requests mit derselben `session_id`). Lösung: Entweder clientseitig ein Flag setzen oder serverseitig in der Edge Function prüfen, ob für diese `session_id` bereits gesendet wurde.
 
-```typescript
-console.log('handleDownloadPdf – session:', session?.id, 'pdfPreview:', !!pdfPreview);
-```
+## Empfehlung
 
-Dies hilft beim nächsten Test sofort zu erkennen, ob der Webhook-Aufruf übersprungen wird.
+**Option 1 (Finalisieren)** als primärer Trigger, kombiniert mit **Deduplizierung**:
 
-### 2. App neu veröffentlichen
-Nach dem Fix muss die App neu veröffentlicht werden, damit der Fix auch auf `tagesabrechnung.lovable.app` aktiv ist. Der Test sollte dann über die **Vorschau-URL** oder die **neu veröffentlichte App** erfolgen.
+- Webhook beim Setzen von `is_finalized = true` auslösen
+- PDF-Download-Trigger als Fallback beibehalten
+- In `send-settlement` eine `last_sent_at`-Spalte auf der `sessions`-Tabelle prüfen, um Doppelsendungen zu vermeiden (z.B. nur senden wenn `last_settlement_sent_at` null ist oder älter als 5 Minuten)
+
+### Umsetzung
+1. Spalte `last_settlement_sent_at` zur `sessions`-Tabelle hinzufügen
+2. Edge Function `send-settlement` erweitern: vor dem Webhook-Aufruf prüfen ob kürzlich gesendet, nach Erfolg Timestamp setzen
+3. Settlement-Aufruf in die Finalisierungs-Logik einbauen
+4. Bestehenden PDF-Download-Trigger beibehalten (mit Deduplizierung)
+5. Doppelten Aufruf beim PDF-Download fixen (aktuell zwei Requests)
 
