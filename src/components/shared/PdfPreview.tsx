@@ -13,10 +13,9 @@ type PdfPreviewProps = {
   blobUrl: string;
   className?: string;
   fileName?: string;
-  onPrint?: () => void;
 };
 
-export function PdfPreview({ blobUrl, className, fileName, onPrint }: PdfPreviewProps) {
+export function PdfPreview({ blobUrl, className, fileName }: PdfPreviewProps) {
   const [doc, setDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
   const [numPages, setNumPages] = useState(0);
   const [scale, setScale] = useState(1.1);
@@ -106,10 +105,6 @@ export function PdfPreview({ blobUrl, className, fileName, onPrint }: PdfPreview
     `);
     
     printWindow.document.close();
-    
-    // Fire onPrint immediately since print dialog blocks execution
-    onPrint?.();
-    
     printWindow.onload = () => {
       printWindow.focus();
       printWindow.print();

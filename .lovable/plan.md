@@ -1,19 +1,25 @@
 
 
-## Plan: Settlement-Webhook auch bei Drucken auslösen
+## Problem
 
-### Ansatz
-Die `PdfPreview`-Komponente erhält einen optionalen `onPrint`-Callback. In `DailySummary.tsx` wird dieser Callback genutzt, um die Settlement-Logik (und Telegram-Benachrichtigung) auch beim Drucken auszulösen.
+Der Code-Fix (Hinzufügen von `session` und `toast` zur Dependency-Liste) ist im Quellcode korrekt angewendet. Aber:
 
-### Änderungen
+1. Die **veröffentlichte App** unter `tagesabrechnung.lovable.app` enthält möglicherweise noch den alten Code ohne den Fix
+2. Die **Vorschau-URL** enthält den aktuellen Code
 
-**1. `src/components/shared/PdfPreview.tsx`**
-- Neue optionale Prop `onPrint?: () => void` hinzufügen
-- Im bestehenden `handlePrint` nach dem Druckaufruf `onPrint?.()` aufrufen
+Um sicherzustellen, dass der Webhook zuverlässig funktioniert, und um das Problem zu debuggen, schlage ich zwei Maßnahmen vor:
 
-**2. `src/pages/DailySummary.tsx`**
-- Settlement-Webhook-Logik in eine eigene Funktion `triggerSettlement` extrahieren
-- `handleDownloadPdf` ruft `triggerSettlement()` auf
-- Neuen `handlePrintPdf`-Callback erstellen, der ebenfalls `triggerSettlement()` aufruft
-- `onPrint={handlePrintPdf}` an die `PdfPreview`-Komponente übergeben
+## Plan
+
+### 1. Debug-Logging hinzufügen
+Ein `console.log` direkt vor der `if (session?.id)` Prüfung einbauen, damit wir sehen können, ob `session` zum Zeitpunkt des Downloads tatsächlich befüllt ist:
+
+```typescript
+console.log('handleDownloadPdf – session:', session?.id, 'pdfPreview:', !!pdfPreview);
+```
+
+Dies hilft beim nächsten Test sofort zu erkennen, ob der Webhook-Aufruf übersprungen wird.
+
+### 2. App neu veröffentlichen
+Nach dem Fix muss die App neu veröffentlicht werden, damit der Fix auch auf `tagesabrechnung.lovable.app` aktiv ist. Der Test sollte dann über die **Vorschau-URL** oder die **neu veröffentlichte App** erfolgen.
 
