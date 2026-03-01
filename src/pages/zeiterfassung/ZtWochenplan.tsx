@@ -415,7 +415,7 @@ export default function ZtWochenplan() {
                 className="h-7 px-2 text-xs"
                 onClick={() => setSelectedWeekId(w.id)}
               >
-                W{w.week_number}
+                W{w.week_number} ({format(parseISO(w.start_date), "dd.MM.")}–{format(parseISO(w.end_date), "dd.MM.")})
               </Button>
             ))}
           </div>
