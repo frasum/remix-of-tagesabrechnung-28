@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Settings, Loader2 } from "lucide-react";
 import { calculateShiftHours } from "@/lib/shiftCalculations";
 import { toast } from "@/hooks/use-toast";
@@ -18,24 +19,57 @@ interface Employee {
   department?: string | null;
 }
 
+interface Week {
+  id: string;
+  start_date: string;
+  end_date: string;
+  week_number: number;
+}
+
 interface ShiftTimeOverrideProps {
   employeesWithShifts: Employee[];
+  allEmployees: Employee[];
   weekIds: string[];
+  weeks: Week[];
   periodStartDate?: string;
   periodEndDate?: string;
 }
 
+/** Generate all dates Mon-Fri between start and end (inclusive) */
+function getWeekdayDates(startDate: string, endDate: string): string[] {
+  const dates: string[] = [];
+  const current = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+  while (current <= end) {
+    const day = current.getDay();
+    if (day >= 1 && day <= 5) {
+      dates.push(current.toISOString().slice(0, 10));
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
+/** Find which week a date belongs to */
+function findWeekForDate(date: string, weeks: Week[]): Week | undefined {
+  return weeks.find((w) => date >= w.start_date && date <= w.end_date);
+}
+
 export default function ShiftTimeOverride({
   employeesWithShifts,
+  allEmployees,
   weekIds,
+  weeks,
   periodStartDate,
   periodEndDate,
 }: ShiftTimeOverrideProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [generateIds, setGenerateIds] = useState<Set<string>>(new Set());
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const queryClient = useQueryClient();
 
-  // Deduplicate employees by id (they may appear multiple times for different departments)
+  // Deduplicate employees by id
   const uniqueEmployees = React.useMemo(() => {
     const map = new Map<string, Employee>();
     employeesWithShifts.forEach((e) => {
@@ -43,6 +77,14 @@ export default function ShiftTimeOverride({
     });
     return Array.from(map.values());
   }, [employeesWithShifts]);
+
+  const uniqueAllEmployees = React.useMemo(() => {
+    const map = new Map<string, Employee>();
+    allEmployees.forEach((e) => {
+      if (!map.has(e.id)) map.set(e.id, e);
+    });
+    return Array.from(map.values());
+  }, [allEmployees]);
 
   // Load holidays for the period range
   const { data: holidays } = useQuery({
@@ -62,6 +104,7 @@ export default function ShiftTimeOverride({
 
   const holidaySet = React.useMemo(() => new Set(holidays ?? []), [holidays]);
 
+  // --- Section 1: Override existing shifts ---
   const toggleEmployee = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -81,19 +124,15 @@ export default function ShiftTimeOverride({
 
   const handleApply = async () => {
     if (selectedIds.size === 0) return;
-
     setIsUpdating(true);
     try {
-      // Load all shifts for selected employees in the period
       const { data: shifts, error } = await supabase
         .from("zt_shifts")
         .select("*")
         .in("week_id", weekIds)
         .in("employee_id", Array.from(selectedIds));
-
       if (error) throw error;
 
-      // Filter to only shifts that have start/end times and no absence
       const editableShifts = (shifts ?? []).filter(
         (s) => s.start_time && s.end_time && !s.absence_type
       );
@@ -107,12 +146,10 @@ export default function ShiftTimeOverride({
       let updated = 0;
       for (const shift of editableShifts) {
         const date = shift.shift_date;
-        const dayOfWeek = new Date(date + "T12:00:00").getDay(); // avoid timezone issues
+        const dayOfWeek = new Date(date + "T12:00:00").getDay();
         const isSundayOrHoliday = dayOfWeek === 0 || holidaySet.has(date);
-
         const newStart = isSundayOrHoliday ? "15:00" : "17:00";
         const newEnd = isSundayOrHoliday ? "02:00" : "01:00";
-
         const hours = calculateShiftHours(newStart, newEnd, isSundayOrHoliday);
 
         const { error: updateError } = await supabase
@@ -127,7 +164,6 @@ export default function ShiftTimeOverride({
             is_holiday: isSundayOrHoliday,
           })
           .eq("id", shift.id);
-
         if (updateError) throw updateError;
         updated++;
       }
@@ -136,24 +172,131 @@ export default function ShiftTimeOverride({
         title: `${updated} Schichten angepasst`,
         description: "Die Zeiten wurden erfolgreich überschrieben.",
       });
-
-      // Invalidate all relevant queries
       queryClient.invalidateQueries({ queryKey: ["zt-summary-shifts"] });
       queryClient.invalidateQueries({ queryKey: ["zt-shifts"] });
     } catch (err: any) {
-      toast({
-        title: "Fehler beim Anpassen",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Fehler beim Anpassen", description: err.message, variant: "destructive" });
     } finally {
       setIsUpdating(false);
     }
   };
 
-  if (uniqueEmployees.length === 0) return null;
+  // --- Section 2: Generate Mo-Fr shifts ---
+  const toggleGenerate = (id: string) => {
+    setGenerateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
-  const allSelected = selectedIds.size === uniqueEmployees.length;
+  const toggleAllGenerate = () => {
+    if (generateIds.size === uniqueAllEmployees.length) {
+      setGenerateIds(new Set());
+    } else {
+      setGenerateIds(new Set(uniqueAllEmployees.map((e) => e.id)));
+    }
+  };
+
+  const handleGenerate = async () => {
+    if (generateIds.size === 0 || weeks.length === 0) return;
+    setIsGenerating(true);
+    try {
+      // Collect all Mo-Fr dates across all weeks, excluding holidays
+      const allDates: { date: string; week: Week }[] = [];
+      for (const week of weeks) {
+        const weekdayDates = getWeekdayDates(week.start_date, week.end_date);
+        for (const d of weekdayDates) {
+          if (!holidaySet.has(d)) {
+            allDates.push({ date: d, week });
+          }
+        }
+      }
+
+      if (allDates.length === 0) {
+        toast({ title: "Keine Wochentage in der Periode gefunden." });
+        setIsGenerating(false);
+        return;
+      }
+
+      const selectedEmps = uniqueAllEmployees.filter((e) => generateIds.has(e.id));
+      let created = 0;
+      let updated = 0;
+
+      for (const emp of selectedEmps) {
+        const department = emp.department || "";
+
+        // Load existing shifts for this employee in the period
+        const { data: existing, error: loadErr } = await supabase
+          .from("zt_shifts")
+          .select("id, shift_date, week_id")
+          .in("week_id", weekIds)
+          .eq("employee_id", emp.id)
+          .eq("department", department);
+        if (loadErr) throw loadErr;
+
+        const existingByDate = new Map((existing ?? []).map((s) => [s.shift_date, s]));
+        const hours = calculateShiftHours("17:00", "01:00", false);
+
+        for (const { date, week } of allDates) {
+          const existingShift = existingByDate.get(date);
+          if (existingShift) {
+            // Update existing
+            const { error: upErr } = await supabase
+              .from("zt_shifts")
+              .update({
+                start_time: "17:00",
+                end_time: "01:00",
+                total_hours: hours.totalHours,
+                evening_hours: hours.eveningHours,
+                night_hours: hours.nightHours,
+                sunday_holiday_hours: hours.sundayHolidayHours,
+                is_holiday: false,
+              })
+              .eq("id", existingShift.id);
+            if (upErr) throw upErr;
+            updated++;
+          } else {
+            // Insert new
+            const { error: insErr } = await supabase
+              .from("zt_shifts")
+              .insert({
+                week_id: week.id,
+                employee_id: emp.id,
+                shift_date: date,
+                department,
+                start_time: "17:00",
+                end_time: "01:00",
+                total_hours: hours.totalHours,
+                evening_hours: hours.eveningHours,
+                night_hours: hours.nightHours,
+                sunday_holiday_hours: hours.sundayHolidayHours,
+                is_holiday: false,
+              });
+            if (insErr) throw insErr;
+            created++;
+          }
+        }
+      }
+
+      toast({
+        title: `${created} Schichten erzeugt, ${updated} aktualisiert`,
+        description: "Mo–Fr 17:00–01:00 für die gesamte Periode.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["zt-summary-shifts"] });
+      queryClient.invalidateQueries({ queryKey: ["zt-shifts"] });
+    } catch (err: any) {
+      toast({ title: "Fehler beim Erzeugen", description: err.message, variant: "destructive" });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  if (uniqueEmployees.length === 0 && uniqueAllEmployees.length === 0) return null;
+
+  const allSelected = selectedIds.size === uniqueEmployees.length && uniqueEmployees.length > 0;
+  const allGenerateSelected = generateIds.size === uniqueAllEmployees.length && uniqueAllEmployees.length > 0;
 
   return (
     <Card>
@@ -169,36 +312,78 @@ export default function ShiftTimeOverride({
           <p>Sonn-/Feiertage: <span className="font-medium text-foreground">15:00 – 02:00</span></p>
         </div>
 
-        <div className="space-y-2 max-h-60 overflow-y-auto">
-          {uniqueEmployees.map((emp) => (
-            <div key={emp.id} className="flex items-center gap-2">
-              <Checkbox
-                id={`override-${emp.id}`}
-                checked={selectedIds.has(emp.id)}
-                onCheckedChange={() => toggleEmployee(emp.id)}
-              />
-              <Label htmlFor={`override-${emp.id}`} className="text-sm cursor-pointer">
-                {emp.nickname ? `${emp.nickname} – ` : ""}
-                {[emp.first_name, emp.last_name].filter(Boolean).join(" ") || emp.name}
-                {emp.department ? ` (${emp.department})` : ""}
-              </Label>
+        {/* Section 1: Override existing */}
+        {uniqueEmployees.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bestehende Schichten überschreiben</p>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {uniqueEmployees.map((emp) => (
+                  <div key={emp.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`override-${emp.id}`}
+                      checked={selectedIds.has(emp.id)}
+                      onCheckedChange={() => toggleEmployee(emp.id)}
+                    />
+                    <Label htmlFor={`override-${emp.id}`} className="text-sm cursor-pointer">
+                      {emp.nickname ? `${emp.nickname} – ` : ""}
+                      {[emp.first_name, emp.last_name].filter(Boolean).join(" ") || emp.name}
+                      {emp.department ? ` (${emp.department})` : ""}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={toggleAll}>
+                  {allSelected ? "Keine auswählen" : "Alle auswählen"}
+                </Button>
+                <Button size="sm" disabled={selectedIds.size === 0 || isUpdating} onClick={handleApply}>
+                  {isUpdating && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                  Zeiten anpassen
+                </Button>
+              </div>
             </div>
-          ))}
-        </div>
+          </>
+        )}
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={toggleAll}>
-            {allSelected ? "Keine auswählen" : "Alle auswählen"}
-          </Button>
-          <Button
-            size="sm"
-            disabled={selectedIds.size === 0 || isUpdating}
-            onClick={handleApply}
-          >
-            {isUpdating && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
-            Zeiten anpassen
-          </Button>
-        </div>
+        {/* Section 2: Generate Mo-Fr shifts */}
+        {uniqueAllEmployees.length > 0 && (
+          <>
+            <Separator />
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mo–Fr Schichten erzeugen & anpassen</p>
+              <p className="text-xs text-muted-foreground">
+                Erzeugt fehlende Mo–Fr Einträge mit 17:00–01:00 für die gesamte Periode. Feiertage werden übersprungen.
+              </p>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {uniqueAllEmployees.map((emp) => (
+                  <div key={emp.id} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`generate-${emp.id}`}
+                      checked={generateIds.has(emp.id)}
+                      onCheckedChange={() => toggleGenerate(emp.id)}
+                    />
+                    <Label htmlFor={`generate-${emp.id}`} className="text-sm cursor-pointer">
+                      {emp.nickname ? `${emp.nickname} – ` : ""}
+                      {[emp.first_name, emp.last_name].filter(Boolean).join(" ") || emp.name}
+                      {emp.department ? ` (${emp.department})` : ""}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={toggleAllGenerate}>
+                  {allGenerateSelected ? "Keine auswählen" : "Alle auswählen"}
+                </Button>
+                <Button size="sm" disabled={generateIds.size === 0 || isGenerating} onClick={handleGenerate}>
+                  {isGenerating && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                  Schichten erzeugen
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </CardContent>
     </Card>
   );
