@@ -1,28 +1,20 @@
 
 
-## Checkbox "Am Pool beteiligt" wieder hinzufuegen
+## Browser-Titel fuer Lohnbuero aendern
 
-Der State `newParticipatesInPool` existiert bereits und wird korrekt gespeichert. Aktuell wird der Pool-Status nur als Badge angezeigt (Zeile 310-312), aber es fehlt eine Checkbox zum Umschalten.
+Der Titel "Spicery Kellner" kommt aus der `index.html` und gilt global. Fuer das Lohnbuero-Portal wird er dynamisch ueberschrieben.
 
-### Aenderung in `src/pages/WaiterCashUp.tsx`
+### Aenderung in `src/pages/shared/PayrollPortal.tsx`
 
-Die Badge-Anzeige (Zeilen 309-313) wird durch eine Checkbox mit Label ersetzt:
+Ein `useEffect` wird hinzugefuegt, der beim Laden der Seite den Browser-Titel auf **"YUM Gastronomie GmbH Arbeitszeiterfassung"** setzt und beim Verlassen den urspruenglichen Titel wiederherstellt:
 
 ```tsx
-import { Checkbox } from '@/components/ui/checkbox';
-
-// Nach dem StaffSelect, statt der Badge:
-{newWaiterName && (
-  <div className="flex items-center gap-2 mt-2">
-    <Checkbox
-      id="participatesInPool"
-      checked={newParticipatesInPool}
-      onCheckedChange={(checked) => setNewParticipatesInPool(checked === true)}
-    />
-    <Label htmlFor="participatesInPool">Am Pool beteiligt</Label>
-  </div>
-)}
+useEffect(() => {
+  const prev = document.title;
+  document.title = 'YUM Gastronomie GmbH Arbeitszeiterfassung';
+  return () => { document.title = prev; };
+}, []);
 ```
 
-Der Default-Wert wird weiterhin aus den Stammdaten des gewaehlten Mitarbeiters uebernommen (Zeile 302-306), kann aber nun manuell ueberschrieben werden.
+Zusaetzlich wird das Favicon fuer diese Seite nicht geaendert — der Titel allein genuegt laut Anfrage.
 
