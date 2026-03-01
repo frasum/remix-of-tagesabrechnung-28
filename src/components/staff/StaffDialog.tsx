@@ -157,7 +157,8 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
             <Label htmlFor="persoNr">Perso-Nr.</Label>
             <Input
               id="persoNr"
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={persoNr}
               onChange={(e) => setPersoNr(e.target.value)}
               placeholder="z.B. 42"
