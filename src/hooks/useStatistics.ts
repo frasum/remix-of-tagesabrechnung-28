@@ -48,10 +48,12 @@ export interface CustomDateRange {
   to: Date;
 }
 
-export function useStatistics(timeRange: TimeRange = 'month', customRange?: CustomDateRange, restaurantId?: string | null) {
+export function useStatistics(timeRange: TimeRange = 'month', customRange?: CustomDateRange, restaurantId?: string | null, restaurantIds?: string[]) {
+  const effectiveIds = restaurantIds ?? (restaurantId ? [restaurantId] : []);
+  const cacheKey = restaurantIds ? restaurantIds.sort().join(',') : restaurantId;
   return useQuery({
-    queryKey: ['statistics', timeRange, customRange?.from?.toISOString(), customRange?.to?.toISOString(), restaurantId],
-    enabled: !!restaurantId,
+    queryKey: ['statistics', timeRange, customRange?.from?.toISOString(), customRange?.to?.toISOString(), cacheKey],
+    enabled: effectiveIds.length > 0,
     queryFn: async () => {
       const now = new Date();
       let startDate: Date;
@@ -79,13 +81,20 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
       }
 
       // Fetch sessions in the date range
-      const { data: sessions, error: sessionsError } = await supabase
+      let sessionsQuery = supabase
         .from('sessions')
         .select('id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, takeaway_total, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss, sonstige_einnahme, card_total_gl')
-        .eq('restaurant_id', restaurantId!)
         .gte('session_date', format(startDate, 'yyyy-MM-dd'))
         .lte('session_date', format(endDate, 'yyyy-MM-dd'))
         .order('session_date', { ascending: true });
+      
+      if (effectiveIds.length === 1) {
+        sessionsQuery = sessionsQuery.eq('restaurant_id', effectiveIds[0]);
+      } else {
+        sessionsQuery = sessionsQuery.in('restaurant_id', effectiveIds);
+      }
+      
+      const { data: sessions, error: sessionsError } = await sessionsQuery;
 
       if (sessionsError) throw sessionsError;
 
