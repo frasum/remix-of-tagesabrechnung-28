@@ -1,55 +1,31 @@
 
 
-## Plan: Öffentlicher Sharing-Link für Lohnbüro
+## Plan: Schichten im Sharing-Link bearbeitbar machen
 
-### Konzept
-Auf der Perioden-Seite bekommt jede Periode einen "Freigabe"-Button. Beim Klick wird ein zufälliger Token generiert und in der Datenbank gespeichert. Der daraus resultierende Link (z.B. `https://tagesabrechnung.lovable.app/shared/zt/abc123...`) ist ohne Login aufrufbar und zeigt eine eigenständige Ansicht mit Wochenplan, Zusammenfassung und Buchhaltung — ausschließlich für diese eine Periode.
+### Aktueller Zustand
+Der Wochenplan im Sharing-Link zeigt Schichten nur lesend an. Die Edge Function `shared-zt-data` erlaubt per POST nur Änderungen an `payroll_notes` (Vorschuss, Besonderheiten, Urlaub-Tage).
 
-Das Lohnbüro kann dort Daten einsehen, Besonderheiten/Vorschuss bearbeiten und PDF/Excel exportieren. Der Link kann jederzeit widerrufen werden.
+### Änderungen
 
----
+**1. Edge Function erweitern (`supabase/functions/shared-zt-data/index.ts`)**
+- Neuen POST-Aktionstyp `upsert_shift` hinzufügen
+- Akzeptiert: `employee_id`, `week_id`, `shift_date`, `start_time`, `end_time`, `absence_type`, `department`
+- Berechnet `total_hours`, `sunday_holiday_hours`, `evening_hours`, `night_hours` serverseitig (via gleicher Logik wie im Frontend)
+- Upsert auf `zt_shifts` mit `onConflict: employee_id, shift_date, department`
+- Prüft, dass `week_id` zur freigegebenen Periode gehört
 
-### Datenbank-Änderungen
+**2. SharedZtView Wochenplan-Tab editierbar machen (`src/pages/shared/SharedZtView.tsx`)**
+- Zeit-Inputs (Start/Ende) in den Wochenplan-Zellen hinzufügen (analog zu `ZtWochenplan.tsx`)
+- Rechtsklick/Kontextmenü für Urlaub/Krank-Einträge (oder vereinfachte Variante mit Dropdown)
+- `upsertShift`-Mutation hinzufügen, die den neuen POST-Endpunkt nutzt
+- Keyboard-Navigation (`handleTimeKeyDown`, `formatTimeInput`) übernehmen
+- Bei gesperrter Periode (`status === 'locked'`) bleiben alle Felder disabled
 
-**`scheduling_periods`-Tabelle erweitern:**
-- `share_token TEXT` (nullable, unique) — zufälliger Token für den Sharing-Link
-- `shared_at TIMESTAMPTZ` — Zeitpunkt der Freigabe
+**3. Shift-Berechnung in Edge Function**
+Da `calculateShiftHours` ein Frontend-Utility ist, wird die Berechnungslogik direkt in der Edge Function dupliziert (einfache Stunden-Berechnung basierend auf Start/End-Zeit und Feiertag-Flag).
 
----
-
-### Backend (Edge Function)
-
-**Neue Edge Function `shared-zt-data`:**
-- Validiert den `share_token` gegen `scheduling_periods`
-- Gibt Perioden-Infos, Wochen, Schichten, Mitarbeiterdaten und Payroll Notes zurück
-- Erlaubt auch POST-Requests zum Aktualisieren von `payroll_notes` (Besonderheiten, Vorschuss)
-- Kein JWT erforderlich (`verify_jwt = false`)
-
----
-
-### Frontend-Änderungen
-
-**1. Neue Route in `App.tsx`:**
-- `/shared/zt/:token` — öffentliche Route ohne Auth/Restaurant-Context
-
-**2. Neue Seite `src/pages/shared/SharedZtView.tsx`:**
-- Standalone-Layout (kein Sidebar, keine Navigation)
-- Liest Token aus URL, ruft Edge Function auf
-- Tabs: Wochenplan, Zusammenfassung, Buchhaltung
-- Nutzt dieselbe Darstellungslogik, aber mit eigenen Datenquellen (kein ZtContext)
-- Bearbeitung von Besonderheiten/Vorschuss möglich
-- PDF/Excel-Export verfügbar
-
-**3. Perioden-Seite (`ZtPerioden.tsx`) erweitern:**
-- "Freigeben"-Button pro Periode → generiert Token und speichert es
-- Anzeige des Sharing-Links mit Copy-Button wenn bereits freigegeben
-- "Widerrufen"-Button um Token zu löschen
-
----
-
-### Sicherheit
-- Tokens sind kryptografisch zufällig (32 Bytes hex-encoded)
-- Kein Login erforderlich — der Token IST die Autorisierung
-- Token kann jederzeit widerrufen werden (Token auf NULL setzen)
-- Zugriff nur auf die eine freigegebene Periode, keine anderen Daten
+### Technische Details
+- Die Edge Function unterscheidet POST-Aktionen über ein `action`-Feld im Body: `"upsert_note"` (bestehend) vs. `"upsert_shift"` (neu)
+- Rückwärtskompatibilität: Wenn kein `action`-Feld vorhanden, wird wie bisher `upsert_note` angenommen
+- Feiertags-Check nutzt die bereits geladene `bavarian_holidays`-Tabelle
 
