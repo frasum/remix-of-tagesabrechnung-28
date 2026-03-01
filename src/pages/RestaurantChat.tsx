@@ -231,9 +231,8 @@ export default function RestaurantChat() {
 
         {/* Input */}
         <div className="border-t p-4">
-          {messages.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-3">
-              {SUGGESTIONS.slice(0, 3).map(s => (
+              {SUGGESTIONS.map(s => (
                 <Button
                   key={s}
                   variant="ghost"
@@ -246,7 +245,6 @@ export default function RestaurantChat() {
                 </Button>
               ))}
             </div>
-          )}
           <form
             onSubmit={e => { e.preventDefault(); sendMessage(input); }}
             className="flex gap-2"
