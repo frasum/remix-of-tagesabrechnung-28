@@ -178,9 +178,9 @@
     @apply border-transparent bg-transparent shadow-none ring-0 focus-visible:ring-1 focus-visible:bg-background;
   }
   .wochenplan-table .totals-col {
-    background-color: hsl(0 60% 94%);
+    background-color: hsl(220 10% 95%);
   }
   .wochenplan-table .totals-header {
-    background-color: hsl(0 55% 91%);
+    background-color: hsl(220 10% 91%);
   }
 }
