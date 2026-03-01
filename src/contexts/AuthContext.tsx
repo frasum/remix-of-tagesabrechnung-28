@@ -9,6 +9,7 @@ interface AuthUser {
   id: string;
   name: string;
   role: 'waiter' | 'kitchen';
+  staffRole?: string; // Raw DB role (e.g. waiter_gl, both, all)
   permissionLevel: PermissionLevel;
   isOAuthUser?: boolean;
   staffId?: string;
@@ -307,6 +308,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         id: result.user.id,
         name: result.user.name,
         role: result.user.role,
+        staffRole: result.user.staff_role || result.user.role,
         permissionLevel: result.permission_level || 'staff',
         staffId: result.user.id,
       };

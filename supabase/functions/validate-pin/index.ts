@@ -17,6 +17,7 @@ interface ValidatePinResponse {
     id: string;
     name: string;
     role: "waiter" | "kitchen";
+    staff_role: string;
   };
   permission_level?: "staff" | "manager" | "admin";
   error?: string;
@@ -213,12 +214,17 @@ Deno.serve(async (req: Request) => {
     const permissionLevel = roleData?.permission_level || "staff";
 
     // Success - return user info (without PIN) including permission level
+    // Map combined roles to a simple role for the app
+    const simpleRole = (staffData.role === 'kitchen' || staffData.role === 'kitchen_gl')
+      ? 'kitchen' : 'waiter';
+
     const response: ValidatePinResponse = {
       success: true,
       user: {
         id: staffData.id,
         name: staffData.name,
-        role: staffData.role as "waiter" | "kitchen",
+        role: simpleRole as "waiter" | "kitchen",
+        staff_role: staffData.role,
       },
       permission_level: permissionLevel,
     };
