@@ -1,52 +1,40 @@
 
 
-## Rolle-Dropdown durch Checkboxen ersetzen (Service, Küche, GL)
+## Mitarbeiterverwaltung: Tabellenansicht statt Karten
 
 ### Problem
-Aktuell ist die Rollenwahl ein Dropdown mit drei Optionen: Service, Küche, Service & Küche. Der User möchte stattdessen drei unabhängige Checkboxen (Service, Küche, GL), die frei kombinierbar sind.
+Die aktuelle Karten-Ansicht (3 Spalten, gruppiert nach Restaurant) ist unübersichtlich. Informationen wie Rolle, Restaurant-Zuordnung und Berechtigungsstufe sind über viele Badges verteilt und schwer zu scannen.
 
-### Datenbank-Änderung
+### Vorschlag: Kompakte Tabelle
 
-Die `staff_role` Enum hat aktuell die Werte `waiter | kitchen | both`. Um alle Kombinationen mit GL abzubilden, muss die Enum erweitert werden:
+Statt Karten eine sortierbare Tabelle mit allen relevanten Infos auf einen Blick:
 
-| Checkbox-Kombination | Enum-Wert |
-|---|---|
-| Service | `waiter` |
-| Küche | `kitchen` |
-| GL | `gl` (neu) |
-| Service + Küche | `both` |
-| Service + GL | `waiter_gl` (neu) |
-| Küche + GL | `kitchen_gl` (neu) |
-| Alle drei | `all` (neu) |
+```text
+┌──────────────┬──────────────────┬─────────────┬──────────────────┬──────────┐
+│ Name         │ Rolle            │ Restaurants │ Berechtigung     │ Aktionen │
+├──────────────┼──────────────────┼─────────────┼──────────────────┼──────────┤
+│ Ann          │ ☑ Service        │ Spicery     │ Mitarbeiter      │ ✏️ 🗑️    │
+│ Mo           │ ☑ Service        │ Spicery,YUM │ Manager          │ ✏️ 🗑️    │
+│ Gerard       │ ☑ Service ☑ GL   │ Spicery     │ Manager          │ ✏️ 🗑️    │
+│ Appel        │ ☑ Küche          │ YUM,Spicery │ Mitarbeiter      │ ✏️ 🗑️    │
+└──────────────┴──────────────────┴─────────────┴──────────────────┴──────────┘
+```
 
-**Migration**: `ALTER TYPE staff_role ADD VALUE 'gl'; ADD VALUE 'waiter_gl'; ADD VALUE 'kitchen_gl'; ADD VALUE 'all';`
+### Vorteile
+- Alle Mitarbeiter in einer einzigen, sortierbaren Liste
+- Rolle, Restaurants und Berechtigung sofort sichtbar ohne Badges-Überladung
+- Such- und Tab-Filter (Alle/Service/Küche) bleiben bestehen
+- Ranking-Badge (#4 · 9.4%) weiterhin inline neben dem Namen
+- Auf Mobile: horizontales Scrollen oder responsive Karten-Fallback
 
-### Code-Änderungen
+### Änderungen
 
 | Datei | Änderung |
 |---|---|
-| `src/hooks/useStaff.ts` | `StaffRole` Type erweitern um `'gl' \| 'waiter_gl' \| 'kitchen_gl' \| 'all'`. Hilfsfunktionen zum Konvertieren zwischen Checkbox-State (`{service, kitchen, gl}`) und Enum-Wert. |
-| `src/components/staff/StaffDialogNative.tsx` | Dropdown (Zeilen 197-209) ersetzen durch drei native Checkboxen für Service, Küche, GL. State als drei Booleans verwalten, beim Submit in den passenden Enum-Wert konvertieren. |
-| `src/pages/StaffManagement.tsx` | Filterlogik und Gruppierung anpassen, damit GL-Rollen korrekt erkannt werden (z.B. `role === 'gl'` oder `role === 'waiter_gl'` etc.). |
+| `src/pages/StaffManagement.tsx` | Gruppierung nach Restaurant entfernen, stattdessen eine flache, alphabetisch sortierte Liste aller Mitarbeiter rendern. Karten-Grid durch `<Table>` ersetzen. |
+| `src/components/staff/StaffCard.tsx` | Wird nicht mehr verwendet — Logik in eine neue `StaffTableRow`-Komponente überführen, die eine `<TableRow>` rendert. |
+| `src/components/staff/StaffTableRow.tsx` | Neue Komponente: eine Tabellenzeile mit Spalten für Name (+ Ranking/Warnungen), Rollen-Chips, Restaurant-Badges, Berechtigungsstufe und Aktions-Buttons. |
 
-### UI im Dialog
-
-```text
-Rolle *
-☑ Service
-☐ Küche
-☐ GL
-```
-
-Mindestens eine Checkbox muss gewählt sein (Validierung).
-
-### Hilfsfunktionen (in useStaff.ts)
-
-```typescript
-function rolesToEnum(s: boolean, k: boolean, g: boolean): StaffRole
-function enumToRoles(role: StaffRole): { service: boolean; kitchen: boolean; gl: boolean }
-function hasRole(role: StaffRole, check: 'waiter'|'kitchen'|'gl'): boolean
-```
-
-Die `hasRole`-Funktion wird überall dort verwendet, wo bisher `role === 'waiter' || role === 'both'` steht, um alle neuen Kombinationen abzudecken.
+### Mobile-Strategie
+Auf kleinen Bildschirmen (`< sm`) wird die Tabelle in einem horizontal scrollbaren Container (`overflow-x-auto`) gerendert, damit alle Spalten erreichbar bleiben.
 
