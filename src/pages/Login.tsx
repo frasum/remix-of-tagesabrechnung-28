@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useWebAuthn } from '@/hooks/useWebAuthn';
 import { lovable } from '@/integrations/lovable/index';
+import { RoleSelectionDialog, getRoleOptions, type ActiveRole } from '@/components/auth/RoleSelectionDialog';
 
 export default function Login() {
   const [name, setName] = useState('');
@@ -20,6 +21,12 @@ export default function Login() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isSupported: webAuthnSupported, hasCredential, authenticate: webAuthnAuthenticate, isLoading: webAuthnLoading } = useWebAuthn();
+
+  // Role selection state for dual-role staff
+  const [pendingRoleSelection, setPendingRoleSelection] = useState<{
+    staffName: string;
+    options: ReturnType<typeof getRoleOptions>;
+  } | null>(null);
 
   const handleBiometricLogin = async () => {
     setIsLoading(true);
@@ -75,6 +82,16 @@ export default function Login() {
     setIsLoading(false);
 
     if (success) {
+      // Check if user needs role selection (read from localStorage since login just stored it)
+      const stored = localStorage.getItem('spicery_auth_user');
+      const staffRole = stored ? JSON.parse(stored).staffRole : null;
+      const roleOptions = staffRole ? getRoleOptions(staffRole) : null;
+
+      if (roleOptions) {
+        setPendingRoleSelection({ staffName: name, options: roleOptions });
+        return; // Don't navigate yet – wait for role selection
+      }
+
       toast({
         title: 'Willkommen!',
         description: `Anmeldung erfolgreich als ${name}.`,
@@ -87,6 +104,23 @@ export default function Login() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleRoleSelected = (role: ActiveRole) => {
+    // Update stored user with the selected active role
+    const stored = localStorage.getItem('spicery_auth_user');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      parsed.role = role === 'gl' ? 'waiter' : role; // GL maps to waiter for routing
+      parsed.activeRole = role; // Keep the precise selection
+      localStorage.setItem('spicery_auth_user', JSON.stringify(parsed));
+    }
+    setPendingRoleSelection(null);
+    toast({
+      title: 'Willkommen!',
+      description: `Anmeldung erfolgreich als ${pendingRoleSelection?.staffName || ''}.`,
+    });
+    navigate('/select-restaurant', { replace: true });
   };
 
   const handlePinChange = (value: string) => {
@@ -137,6 +171,14 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      {pendingRoleSelection?.options && (
+        <RoleSelectionDialog
+          open
+          staffName={pendingRoleSelection.staffName}
+          options={pendingRoleSelection.options}
+          onSelect={handleRoleSelected}
+        />
+      )}
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
