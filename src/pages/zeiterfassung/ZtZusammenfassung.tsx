@@ -115,51 +115,52 @@ export default function ZtZusammenfassung() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <h1 className="text-2xl font-bold">Zusammenfassung</h1>
-      </div>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">Zusammenfassung</h1>
+          <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <SelectValue placeholder="Periode wählen" />
+            </SelectTrigger>
+            <SelectContent>
+              {periods?.map((p) => (
+                <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <Select value={selectedPeriodId} onValueChange={setSelectedPeriodId}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Periode wählen" />
-          </SelectTrigger>
-          <SelectContent>
-            {periods?.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!employeesWithShifts.length}
+            onClick={() => {
+              const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
+              if (selectedPeriod && weeks && shifts) {
+                exportZusammenfassungPdf(selectedPeriod.label, employeesWithShifts, weeks, shifts);
+              }
+            }}
+          >
+            <FileDown className="mr-1 h-4 w-4" />
+            PDF
+          </Button>
 
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!employeesWithShifts.length}
-          onClick={() => {
-            const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
-            if (selectedPeriod && weeks && shifts) {
-              exportZusammenfassungPdf(selectedPeriod.label, employeesWithShifts, weeks, shifts);
-            }
-          }}
-        >
-          <FileDown className="mr-1 h-4 w-4" />
-          PDF
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!employeesWithShifts.length}
-          onClick={() => {
-            const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
-            if (selectedPeriod && weeks && shifts) {
-              exportZusammenfassungExcel(selectedPeriod.label, employeesWithShifts, weeks, shifts);
-            }
-          }}
-        >
-          <FileSpreadsheet className="mr-1 h-4 w-4" />
-          Excel
-        </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!employeesWithShifts.length}
+            onClick={() => {
+              const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
+              if (selectedPeriod && weeks && shifts) {
+                exportZusammenfassungExcel(selectedPeriod.label, employeesWithShifts, weeks, shifts);
+              }
+            }}
+          >
+            <FileSpreadsheet className="mr-1 h-4 w-4" />
+            Excel
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto border rounded-lg">
