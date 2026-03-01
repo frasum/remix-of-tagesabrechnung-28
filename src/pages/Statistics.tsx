@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import { DateRange } from 'react-day-picker';
@@ -10,6 +10,7 @@ import {
   Truck, 
   Receipt,
   Calendar,
+  Building2,
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -37,10 +38,11 @@ import { useStatisticsComparison } from '@/hooks/useStatisticsComparison';
 import { WaiterTipChart } from '@/components/statistics/WaiterTipChart';
 import { KitchenTipChart } from '@/components/statistics/KitchenTipChart';
 import { PeriodComparison } from '@/components/statistics/PeriodComparison';
+import { RestaurantComparison } from '@/components/statistics/RestaurantComparison';
 import { DateRangePicker } from '@/components/statistics/DateRangePicker';
 import { MonthlyTipBreakdown } from '@/components/statistics/MonthlyTipBreakdown';
 import { useLabels } from '@/hooks/useLabels';
-import { useRestaurant } from '@/hooks/useRestaurant';
+import { useRestaurant, useRestaurants } from '@/hooks/useRestaurant';
 
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
@@ -81,18 +83,33 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
+type StatsMode = 'single' | 'all' | 'compare';
+
 export default function Statistics() {
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [customDateRange, setCustomDateRange] = useState<DateRange | undefined>();
+  const [statsMode, setStatsMode] = useState<StatsMode>('single');
   
-  // Determine if we should use custom range
   const customRange = timeRange === 'custom' && customDateRange?.from && customDateRange?.to
     ? { from: customDateRange.from, to: customDateRange.to }
     : undefined;
 
-  const { restaurantId } = useRestaurant();
-  const { data, isLoading } = useStatistics(timeRange, customRange, restaurantId);
-  const { data: comparisonData, isLoading: comparisonLoading } = useStatisticsComparison(timeRange, customRange, restaurantId);
+  const { restaurantId, restaurantName } = useRestaurant();
+  const { data: allRestaurants } = useRestaurants();
+  const allRestaurantIds = useMemo(() => allRestaurants?.map(r => r.id) ?? [], [allRestaurants]);
+
+  // Single / All mode data
+  const effectiveIds = statsMode === 'all' ? allRestaurantIds : (statsMode === 'compare' ? allRestaurantIds : undefined);
+  const effectiveId = statsMode === 'single' ? restaurantId : undefined;
+  const { data, isLoading } = useStatistics(timeRange, customRange, effectiveId, statsMode !== 'single' ? effectiveIds : undefined);
+  const { data: comparisonData, isLoading: comparisonLoading } = useStatisticsComparison(timeRange, customRange, effectiveId, statsMode !== 'single' ? effectiveIds : undefined);
+
+  // Compare mode: load each restaurant separately for comparison card
+  const restA = allRestaurants?.[0];
+  const restB = allRestaurants?.[1];
+  const { data: dataA } = useStatistics(timeRange, customRange, statsMode === 'compare' ? restA?.id : null);
+  const { data: dataB } = useStatistics(timeRange, customRange, statsMode === 'compare' ? restB?.id : null);
+
   const { getLabel } = useLabels(restaurantId);
 
   const handleTimeRangeChange = (value: string) => {
@@ -159,6 +176,23 @@ export default function Statistics() {
           </div>
           
           <div className="flex flex-col sm:flex-row gap-3">
+            {allRestaurants && allRestaurants.length > 1 && (
+              <Tabs value={statsMode} onValueChange={(v) => setStatsMode(v as StatsMode)}>
+                <TabsList>
+                  <TabsTrigger value="single" className="gap-1">
+                    <Building2 className="w-4 h-4" />
+                    {restaurantName}
+                  </TabsTrigger>
+                  <TabsTrigger value="all" className="gap-1">
+                    Alle
+                  </TabsTrigger>
+                  <TabsTrigger value="compare" className="gap-1">
+                    Vergleich
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
+
             <Tabs value={timeRange} onValueChange={handleTimeRangeChange}>
               <TabsList>
                 <TabsTrigger value="week" className="gap-2">
@@ -249,8 +283,16 @@ export default function Statistics() {
             </div>
 
             {/* Period Comparison Card */}
-            {comparisonData && !comparisonLoading && (
+            {comparisonData && !comparisonLoading && statsMode !== 'compare' && (
               <PeriodComparison data={comparisonData} />
+            )}
+
+            {/* Restaurant Comparison Card (compare mode) */}
+            {statsMode === 'compare' && dataA && dataB && restA && restB && (
+              <RestaurantComparison restaurants={[
+                { name: restA.name, summary: dataA.summary },
+                { name: restB.name, summary: dataB.summary },
+              ]} />
             )}
 
             {/* Revenue Trend Chart */}

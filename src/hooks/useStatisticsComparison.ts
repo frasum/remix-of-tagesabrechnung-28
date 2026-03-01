@@ -26,15 +26,21 @@ interface ComparisonResult {
   previousPeriodLabel: string;
 }
 
-async function fetchPeriodStats(startDate: Date, endDate: Date, restaurantId: string): Promise<StatsSummary> {
-  const { data: sessions, error: sessionsError } = await supabase
+async function fetchPeriodStats(startDate: Date, endDate: Date, restaurantId?: string, restaurantIds?: string[]): Promise<StatsSummary> {
+  const effectiveIds = restaurantIds ?? (restaurantId ? [restaurantId] : []);
+  let query = supabase
     .from('sessions')
     .select('id, session_date, ordersmart_revenue, wolt_revenue, takeaway_total')
-    .eq('restaurant_id', restaurantId)
     .gte('session_date', format(startDate, 'yyyy-MM-dd'))
     .lte('session_date', format(endDate, 'yyyy-MM-dd'));
-
-  if (sessionsError) throw sessionsError;
+  
+  if (effectiveIds.length === 1) {
+    query = query.eq('restaurant_id', effectiveIds[0]);
+  } else if (effectiveIds.length > 1) {
+    query = query.in('restaurant_id', effectiveIds);
+  }
+  
+  const { data: sessions, error: sessionsError } = await query;
 
   const sessionIds = sessions?.map(s => s.id) || [];
   let waiterShifts: any[] = [];
@@ -97,10 +103,12 @@ function calculatePercentChange(current: number, previous: number): number {
   return ((current - previous) / Math.abs(previous)) * 100;
 }
 
-export function useStatisticsComparison(timeRange: TimeRange = 'month', customRange?: CustomDateRange, restaurantId?: string | null) {
+export function useStatisticsComparison(timeRange: TimeRange = 'month', customRange?: CustomDateRange, restaurantId?: string | null, restaurantIds?: string[]) {
+  const effectiveIds = restaurantIds ?? (restaurantId ? [restaurantId] : []);
+  const cacheKey = restaurantIds ? restaurantIds.sort().join(',') : restaurantId;
   return useQuery({
-    queryKey: ['statistics-comparison', timeRange, customRange?.from?.toISOString(), customRange?.to?.toISOString(), restaurantId],
-    enabled: !!restaurantId,
+    queryKey: ['statistics-comparison', timeRange, customRange?.from?.toISOString(), customRange?.to?.toISOString(), cacheKey],
+    enabled: effectiveIds.length > 0,
     queryFn: async (): Promise<ComparisonResult> => {
       const now = new Date();
       let currentStart: Date;
@@ -150,8 +158,8 @@ export function useStatisticsComparison(timeRange: TimeRange = 'month', customRa
       }
 
       const [current, previous] = await Promise.all([
-        fetchPeriodStats(currentStart, currentEnd, restaurantId!),
-        fetchPeriodStats(previousStart, previousEnd, restaurantId!),
+        fetchPeriodStats(currentStart, currentEnd, undefined, effectiveIds),
+        fetchPeriodStats(previousStart, previousEnd, undefined, effectiveIds),
       ]);
 
       return {
