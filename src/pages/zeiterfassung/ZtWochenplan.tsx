@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { calculateShiftHours, isSunday, formatHours, DEPARTMENT_ORDER, countVacationDays, countSickDays } from "@/lib/shiftCalculations";
+import { calculateShiftHours, isSunday, formatHours, DEPARTMENT_ORDER, countVacationDays, countSickDays, getDepartmentBgClass } from "@/lib/shiftCalculations";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -407,15 +407,19 @@ export default function ZtWochenplan() {
                     <React.Fragment key={`${emp.id}-${emp.department}`}>
                       {showDeptHeader && (
                         <tr className="dept-header-row">
-                          <td colSpan={weekDays.length * 2 + 7} className="p-0">
-                            <div className={`flex items-center gap-2 px-3 py-2.5 ${idx > 0 ? "mt-2" : ""}`}>
-                              <div className={`w-1 h-5 rounded-full ${deptColor}`}></div>
-                              <span className="font-bold text-xs uppercase tracking-wider text-muted-foreground">{emp.department}</span>
-                            </div>
+                          <td
+                            colSpan={weekDays.length * 2 + 7}
+                            className={`px-3 py-2.5 font-bold text-sm uppercase tracking-wide border-l-4 ${
+                              emp.department === "Küche" ? "border-[hsl(15_80%_50%)]" :
+                              emp.department === "GL" ? "border-[hsl(220_60%_50%)]" :
+                              "border-[hsl(145_60%_40%)]"
+                            } ${getDepartmentBgClass(emp.department)} ${idx > 0 ? "border-t-2 border-t-border" : ""}`}
+                          >
+                            {emp.department}
                           </td>
                         </tr>
                       )}
-                      <tr className={`border-t border-border/50 ${isEvenRow ? "zebra-even" : ""}`}>
+                      <tr className={`border-t border-border/50 ${isEvenRow ? "zebra-even" : ""} ${totals.gesamt === 0 && totals.urlaubTage === 0 && totals.krankTage === 0 ? "empty-row" : ""}`}>
                         <td className="sticky-name p-2 sticky left-0 z-10 font-medium border-r border-border/30">
                           <div className="flex items-center gap-1.5">
                             <div className={`w-0.5 h-4 rounded-full ${deptColor} opacity-60`}></div>
@@ -558,7 +562,7 @@ export default function ZtWochenplan() {
                             </React.Fragment>
                           );
                         })}
-                        <td className="totals-col text-center p-2 font-bold text-sm border-l-2 border-primary/20">{formatHours(totals.gesamt)}</td>
+                        <td className={`totals-col text-center p-2 border-l-2 border-primary/20 ${totals.gesamt > 0 ? "font-bold text-sm" : "text-xs text-muted-foreground"}`}>{formatHours(totals.gesamt)}</td>
                         <td className="totals-col text-center p-2 text-xs">{totals.soFei > 0 ? formatHours(totals.soFei) : ""}</td>
                         <td className="totals-col text-center p-2 text-xs">{totals.evening > 0 ? formatHours(totals.evening) : ""}</td>
                         <td className="totals-col text-center p-2 text-xs">{totals.night > 0 ? formatHours(totals.night) : ""}</td>
