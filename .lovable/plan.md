@@ -1,28 +1,55 @@
 
 
-## Plan: Urlaubszeiträume in Besonderheiten anzeigen
+## Plan: Öffentlicher Sharing-Link für Lohnbüro
 
-Analog zur bestehenden Krankheits-Logik (`getSickDateRanges` / `formatSickRanges`) wird eine Urlaubs-Variante erstellt und in allen relevanten Stellen eingebaut.
+### Konzept
+Auf der Perioden-Seite bekommt jede Periode einen "Freigabe"-Button. Beim Klick wird ein zufälliger Token generiert und in der Datenbank gespeichert. Der daraus resultierende Link (z.B. `https://tagesabrechnung.lovable.app/shared/zt/abc123...`) ist ohne Login aufrufbar und zeigt eine eigenständige Ansicht mit Wochenplan, Zusammenfassung und Buchhaltung — ausschließlich für diese eine Periode.
 
-### 1. Neue Funktionen in `src/lib/shiftCalculations.ts`
+Das Lohnbüro kann dort Daten einsehen, Besonderheiten/Vorschuss bearbeiten und PDF/Excel exportieren. Der Link kann jederzeit widerrufen werden.
 
-- `getVacationDateRanges(shifts)` — identisch zu `getSickDateRanges`, filtert aber auf `absence_type === 'urlaub'`
-- `formatVacationRanges(ranges)` — Wrapper um `formatSickRanges` (gleiche Formatierung), oder direkt `formatSickRanges` wiederverwenden (da die Logik identisch ist)
+---
 
-Alternativ: Eine generische `getAbsenceDateRanges(shifts, type)` Funktion, die beide Fälle abdeckt. `formatSickRanges` wird zu `formatAbsenceRanges` (mit Alias für Rückwärtskompatibilität).
+### Datenbank-Änderungen
 
-### 2. Änderungen in `BuchhaltungRow.tsx`
+**`scheduling_periods`-Tabelle erweitern:**
+- `share_token TEXT` (nullable, unique) — zufälliger Token für den Sharing-Link
+- `shared_at TIMESTAMPTZ` — Zeitpunkt der Freigabe
 
-- Urlaubszeiträume berechnen und als Text `U: 03.02.–07.02. (5T)` in die `besonderheitenValue` einfügen
-- Gleiche Logik wie bei `sickText`, nur mit `getVacationDateRanges`
+---
 
-### 3. Änderungen in `exportBuchhaltungPdf.ts` und `exportBuchhaltungExcel.ts`
+### Backend (Edge Function)
 
-- Urlaubszeiträume analog zu `sickText` berechnen und in `besText` einfügen
-- Import der neuen Funktion(en)
+**Neue Edge Function `shared-zt-data`:**
+- Validiert den `share_token` gegen `scheduling_periods`
+- Gibt Perioden-Infos, Wochen, Schichten, Mitarbeiterdaten und Payroll Notes zurück
+- Erlaubt auch POST-Requests zum Aktualisieren von `payroll_notes` (Besonderheiten, Vorschuss)
+- Kein JWT erforderlich (`verify_jwt = false`)
 
-### Ergebnis
+---
 
-Die Besonderheiten-Spalte zeigt dann z.B.:
-`U: 03.02.–07.02. (5T) | K: 15.02.–17.02. (3T)`
+### Frontend-Änderungen
+
+**1. Neue Route in `App.tsx`:**
+- `/shared/zt/:token` — öffentliche Route ohne Auth/Restaurant-Context
+
+**2. Neue Seite `src/pages/shared/SharedZtView.tsx`:**
+- Standalone-Layout (kein Sidebar, keine Navigation)
+- Liest Token aus URL, ruft Edge Function auf
+- Tabs: Wochenplan, Zusammenfassung, Buchhaltung
+- Nutzt dieselbe Darstellungslogik, aber mit eigenen Datenquellen (kein ZtContext)
+- Bearbeitung von Besonderheiten/Vorschuss möglich
+- PDF/Excel-Export verfügbar
+
+**3. Perioden-Seite (`ZtPerioden.tsx`) erweitern:**
+- "Freigeben"-Button pro Periode → generiert Token und speichert es
+- Anzeige des Sharing-Links mit Copy-Button wenn bereits freigegeben
+- "Widerrufen"-Button um Token zu löschen
+
+---
+
+### Sicherheit
+- Tokens sind kryptografisch zufällig (32 Bytes hex-encoded)
+- Kein Login erforderlich — der Token IST die Autorisierung
+- Token kann jederzeit widerrufen werden (Token auf NULL setzen)
+- Zugriff nur auf die eine freigegebene Periode, keine anderen Daten
 
