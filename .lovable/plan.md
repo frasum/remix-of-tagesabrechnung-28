@@ -1,40 +1,41 @@
 
 
-## Mitarbeiterverwaltung: Tabellenansicht statt Karten
+## Abteilungs-Checkboxen pro Restaurant im Staff-Dialog
 
-### Problem
-Die aktuelle Karten-Ansicht (3 Spalten, gruppiert nach Restaurant) ist unübersichtlich. Informationen wie Rolle, Restaurant-Zuordnung und Berechtigungsstufe sind über viele Badges verteilt und schwer zu scannen.
+### Änderung
 
-### Vorschlag: Kompakte Tabelle
+In `src/components/staff/StaffDialogNative.tsx`:
 
-Statt Karten eine sortierbare Tabelle mit allen relevanten Infos auf einen Blick:
+1. **State** von `selectedRestaurants: string[]` auf `restaurantDepts: Record<string, Set<string>>` umstellen (Key = Restaurant-ID, Value = Set von Abteilungen: "Service", "Küche", "GL")
 
+2. **UI**: Pro ausgewähltem Restaurant drei Checkboxen einrücken:
 ```text
-┌──────────────┬──────────────────┬─────────────┬──────────────────┬──────────┐
-│ Name         │ Rolle            │ Restaurants │ Berechtigung     │ Aktionen │
-├──────────────┼──────────────────┼─────────────┼──────────────────┼──────────┤
-│ Ann          │ ☑ Service        │ Spicery     │ Mitarbeiter      │ ✏️ 🗑️    │
-│ Mo           │ ☑ Service        │ Spicery,YUM │ Manager          │ ✏️ 🗑️    │
-│ Gerard       │ ☑ Service ☑ GL   │ Spicery     │ Manager          │ ✏️ 🗑️    │
-│ Appel        │ ☑ Küche          │ YUM,Spicery │ Mitarbeiter      │ ✏️ 🗑️    │
-└──────────────┴──────────────────┴─────────────┴──────────────────┴──────────┘
+☑ Spicery
+    ☑ Service  ☐ Küche  ☐ GL
+☑ YUM
+    ☐ Service  ☑ Küche  ☐ GL
 ```
 
-### Vorteile
-- Alle Mitarbeiter in einer einzigen, sortierbaren Liste
-- Rolle, Restaurants und Berechtigung sofort sichtbar ohne Badges-Überladung
-- Such- und Tab-Filter (Alle/Service/Küche) bleiben bestehen
-- Ranking-Badge (#4 · 9.4%) weiterhin inline neben dem Namen
-- Auf Mobile: horizontales Scrollen oder responsive Karten-Fallback
+3. **Init**: Beim Bearbeiten bestehende `zt_department`-Werte aus `staff.staff_restaurants` laden. Mehrere Zeilen pro Restaurant werden zu einem Set zusammengeführt.
 
-### Änderungen
+4. **Submit**: `restaurant_assignments` statt `restaurant_ids` übergeben — pro Restaurant+Abteilung eine eigene Zeile:
+```typescript
+// z.B. Spicery mit Service+GL → 2 Zeilen
+[
+  { restaurant_id: "spicery-id", zt_department: "Service" },
+  { restaurant_id: "spicery-id", zt_department: "GL" },
+  { restaurant_id: "yum-id", zt_department: "Küche" },
+]
+```
+
+5. **Validierung**: Mindestens eine Abteilung pro ausgewähltem Restaurant erforderlich.
+
+### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/pages/StaffManagement.tsx` | Gruppierung nach Restaurant entfernen, stattdessen eine flache, alphabetisch sortierte Liste aller Mitarbeiter rendern. Karten-Grid durch `<Table>` ersetzen. |
-| `src/components/staff/StaffCard.tsx` | Wird nicht mehr verwendet — Logik in eine neue `StaffTableRow`-Komponente überführen, die eine `<TableRow>` rendert. |
-| `src/components/staff/StaffTableRow.tsx` | Neue Komponente: eine Tabellenzeile mit Spalten für Name (+ Ranking/Warnungen), Rollen-Chips, Restaurant-Badges, Berechtigungsstufe und Aktions-Buttons. |
+| `src/components/staff/StaffDialogNative.tsx` | State, UI und Submit-Logik wie oben beschrieben |
+| `src/hooks/useRestaurantEmployees.ts` | Deduplizierung hinzufügen, falls ein Mitarbeiter durch mehrere Abteilungs-Zeilen doppelt erscheint |
 
-### Mobile-Strategie
-Auf kleinen Bildschirmen (`< sm`) wird die Tabelle in einem horizontal scrollbaren Container (`overflow-x-auto`) gerendert, damit alle Spalten erreichbar bleiben.
+Die `useStaff.ts` Hooks (`useCreateStaff`, `useUpdateStaff`) unterstützen bereits `restaurant_assignments` mit `zt_department` — dort ist keine Änderung nötig.
 
