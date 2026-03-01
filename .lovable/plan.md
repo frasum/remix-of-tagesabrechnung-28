@@ -1,17 +1,26 @@
 
 
-## Plan: Mo–Fr Erzeugung nur für "Peter"
+## Plan: Tägliche Schichterzeugung für "Chefin" (nur Restaurant Yum)
 
-### Änderung
+### Änderungen
 
-**`src/pages/zeiterfassung/ZtZusammenfassung.tsx`** (1 Zeile):
-- Die `allEmployees`-Prop an `ShiftTimeOverride` wird gefiltert: nur Mitarbeiter deren `name`, `first_name` oder `nickname` "Peter" enthält werden übergeben.
+**1. `src/components/zeiterfassung/ShiftTimeOverride.tsx`**
+- Neue optionale Prop `dailyEmployees` (Mitarbeiter für tägliche Mo–So Schichterzeugung)
+- Dritter UI-Abschnitt: **"Tägliche Schichten erzeugen (Mo–So)"**
+- Logik: Für jeden Tag jeder Woche der Periode → `upsert` mit 17:00–01:00 (alle Tage, keine Ausnahmen)
+- Stunden über `calculateShiftHours()` berechnen, dabei Sonn-/Feiertage korrekt als `is_holiday` markieren
+
+**2. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
+- `restaurantSlug` aus `useRestaurant()` holen
+- Neue Prop `dailyEmployees` an `ShiftTimeOverride` übergeben, nur befüllt wenn `restaurantSlug === "yum"`:
 
 ```typescript
-allEmployees={sortedEmployees.filter(e => 
-  [e.name, e.first_name, e.nickname].some(n => n?.toLowerCase().includes("peter"))
-)}
+dailyEmployees={restaurantSlug === "yum"
+  ? sortedEmployees.filter(e =>
+      [e.name, e.last_name].some(n => n?.toLowerCase().includes("schumann")) ||
+      e.nickname?.toLowerCase().includes("chefin")
+    )
+  : []
+}
 ```
-
-Das bewirkt, dass der zweite Abschnitt ("Mo–Fr Schichten erzeugen & anpassen") nur Peter anzeigt. Der erste Abschnitt ("Bestehende Schichten überschreiben") bleibt unverändert und zeigt weiterhin alle Mitarbeiter mit Schichten.
 
