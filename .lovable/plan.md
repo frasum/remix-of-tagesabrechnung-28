@@ -2,19 +2,39 @@
 
 ## Problem
 
-`useRestaurantEmployees` dedupliziert Mitarbeiter nach `staff.id` und behält nur die erste gefundene Abteilung. Mitarbeiter wie "Lam Manager" mit GL + Service erscheinen daher nur in einer Abteilungs-Gruppe im Wochenplan.
+Aktuell unterstützt das System nur **einen** zweiten Mitarbeiter pro Schicht (`second_waiter_name`). Wenn alle 4 Mitarbeiter auf einem Schlüssel arbeiten, muss man die anderen 3 als separate Schichten anlegen, was die Pool-Berechnung verfälscht.
 
-## Lösung
+## Lösung: Team-Schicht mit mehreren Mitarbeitern
 
-Die Deduplizierung entfernen: Statt nach `staff.id` zu deduplizieren, jeden `staff_restaurants`-Eintrag als eigene Zeile zurückgeben. So erscheint ein Mitarbeiter in jeder zugewiesenen Abteilung.
+Die Spalte `second_waiter_name` (Text, einzelner Name) wird ersetzt durch `additional_waiters` (Text-Array, beliebig viele Namen). Dadurch können auf einer Schicht N Mitarbeiter zugewiesen werden. Der Pool-Anteil wird durch die Anzahl der Teammitglieder geteilt, und die TG%-Statistik wird jedem Mitglied korrekt zugerechnet.
 
-### Betroffene Datei
+### Beispiel
+
+Statt:
+- Schicht A: Mitarbeiter 1 + Mitarbeiter 2 (second_waiter)
+- Schicht B (Dummy): Mitarbeiter 3 — verfälscht Pool
+- Schicht C (Dummy): Mitarbeiter 4 — verfälscht Pool
+
+Neu:
+- Schicht A: Mitarbeiter 1 + [Mitarbeiter 2, Mitarbeiter 3, Mitarbeiter 4] — Pool wird durch 4 geteilt
+
+### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/hooks/useRestaurantEmployees.ts` | Deduplizierung entfernen — stattdessen alle Zeilen direkt mappen. Jede `(staff_id, zt_department)`-Kombination wird zu einem eigenen `RestaurantEmployee`-Eintrag. |
+| **DB-Migration** | Neue Spalte `additional_waiters text[] DEFAULT '{}'` auf `waiter_shifts`. Bestehende `second_waiter_name`-Werte migrieren. Alte Spalte behalten für Abwärtskompatibilität. |
+| `src/pages/WaiterCashUp.tsx` | Formular: Statt einem einzelnen `SecondWaiterSelect` ein Mehrfach-Auswahl-Feld für Team-Mitglieder. Share-Count = 1 + additional_waiters.length. |
+| `src/components/shared/SecondWaiterSelect.tsx` | Erweitern zu `TeamWaiterSelect` mit Multi-Select-Unterstützung (oder neue Komponente). |
+| `src/hooks/useSession.ts` | `useCreateWaiterShift` / `useUpdateWaiterShift`: `additional_waiters` Array statt einzelnem `second_waiter_name` speichern. `useWaiterTipAverages`: TG% für alle Team-Mitglieder berechnen. |
+| `src/hooks/useStatistics.ts` | Pool-Verteilung: Share-Count = 1 + additional_waiters.length. TG%-Statistik für alle Teammitglieder zurechnen. |
+| `src/pages/DailySummary.tsx` | Share-Count und Anzeige auf Array umstellen. Jedes Teammitglied als eigene Zeile rendern. |
+| `src/types/database.ts` | Interface `WaiterShift`: `additional_waiters: string[]` hinzufügen. |
+| `supabase/functions/send-telegram-summary` | Team-Schichten korrekt anzeigen. |
 
-### Auswirkung prüfen
+### Migrationsstrategie
 
-Der Wochenplan (`ZtWochenplan`) gruppiert Mitarbeiter nach `department`. Durch die Änderung wird "Lam Manager" sowohl unter GL als auch unter SERVICE angezeigt — jeweils mit eigener Schichtzeile.
+1. Neue Spalte `additional_waiters text[] DEFAULT '{}'` hinzufügen
+2. Bestehende Daten migrieren: `UPDATE waiter_shifts SET additional_waiters = ARRAY[second_waiter_name] WHERE second_waiter_name IS NOT NULL`
+3. Code umstellen auf `additional_waiters`
+4. `second_waiter_name` als berechnete/abgeleitete Spalte behalten oder entfernen
 
