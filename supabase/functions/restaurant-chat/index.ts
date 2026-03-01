@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       const [wsRes, ksRes, expRes, advRes] = await Promise.all([
         supabase
           .from("waiter_shifts")
-          .select("session_id, waiter_name, pos_sales, kassiert_brutto, differenz, kitchen_tip, hours_worked")
+          .select("session_id, waiter_name, pos_sales, kassiert_brutto, differenz, kitchen_tip, hours_worked, participates_in_pool, additional_waiters")
           .in("session_id", sessionIds)
           .limit(5000),
         supabase
@@ -150,21 +150,64 @@ Deno.serve(async (req) => {
       sessionMonthRestaurant[s.id] = { month: s.session_date.slice(0, 7), restaurant: restaurantMap[s.restaurant_id] || "?" };
     });
 
-    const waiterTipAgg: Record<string, Record<string, number>> = {}; // key: month|restaurant, value: { waiterName: totalTip }
+    const waiterTipAgg: Record<string, Record<string, number>> = {};
     const waiterHoursAgg: Record<string, Record<string, number>> = {};
     const kitchenHoursAgg: Record<string, Record<string, number>> = {};
-    const kitchenTipAgg: Record<string, number> = {}; // key: month|restaurant
+    const kitchenTipAgg: Record<string, number> = {};
 
+    // Group waiter shifts by session for pool calculation
+    const shiftsBySession: Record<string, any[]> = {};
     waiterShifts.forEach((ws: any) => {
-      const info = sessionMonthRestaurant[ws.session_id];
-      if (!info) return;
+      if (!shiftsBySession[ws.session_id]) shiftsBySession[ws.session_id] = [];
+      shiftsBySession[ws.session_id].push(ws);
+    });
+
+    // Pool-based tip distribution (matching app logic)
+    for (const [sessionId, shiftsInSession] of Object.entries(shiftsBySession)) {
+      const info = sessionMonthRestaurant[sessionId];
+      if (!info) continue;
       const key = `${info.month}|${info.restaurant}`;
       if (!waiterTipAgg[key]) waiterTipAgg[key] = {};
       if (!waiterHoursAgg[key]) waiterHoursAgg[key] = {};
-      waiterTipAgg[key][ws.waiter_name] = (waiterTipAgg[key][ws.waiter_name] || 0) + (ws.differenz || 0);
-      waiterHoursAgg[key][ws.waiter_name] = (waiterHoursAgg[key][ws.waiter_name] || 0) + (ws.hours_worked || 0);
-      kitchenTipAgg[key] = (kitchenTipAgg[key] || 0) + (ws.kitchen_tip || 0);
-    });
+
+      // Session pool = sum of all differenz
+      const sessionPool = shiftsInSession.reduce((sum: number, s: any) => sum + (s.differenz || 0), 0);
+
+      // Count participating waiter shares (additional_waiters count extra)
+      const waiterShareCount = shiftsInSession.reduce((count: number, s: any) => {
+        if (!s.participates_in_pool) return count;
+        const additionalCount = (s.additional_waiters?.length || 0);
+        return count + 1 + additionalCount;
+      }, 0);
+
+      // Distribute pool equally among participants
+      if (waiterShareCount > 0 && sessionPool > 0) {
+        const tipPerWaiter = sessionPool / waiterShareCount;
+        shiftsInSession.forEach((ws: any) => {
+          // Track hours for all
+          waiterHoursAgg[key][ws.waiter_name] = (waiterHoursAgg[key][ws.waiter_name] || 0) + (ws.hours_worked || 0);
+
+          if (!ws.participates_in_pool) return;
+
+          // Primary waiter gets pool share
+          waiterTipAgg[key][ws.waiter_name] = (waiterTipAgg[key][ws.waiter_name] || 0) + tipPerWaiter;
+
+          // Additional waiters get pool share too
+          const additionalWaiters: string[] = ws.additional_waiters || [];
+          for (const name of additionalWaiters) {
+            waiterTipAgg[key][name] = (waiterTipAgg[key][name] || 0) + tipPerWaiter;
+          }
+        });
+      } else {
+        // Track hours even if no pool
+        shiftsInSession.forEach((ws: any) => {
+          waiterHoursAgg[key][ws.waiter_name] = (waiterHoursAgg[key][ws.waiter_name] || 0) + (ws.hours_worked || 0);
+        });
+      }
+
+      // Kitchen tip aggregate
+      kitchenTipAgg[key] = (kitchenTipAgg[key] || 0) + shiftsInSession.reduce((sum: number, ws: any) => sum + (ws.kitchen_tip || 0), 0);
+    }
 
     kitchenShifts.forEach((ks: any) => {
       const info = sessionMonthRestaurant[ks.session_id];
