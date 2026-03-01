@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
+import { useActiveStaffByRestaurant } from '@/hooks/useStaff';
 import { useSelectedDate } from '@/contexts/DateContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSessionLocked } from '@/utils/businessDate';
@@ -45,15 +46,24 @@ export default function KitchenTipSplit() {
   const { data: kitchenShifts = [] } = useKitchenShifts(session?.id);
   const createKitchenShift = useCreateKitchenShift();
   const deleteKitchenShift = useDeleteKitchenShift();
+  const { data: activeStaff = [] } = useActiveStaffByRestaurant(restaurantId ?? null);
+
+  // Helper: check if a kitchen staff member participates in pool
+  const isPoolParticipant = (staffName: string) => {
+    const record = activeStaff.find((s) => s.name === staffName);
+    return record ? record.participates_in_pool !== false : true;
+  };
 
   // Calculate total kitchen tip (2% of all POS sales)
   const totalKitchenTip = waiterShifts.reduce((sum, shift) => sum + shift.kitchen_tip, 0);
   
-  // Calculate total hours worked
+  // Only pool participants count toward hour-based distribution
+  const poolShifts = kitchenShifts.filter((s) => isPoolParticipant(s.staff_name));
+  const totalPoolHours = poolShifts.reduce((sum, shift) => sum + shift.hours_worked, 0);
   const totalHours = kitchenShifts.reduce((sum, shift) => sum + shift.hours_worked, 0);
 
-  // Calculate tip per hour
-  const tipPerHour = totalHours > 0 ? totalKitchenTip / totalHours : 0;
+  // Tip per hour based on pool participants only
+  const tipPerHour = totalPoolHours > 0 ? totalKitchenTip / totalPoolHours : 0;
 
   const handleCreateSession = async () => {
     if (!restaurantId) return;
@@ -190,7 +200,6 @@ export default function KitchenTipSplit() {
                       placeholder="Mitarbeiter wählen"
                       excludeNames={kitchenShifts.map((s) => s.staff_name)}
                       restaurantId={restaurantId}
-                      excludeNonPoolParticipants
                     />
                   </div>
 
@@ -253,12 +262,16 @@ export default function KitchenTipSplit() {
                         </TableHeader>
                         <TableBody>
                           {kitchenShifts.map((shift) => {
-                            const percentage = totalHours > 0 ? (shift.hours_worked / totalHours) * 100 : 0;
-                            const tipAmount = totalHours > 0 ? (shift.hours_worked / totalHours) * totalKitchenTip : 0;
+                            const inPool = isPoolParticipant(shift.staff_name);
+                            const percentage = inPool && totalPoolHours > 0 ? (shift.hours_worked / totalPoolHours) * 100 : 0;
+                            const tipAmount = inPool && totalPoolHours > 0 ? (shift.hours_worked / totalPoolHours) * totalKitchenTip : 0;
 
                             return (
-                              <TableRow key={shift.id}>
-                                <TableCell className="font-medium">{shift.staff_name}</TableCell>
+                              <TableRow key={shift.id} className={!inPool ? 'opacity-50' : ''}>
+                                <TableCell className="font-medium">
+                                  {shift.staff_name}
+                                  {!inPool && <span className="ml-2 text-xs text-muted-foreground">(kein Pool)</span>}
+                                </TableCell>
                                 <TableCell className="text-center">{shift.shift_start.slice(0, 5)}</TableCell>
                                 <TableCell className="text-center">{shift.shift_end.slice(0, 5)}</TableCell>
                                 <TableCell className="text-right tabular-nums">
