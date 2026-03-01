@@ -1,20 +1,16 @@
 
 
-## Plan: Excel-Export für Buchhaltung hinzufügen
+## Plan: Layout der Zusammenfassungsseite an Buchhaltung angleichen
 
-Die Buchhaltungsseite hat bereits einen PDF-Export. Es fehlt ein Excel-Export. Der bestehende PDF-Button wird in eine Zweier-Gruppe (PDF + Excel) umgewandelt, analog zur Zusammenfassung.
+Die Zusammenfassungsseite hat aktuell den Titel in einer eigenen Zeile und darunter Select + Buttons nebeneinander. Die Buchhaltungsseite hat alles in einer Zeile: links Titel + Select, rechts die Buttons (`justify-between`).
 
-### 1. Neue Datei `src/lib/exportBuchhaltungExcel.ts`
+### Änderung in `src/pages/zeiterfassung/ZtZusammenfassung.tsx`
 
-- Ein Sheet "Buchhaltung" mit gleicher Struktur wie die PDF-Tabelle
-- Spalten: Mitarbeiter | Gesamt Std. | Schichten | So/Fei Std. | 20-24 Std. | 24-x Std. | U (angr.) | K | Vorschuss | Besonderheiten
-- Abteilungs-Header als eigene Zeilen
-- Numerische Werte als Zahlen (rechenbar in Excel)
-- Parameter: `periodLabel`, `employees`, `shifts`, `payrollNotes` (identisch zum PDF-Export)
+Die zwei `div`-Blöcke (Zeilen 118-121 und 122-157) werden zu einem einzelnen `flex justify-between` Block zusammengeführt:
 
-### 2. Änderung in `src/pages/zeiterfassung/ZtBuchhaltung.tsx`
+- **Links**: Titel "Zusammenfassung" + Period-Select in einer Gruppe (`flex items-center gap-3`)
+- **Rechts**: PDF- und Excel-Buttons in einer Gruppe (`flex items-center gap-2`)
+- SelectTrigger bekommt `h-8 text-xs` wie bei Buchhaltung
 
-- Import `exportBuchhaltungExcel` + `FileSpreadsheet` Icon
-- Bestehenden PDF-Button beibehalten, daneben einen neuen Excel-Button hinzufügen
-- Beide Buttons in einer `div`-Gruppe mit `gap-2`
+Keine funktionalen Änderungen, nur Layout-Anpassung.
 
