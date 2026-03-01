@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { subMonths, format } from 'date-fns';
 
 export interface CashBalanceRow {
   date: string;
@@ -18,42 +19,50 @@ export interface CashBalanceRow {
   rawBargeld: number;
 }
 
-export function useCashBalanceData(restaurantId: string | null) {
+function defaultFromDate(): string {
+  return format(subMonths(new Date(), 6), 'yyyy-MM-dd');
+}
+
+export function useCashBalanceData(restaurantId: string | null, fromDate?: string) {
+  const effectiveFromDate = fromDate ?? defaultFromDate();
+
   return useQuery({
-    queryKey: ['cash-balance', restaurantId],
+    queryKey: ['cash-balance', restaurantId, effectiveFromDate],
     queryFn: async (): Promise<CashBalanceRow[]> => {
       if (!restaurantId) return [];
 
-      // 0+1. Restaurant + Sessions parallel laden
-      const [restaurantResult, sessionsResult] = await Promise.all([
-        supabase
-          .from('restaurants')
-          .select('initial_cash_deficit')
-          .eq('id', restaurantId)
-          .single(),
+      // 0. Compute carry-over from DB function + load sessions in parallel
+      const [carryOverResult, sessionsResult] = await Promise.all([
+        supabase.rpc('compute_carry_over', {
+          p_restaurant_id: restaurantId,
+          p_before_date: effectiveFromDate,
+        }),
         supabase
           .from('sessions')
           .select('id, session_date, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, takeaway_total, vouchers_redeemed, finedine_vouchers, vouchers_sold, einladung, vorschuss, sonstige_einnahme')
           .eq('restaurant_id', restaurantId)
+          .gte('session_date', effectiveFromDate)
           .order('session_date', { ascending: true })
           .limit(10000),
       ]);
 
-      const initialDeficit = (restaurantResult.data as any)?.initial_cash_deficit ?? 0;
+      if (carryOverResult.error) throw carryOverResult.error;
+      const initialCarryOver = Number(carryOverResult.data) || 0;
+
       const sessions = sessionsResult.data;
       if (sessionsResult.error) throw sessionsResult.error;
       if (!sessions || sessions.length === 0) return [];
 
       const sessionIds = sessions.map(s => s.id);
 
-      // Batch session IDs in chunks of 500 to avoid query limits
+      // Batch session IDs in chunks of 500
       const chunkSize = 500;
       const chunks: string[][] = [];
       for (let i = 0; i < sessionIds.length; i += chunkSize) {
         chunks.push(sessionIds.slice(i, i + chunkSize));
       }
 
-      // 2-4. Load waiter_shifts, expenses, advances in parallel per chunk
+      // Load waiter_shifts, expenses, advances in parallel per chunk
       const [allShifts, allExpenses, allAdvances] = await Promise.all([
         Promise.all(chunks.map(chunk =>
           supabase.from('waiter_shifts').select('session_id, open_invoices').in('session_id', chunk).limit(10000)
@@ -66,22 +75,22 @@ export function useCashBalanceData(restaurantId: string | null) {
         )).then(results => results.flatMap(r => { if (r.error) throw r.error; return r.data || []; })),
       ]);
 
-      // 5. Register transfers laden
+      // Load register transfers (filtered)
       const { data: transfers, error: transfersError } = await supabase
         .from('register_transfers')
         .select('transfer_date, amount, direction')
         .eq('restaurant_id', restaurantId)
+        .gte('transfer_date', effectiveFromDate)
         .limit(10000);
 
       if (transfersError) throw transfersError;
 
-      // 6. Build a unified date map (sessions + transfer-only days)
+      // Build unified date map
       const sessionMap = new Map<string, typeof sessions[0]>();
       for (const s of sessions) {
         sessionMap.set(s.session_date, s);
       }
 
-      // Find transfer dates that have no session
       const transferOnlyDates = new Set<string>();
       for (const t of (transfers || [])) {
         if (!sessionMap.has(t.transfer_date)) {
@@ -89,13 +98,12 @@ export function useCashBalanceData(restaurantId: string | null) {
         }
       }
 
-      // All dates sorted
       const allDates = [...new Set([
         ...sessions.map(s => s.session_date),
         ...transferOnlyDates,
       ])].sort();
 
-      let carryOver = initialDeficit;
+      let carryOver = initialCarryOver;
 
       return allDates.map((date) => {
         const session = sessionMap.get(date);
