@@ -98,17 +98,28 @@ export default function Statistics() {
   const { data: allRestaurants } = useRestaurants();
   const allRestaurantIds = useMemo(() => allRestaurants?.map(r => r.id) ?? [], [allRestaurants]);
 
-  // Single / All mode data
-  const effectiveIds = statsMode === 'all' ? allRestaurantIds : (statsMode === 'compare' ? allRestaurantIds : undefined);
-  const effectiveId = statsMode === 'single' ? restaurantId : undefined;
-  const { data, isLoading } = useStatistics(timeRange, customRange, effectiveId, statsMode !== 'single' ? effectiveIds : undefined);
-  const { data: comparisonData, isLoading: comparisonLoading } = useStatisticsComparison(timeRange, customRange, effectiveId, statsMode !== 'single' ? effectiveIds : undefined);
+  // Determine query parameters based on mode
+  const isMultiMode = statsMode !== 'single';
+  const multiReady = isMultiMode && allRestaurantIds.length > 1;
+
+  const { data, isLoading: statsLoading } = useStatistics(
+    timeRange, customRange,
+    isMultiMode ? undefined : restaurantId,
+    multiReady ? allRestaurantIds : undefined
+  );
+  const { data: comparisonData, isLoading: comparisonLoading } = useStatisticsComparison(
+    timeRange, customRange,
+    isMultiMode ? undefined : restaurantId,
+    multiReady ? allRestaurantIds : undefined
+  );
 
   // Compare mode: load each restaurant separately for comparison card
   const restA = allRestaurants?.[0];
   const restB = allRestaurants?.[1];
   const { data: dataA } = useStatistics(timeRange, customRange, statsMode === 'compare' ? restA?.id : null);
   const { data: dataB } = useStatistics(timeRange, customRange, statsMode === 'compare' ? restB?.id : null);
+
+  const isLoading = statsLoading || (isMultiMode && allRestaurantIds.length === 0);
 
   const { getLabel } = useLabels(restaurantId);
 

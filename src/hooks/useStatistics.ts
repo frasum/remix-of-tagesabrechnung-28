@@ -50,7 +50,7 @@ export interface CustomDateRange {
 
 export function useStatistics(timeRange: TimeRange = 'month', customRange?: CustomDateRange, restaurantId?: string | null, restaurantIds?: string[]) {
   const effectiveIds = restaurantIds ?? (restaurantId ? [restaurantId] : []);
-  const cacheKey = restaurantIds ? restaurantIds.sort().join(',') : restaurantId;
+  const cacheKey = restaurantIds ? [...restaurantIds].sort().join(',') : restaurantId;
   return useQuery({
     queryKey: ['statistics', timeRange, customRange?.from?.toISOString(), customRange?.to?.toISOString(), cacheKey],
     enabled: effectiveIds.length > 0,
