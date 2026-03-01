@@ -1,36 +1,20 @@
 
 
-## ShiftTimeOverride immer fuer alle Restaurants anzeigen
+## Was "Bestehende Schichten überschreiben" tut
 
-Das Problem: Die ShiftTimeOverride-Komponente zeigt aktuell nur Mitarbeiter des ausgewaehlten Restaurants. Der User moechte, dass sie immer Mitarbeiter **beider** Restaurants anzeigt, unabhaengig von der Sidebar-Auswahl.
+Diese Funktion nimmt alle **bereits existierenden** Schichten der ausgewählten Mitarbeiter in der aktuellen Periode und überschreibt deren Start-/Endzeiten mit den Standardwerten:
+- **Wochentage**: 17:00 – 01:00
+- **Sonn-/Feiertage**: 15:00 – 02:00
 
-### Aenderung in `src/pages/zeiterfassung/ZtZusammenfassung.tsx`
+Dabei werden nur Schichten berücksichtigt, die bereits eine Start- und Endzeit haben und **keine** Abwesenheit (Urlaub, Krank etc.) eingetragen haben. Abwesenheiten und leere Schichten bleiben unberührt. Die Stunden (Gesamt, Abend, Nacht, Sonn-/Feiertagszuschläge) werden automatisch neu berechnet.
 
-1. **`useRestaurants` importieren** und alle Restaurant-IDs ermitteln.
+Im Gegensatz zu den anderen beiden Sektionen werden hier **keine neuen Schichten erzeugt** — es werden nur vorhandene Einträge aktualisiert.
 
-2. **Neuen Query hinzufuegen**, der Mitarbeiter aller Restaurants laedt (analog zu `useRestaurantEmployees`, aber ohne Restaurant-Filter):
-   ```ts
-   const { data: allRestaurantEmployees } = useQuery({
-     queryKey: ["all-restaurant-employees-zt", allRestaurantIds],
-     queryFn: async () => {
-       const { data, error } = await supabase
-         .from("staff_restaurants")
-         .select("zt_department, staff_id, restaurant_id, staff!inner(id, name, perso_nr, first_name, last_name, nickname)")
-         .in("restaurant_id", allRestaurantIds)
-         .not("zt_department", "is", null);
-       if (error) throw error;
-       return data.map(row => ({ ... }));
-     },
-   });
-   ```
+### Änderung
 
-3. **Alle Wochen-IDs aller Restaurants fuer die selbe Periode laden**, damit ShiftTimeOverride die Schichten aller Restaurants abdecken kann. Dazu einen Query der `zt_weeks` nach Datumsbereichen (nicht nach Restaurant) laedt.
+In `src/components/zeiterfassung/ShiftTimeOverride.tsx` wird unter der Überschrift "Bestehende Schichten überschreiben" ein Beschreibungstext eingefügt (analog zu den Sektionen 2 und 3):
 
-4. **ShiftTimeOverride-Props anpassen**: Statt `sortedEmployees` und `employeesWithShifts` (die nur das aktuelle Restaurant betreffen) werden die neuen restaurantuebergreifenden Daten uebergeben. Die Filter-Logik (Peter, Schumann/Chefin) bleibt gleich, wird aber auf die erweiterte Mitarbeiterliste angewandt.
-
-5. **weekIds fuer ShiftTimeOverride**: Alle Wochen-IDs aller Restaurants der selben Periode uebergeben, damit Schichten korrekt erzeugt/ueberschrieben werden.
-
-### Aenderung in `src/components/zeiterfassung/ShiftTimeOverride.tsx`
-
-Keine strukturelle Aenderung noetig – die Komponente nimmt bereits generische Listen entgegen. Die breitere Datenbasis kommt rein ueber die Props.
+```
+Überschreibt die Zeiten aller vorhandenen Schichten (mit Start-/Endzeit, ohne Abwesenheit) auf die Standardwerte. Es werden keine neuen Schichten erzeugt.
+```
 
