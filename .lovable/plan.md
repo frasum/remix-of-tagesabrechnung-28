@@ -1,23 +1,52 @@
 
 
-## Aktuelle Woche sofort öffnen
+## Rolle-Dropdown durch Checkboxen ersetzen (Service, Küche, GL)
 
 ### Problem
-Beim Öffnen der Zeiterfassung gibt es eine Kaskade von asynchronen Abfragen:
-1. Perioden laden → Periode auto-wählen
-2. Wochen laden (abhängig von gewählter Periode) → Woche auto-wählen
+Aktuell ist die Rollenwahl ein Dropdown mit drei Optionen: Service, Küche, Service & Küche. Der User möchte stattdessen drei unabhängige Checkboxen (Service, Küche, GL), die frei kombinierbar sind.
 
-Diese Kaskade verursacht eine spürbare Verzögerung, bis die aktuelle Woche angezeigt wird.
+### Datenbank-Änderung
 
-### Lösung
+Die `staff_role` Enum hat aktuell die Werte `waiter | kitchen | both`. Um alle Kombinationen mit GL abzubilden, muss die Enum erweitert werden:
+
+| Checkbox-Kombination | Enum-Wert |
+|---|---|
+| Service | `waiter` |
+| Küche | `kitchen` |
+| GL | `gl` (neu) |
+| Service + Küche | `both` |
+| Service + GL | `waiter_gl` (neu) |
+| Küche + GL | `kitchen_gl` (neu) |
+| Alle drei | `all` (neu) |
+
+**Migration**: `ALTER TYPE staff_role ADD VALUE 'gl'; ADD VALUE 'waiter_gl'; ADD VALUE 'kitchen_gl'; ADD VALUE 'all';`
+
+### Code-Änderungen
 
 | Datei | Änderung |
 |---|---|
-| `src/contexts/ZtContext.tsx` | Wochen für alle Perioden gleichzeitig mit den Perioden laden (nicht erst nach Perioden-Auswahl). So können Periode UND Woche sofort auto-gewählt werden, ohne auf eine zweite Abfrage warten zu müssen. |
+| `src/hooks/useStaff.ts` | `StaffRole` Type erweitern um `'gl' \| 'waiter_gl' \| 'kitchen_gl' \| 'all'`. Hilfsfunktionen zum Konvertieren zwischen Checkbox-State (`{service, kitchen, gl}`) und Enum-Wert. |
+| `src/components/staff/StaffDialogNative.tsx` | Dropdown (Zeilen 197-209) ersetzen durch drei native Checkboxen für Service, Küche, GL. State als drei Booleans verwalten, beim Submit in den passenden Enum-Wert konvertieren. |
+| `src/pages/StaffManagement.tsx` | Filterlogik und Gruppierung anpassen, damit GL-Rollen korrekt erkannt werden (z.B. `role === 'gl'` oder `role === 'waiter_gl'` etc.). |
 
-### Detail
-- Die `weeks`-Query nicht mehr von `selectedPeriodId` abhängig machen, sondern alle Wochen für alle Perioden des Restaurants in einer einzigen Abfrage laden (gefiltert über die Period-IDs)
-- Die Wochen-Daten dann im Context nach `selectedPeriodId` filtern, sodass `weeks` weiterhin nur die Wochen der gewählten Periode enthält
-- Dadurch sind beim ersten Render beide Datensätze gleichzeitig verfügbar und Periode + Woche können im selben Render-Zyklus auto-gewählt werden
-- Die Auto-Select-Effects so anpassen, dass Periode und Woche in einem Schritt gesetzt werden können
+### UI im Dialog
+
+```text
+Rolle *
+☑ Service
+☐ Küche
+☐ GL
+```
+
+Mindestens eine Checkbox muss gewählt sein (Validierung).
+
+### Hilfsfunktionen (in useStaff.ts)
+
+```typescript
+function rolesToEnum(s: boolean, k: boolean, g: boolean): StaffRole
+function enumToRoles(role: StaffRole): { service: boolean; kitchen: boolean; gl: boolean }
+function hasRole(role: StaffRole, check: 'waiter'|'kitchen'|'gl'): boolean
+```
+
+Die `hasRole`-Funktion wird überall dort verwendet, wo bisher `role === 'waiter' || role === 'both'` steht, um alle neuen Kombinationen abzudecken.
 
