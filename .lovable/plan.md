@@ -1,24 +1,32 @@
 
 
-## Mitarbeiter in ShiftTimeOverride ausblenden
+## "Alle Restaurants" Toggle im Wochenplan
 
-### Ansatz
-Ein Suchfeld/Filter oberhalb der Mitarbeiterlisten hinzufuegen, plus eine "Ausgeblendete"-Funktion, mit der bestimmte Mitarbeiter dauerhaft (per localStorage) ausgeblendet werden koennen.
+### Was sich aendert
 
-### Umsetzung in `src/components/zeiterfassung/ShiftTimeOverride.tsx`
+Im Wochenplan wird ein "Alle Restaurants"-Button eingefuegt (wie in Buchhaltung/Zusammenfassung), der Mitarbeiter und Schichten aller Restaurants anzeigt.
 
-1. **Neuer State `hiddenIds`** als `Set<string>`, initialisiert aus `localStorage` (Key z.B. `zt-shift-override-hidden`). Aenderungen werden sofort in localStorage persistiert, sodass die Auswahl zwischen Sessions erhalten bleibt.
+### Umsetzung in `src/pages/zeiterfassung/ZtWochenplan.tsx`
 
-2. **Toggle-Button "Ausgeblendete anzeigen"** oberhalb der Sektionen, der einen `showHidden`-State steuert. Wenn aktiv, werden ausgeblendete Mitarbeiter grau/durchgestrichen angezeigt mit einem Auge-Icon zum Wiedereinblenden.
+1. **State + Imports**: `cumulated` State hinzufuegen, `useRestaurants` und `useCumulatedZtData` importieren.
 
-3. **Auge-Icon pro Mitarbeiter** (EyeOff-Icon von lucide-react) neben jedem Checkbox-Eintrag, mit dem einzelne Mitarbeiter ausgeblendet werden koennen.
+2. **Daten umschalten**:
+   - Wenn `cumulated=true`: Mitarbeiter aus `useCumulatedZtData` verwenden (alle Restaurants, dedupliziert nach ID+Department).
+   - Wochen: Die deduplizierten Wochen aus `cumData` verwenden, aber fuer Shift-Queries alle Week-IDs (aus `weekNumberToAllIds`) der gewaehlten Woche heranziehen.
+   - Shifts: Statt nur den einen `selectedWeekId` zu laden, alle korrespondierenden Week-IDs der selben Wochennummer laden.
 
-4. **Filterung**: Alle drei Sektionen (Bestehende ueberschreiben, Mo-Fr, Mo-So) filtern ihre `uniqueEmployees`/`uniqueAllEmployees`/`uniqueDailyEmployees` Listen, sodass ausgeblendete IDs nicht angezeigt werden (ausser `showHidden` ist aktiv).
+3. **Shift-Query anpassen**: Im kumulierten Modus werden Shifts per `.in("week_id", allWeekIdsForSelectedWeek)` geladen statt `.eq("week_id", selectedWeekId)`.
 
-5. **Zusaetzlich ein Textfilter** (kleines Input-Feld) zum schnellen Suchen nach Namen, das alle drei Listen gleichzeitig filtert.
+4. **Period-Shifts**: Analog `allPeriodShifts` auf alle Week-IDs aller Restaurants erweitern.
 
-6. **Badge** neben dem Toggle-Button, das anzeigt wie viele Mitarbeiter aktuell ausgeblendet sind (z.B. "3 ausgeblendet").
+5. **Bearbeitung**: Beim Upsert wird weiterhin der spezifische `week_id` des aktuell gewaehlten Restaurants verwendet. Im kumulierten Modus muss der passende `week_id` pro Restaurant/Woche ermittelt werden – dazu wird geschaut, welcher `week_id` zum Restaurant des Mitarbeiters gehoert.
 
-### Keine DB-Aenderung noetig
-Die Ausblende-Praeferenz wird rein clientseitig in localStorage gespeichert.
+6. **Button** neben dem Perioden-Select platzieren (gleiche Position/Style wie in Buchhaltung).
+
+### Technische Details
+
+- `weekNumberToAllIds` aus `useCumulatedZtData` liefert das Mapping von Wochennummer auf alle zugehoerigen Week-IDs.
+- Fuer die Shift-Anzeige werden alle Week-IDs zusammengefuehrt; die Totals-Berechnung bleibt identisch.
+- Der Export (PDF/Excel) wird im kumulierten Modus mit den erweiterten Daten gefuettert.
+- Konflikterkennung (`getConflict`) bleibt unveraendert, da sie bereits Cross-Week arbeitet.
 
