@@ -182,7 +182,7 @@ export default function StaffManagement() {
               </TabsTrigger>
               <TabsTrigger value="waiter" className="gap-2">
                 <UtensilsCrossed className="w-4 h-4" />
-                Mitarbeiter ({waiterCount})
+                Service ({waiterCount})
               </TabsTrigger>
               <TabsTrigger value="kitchen" className="gap-2">
                 <ChefHat className="w-4 h-4" />
@@ -254,7 +254,7 @@ export default function StaffManagement() {
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                       <UtensilsCrossed className="w-5 h-5 text-primary" />
-                      Mitarbeiter ({group.waiters.length})
+                      Service ({group.waiters.length})
                     </h3>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {group.waiters.map(staff => (
@@ -288,7 +288,7 @@ export default function StaffManagement() {
                   <div>
                     <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                       <UtensilsCrossed className="w-5 h-5 text-primary" />
-                      Mitarbeiter ({groupedByRestaurant.noRestaurant.waiters.length})
+                      Service ({groupedByRestaurant.noRestaurant.waiters.length})
                     </h3>
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {groupedByRestaurant.noRestaurant.waiters.map(staff => (
