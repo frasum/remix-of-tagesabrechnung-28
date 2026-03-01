@@ -1,20 +1,19 @@
 
 
-## Problem
+## Erweiterte Chat-Vorschlaege
 
-Der Chat zeigt die Antwort ohne Aufschluesselung nach Restaurant, weil die Kellner- und Kuechenschichten im AI-Kontext keine Restaurant-Zuordnung haben. Die Daten zeigen nur `Session-Datum | Name | ...` aber nicht welches Restaurant. Da die AI nicht weiss welche Session zu welchem Restaurant gehoert, kann sie die Antwort nicht nach YUM und Spicery aufteilen.
-
-Ausserdem fehlt im System-Prompt die Anweisung, Antworten immer nach Restaurant aufzuschluesseln wenn mehrere vorhanden sind.
-
-## Loesung
+Die `SUGGESTIONS`-Liste in `RestaurantChat.tsx` wird um die gewuenschten Standardfragen erweitert.
 
 | Datei | Aenderung |
 |---|---|
-| `supabase/functions/restaurant-chat/index.ts` | 1. Restaurant-Name in alle Datenbereiche (Kellner-Schichten, Kuechen-Schichten, Ausgaben, Vorschuesse) einfuegen, indem `sessionDateMap` zu einer Map erweitert wird die auch den Restaurant-Namen enthaelt. 2. System-Prompt erweitern: "Wenn der User mehrere Restaurants hat, gliedere die Antwort immer nach Restaurant." |
+| `src/pages/RestaurantChat.tsx` | `SUGGESTIONS`-Array um 4 neue Fragen erweitern. Die ersten 3 Quick-Suggestions unterhalb der Eingabe bleiben, aber es werden mehr Vorschlaege auf dem Startbildschirm angezeigt. |
 
-### Details
+### Neue Fragen
 
-1. `sessionDateMap` wird zu `sessionInfoMap` mit `{ date, restaurant }` pro Session-ID
-2. Alle Kontext-Zeilen fuer Schichten/Ausgaben/Vorschuesse bekommen eine Restaurant-Spalte
-3. System-Prompt bekommt die Regel: "Wenn mehrere Restaurants vorhanden sind, gliedere deine Antwort immer nach Restaurant"
+1. "Wie hoch war der Kreditkartenanteil am Umsatz letzte Woche?"
+2. "Wer hat diesen Monat das meiste Trinkgeld bekommen?"
+3. "Wie viele Stunden hat die Kueche letzte Woche gearbeitet?"
+4. "Wie verhaelt sich der Umsatz zu den Schichtstunden pro Kellner?"
+
+Insgesamt dann 9 Vorschlaege auf dem Startbildschirm, 3 Quick-Suggestions im Chat-Modus.
 
