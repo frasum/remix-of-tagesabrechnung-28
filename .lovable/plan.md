@@ -1,31 +1,28 @@
 
 
-## Zeiterfassung-Unterseiten als separate Berechtigungen
+## Vorschüsse automatisch in Buchhaltung-Besonderheiten anzeigen
 
-Der einzelne `zeiterfassung`-Eintrag wird durch vier granulare Einträge ersetzt, einen pro Sub-Tab.
+Wenn ein Mitarbeiter in der Tagesabrechnung einen Vorschuss erhält (Tabelle `advances` mit `staff_name`, `amount`, `session_date` via Session), soll dieser automatisch in der Buchhaltungsansicht der Zeiterfassung erscheinen — sowohl im Vorschuss-Feld (Summe) als auch in den Besonderheiten (Datum + Betrag).
 
 ### Änderungen
 
-**1. `src/types/permissions.ts`**
-- `NAV_PERMISSIONS`: Eintrag `'zeiterfassung'` ersetzen durch vier Einträge:
-  - `'zeiterfassung'` → Wochenplan (Basis-Pfad)
-  - `'zeiterfassung/zusammenfassung'` → Zusammenfassung
-  - `'zeiterfassung/buchhaltung'` → Buchhaltung
-  - `'zeiterfassung/perioden'` → Perioden
-- `MANAGER_NAV_ITEMS`: Analog vier Einträge statt einem
+**1. `src/pages/zeiterfassung/ZtBuchhaltung.tsx`**
+- Neue Query: Alle `advances` laden, deren zugehörige `sessions.session_date` innerhalb der gewählten Periode liegt (Join über `session_id` → `sessions.session_date`), gefiltert auf `sessions.restaurant_id`
+- Die Advances nach `staff_name` gruppieren und an `BuchhaltungRow` als neue Prop `advances` weitergeben (Matching über `emp.name === advance.staff_name`)
 
-**2. `src/components/layout/AppLayout.tsx`**
-- Bei der Sidebar-Navigation: Wenn einer der vier `zeiterfassung/*`-Pfade erlaubt ist, den Haupt-Navigationspunkt "Zeiterfassung" anzeigen (Prüfung via `managerPaths.some(p => p.startsWith('zeiterfassung'))`)
+**2. `src/pages/zeiterfassung/buchhaltung/BuchhaltungRow.tsx`**
+- Neue Prop `advances` (Array mit `{ amount, date }`) entgegennehmen
+- Im Vorschuss-Feld: Wenn Advances vorhanden, die Summe als `defaultValue` vorbelegen (zusätzlich zum manuellen Wert aus `payroll_notes`)
+- Im Besonderheiten-Feld: Automatisch generierten Text voranstellen, z.B. `"Vorschuss 28.02.: 50,00 €"`, gefolgt vom manuell eingetragenen Text
 
-**3. `src/pages/zeiterfassung/ZtLayout.tsx`**
-- `useManagerNavPermissions` importieren und die `tabs`-Liste filtern: Nur Tabs anzeigen, für die der Manager eine Berechtigung hat
-- Admins sehen alle Tabs, Manager ohne Custom-Permissions ebenfalls
+**3. Daten-Abfrage (in ZtBuchhaltung)**
+- Query: `supabase.from('advances').select('*, sessions!inner(session_date)').eq('sessions.restaurant_id', restaurantId).gte('sessions.session_date', period.start_date).lte('sessions.session_date', period.end_date)`
+- Ergebnis: Alle Vorschüsse im Periodenzeitraum, mit Datum aus der Session
 
 ### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/types/permissions.ts` | 1 Eintrag → 4 granulare Einträge in beiden Arrays |
-| `src/components/layout/AppLayout.tsx` | Sidebar-Filter: Zeiterfassung sichtbar wenn mind. ein Sub-Pfad erlaubt |
-| `src/pages/zeiterfassung/ZtLayout.tsx` | Tabs nach Berechtigung filtern |
+| `src/pages/zeiterfassung/ZtBuchhaltung.tsx` | Advances-Query hinzufügen, nach Mitarbeiter gruppieren, an Row weiterreichen |
+| `src/pages/zeiterfassung/buchhaltung/BuchhaltungRow.tsx` | Advances-Prop, automatische Vorschuss-Summe + Besonderheiten-Text anzeigen |
 
