@@ -1172,6 +1172,10 @@ export type Database = {
           exists: boolean
         }[]
       }
+      compute_carry_over: {
+        Args: { p_before_date: string; p_restaurant_id: string }
+        Returns: number
+      }
       get_staff_permission: {
         Args: { p_staff_id: string }
         Returns: Database["public"]["Enums"]["app_permission_level"]
