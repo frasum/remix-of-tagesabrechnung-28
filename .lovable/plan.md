@@ -1,29 +1,25 @@
 
 
-## Plan: Schichtzeiten-Überschreibung für ausgewählte Mitarbeiter
+## Plan: Sonderfall "Peter" — Mo–Fr Schichten automatisch erzeugen
 
-### Konzept
-Ein neuer Admin-only Bereich in der Zusammenfassung, der es ermöglicht, für ausgewählte Mitarbeiter alle eingetragenen Schichten mit festen Zeiten zu überschreiben:
-- **Unter der Woche**: 17:00 – 01:00
-- **Sonn-/Feiertage**: 15:00 – 02:00
+### Problem
+Die aktuelle Schichtanpassung überschreibt nur **bestehende** Schichten. Für Peter sollen aber auch **fehlende** Schichten (Mo–Fr, 17:00–01:00) automatisch **erstellt** werden, selbst wenn noch keine Zeiteinträge vorhanden sind.
 
 ### Änderungen
 
-**1. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
-- Neuer Abschnitt unterhalb der Tabelle (nur sichtbar für Admins via `useAuth().hasPermission('admin')`)
-- Checkbox-Liste der Mitarbeiter mit Schichten in der aktuellen Periode
-- Button "Zeiten anpassen" — führt ein Batch-Update aller Schichten der ausgewählten Mitarbeiter durch:
-  - Für jede Schicht mit `start_time`/`end_time`: prüfen ob `shift_date` ein Sonntag oder in `bavarian_holidays` ist
-  - Entsprechend `start_time`/`end_time` auf die festen Werte setzen
-  - Stunden (`total_hours`, `evening_hours`, `night_hours`, `sunday_holiday_hours`) über `calculateShiftHours()` neu berechnen
-  - Per `supabase.from('zt_shifts').update(...)` speichern
+**1. `src/components/zeiterfassung/ShiftTimeOverride.tsx`**
+- Neue Prop `allEmployees` (alle Mitarbeiter des Restaurants, nicht nur die mit Schichten)
+- Neue Prop `weeks` (mit `id`, `start_date`, `end_date` pro Woche — nötig um fehlende Tage zu ermitteln)
+- Zweiter Bereich im UI: **"Schichten erzeugen & anpassen"** — hier werden Mitarbeiter angezeigt, für die Mo–Fr Schichten erzeugt werden sollen (auch wenn keine Einträge vorhanden sind)
+- Logik bei Klick:
+  1. Für jeden ausgewählten Mitarbeiter: alle Montag–Freitag-Tage der Periode ermitteln (aus den Wochen-Datumsbereichen)
+  2. Bestehende Schichten für diese Tage laden
+  3. Fehlende Tage per `INSERT` (upsert) in `zt_shifts` anlegen mit 17:00–01:00
+  4. Bestehende Tage per `UPDATE` auf 17:00–01:00 setzen (Sa/So/Feiertage werden übersprungen — nur Mo–Fr)
+  5. Stunden über `calculateShiftHours()` berechnen
 
-**2. Feiertags-Prüfung**
-- Lade `bavarian_holidays` für den Perioden-Zeitraum (einfacher Select-Query)
-- Kombiniere mit Sonntags-Check (`new Date(shift_date).getDay() === 0`)
-
-### Kein Backend nötig
-Alle Operationen laufen direkt über den Supabase-Client (die RLS-Policy auf `zt_shifts` erlaubt bereits ALL). Kein Edge Function nötig.
+**2. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
+- `allEmployees` (aus `useRestaurantEmployees`) und `weeks` (mit Datumsinformationen) an `ShiftTimeOverride` durchreichen
 
 ### UI-Entwurf
 ```text
@@ -33,13 +29,25 @@ Alle Operationen laufen direkt über den Supabase-Client (die RLS-Policy auf `zt
 │ Unter der Woche: 17:00 – 01:00             │
 │ Sonn-/Feiertage: 15:00 – 02:00             │
 │                                             │
+│ ── Bestehende Schichten überschreiben ──    │
 │ ☑ Max Mustermann (Küche)                    │
 │ ☐ Anna Schmidt (Service)                    │
-│ ☑ Peter Müller (GL)                         │
-│                                             │
 │ [Alle auswählen]  [Zeiten anpassen]         │
+│                                             │
+│ ── Mo–Fr Schichten erzeugen & anpassen ──   │
+│ ☐ Peter (GL)                                │
+│ Erzeugt fehlende Mo–Fr Einträge mit         │
+│ 17:00–01:00 für die gesamte Periode.        │
+│ [Schichten erzeugen]                        │
 └─────────────────────────────────────────────┘
 ```
 
-Nach Bestätigung werden die Schichten aktualisiert und die Zusammenfassungs-Daten neu geladen.
+### Technische Details
+- Tage generieren: Für jede Woche von `start_date` bis `end_date`, nur Mo(1)–Fr(5)
+- Feiertage werden ausgeschlossen (kein Eintrag an Feiertagen)
+- Upsert per `zt_shifts` mit unique constraint auf `(week_id, employee_id, shift_date, department)`
+- Department wird aus `staff_restaurants.zt_department` genommen
+
+### Kein Backend nötig
+Alles läuft über den bestehenden Supabase-Client.
 
