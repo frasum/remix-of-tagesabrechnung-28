@@ -1,32 +1,19 @@
 
 
-## "Alle Restaurants" Toggle im Wochenplan
+## Wechselgeldbestand prominent unter Trennlinie im PDF
 
 ### Was sich aendert
 
-Im Wochenplan wird ein "Alle Restaurants"-Button eingefuegt (wie in Buchhaltung/Zusammenfassung), der Mitarbeiter und Schichten aller Restaurants anzeigt.
+Der Wechselgeldbestand bleibt in der linken Spalte bestehen (nichts wird entfernt), aber **zusaetzlich** wird nach dem Spalten-Merge (Zeile 363) eine prominente, seitenbreite Sektion eingefuegt:
 
-### Umsetzung in `src/pages/zeiterfassung/ZtWochenplan.tsx`
+### Aenderung in `src/utils/pdfExport.ts` (nach Zeile 363)
 
-1. **State + Imports**: `cumulated` State hinzufuegen, `useRestaurants` und `useCumulatedZtData` importieren.
+1. **Trennlinie**: Horizontale Linie ueber die gesamte Seitenbreite (`margin` bis `pageWidth - margin`), damit der untere Teil abgetrennt und in die Kasse gelegt werden kann.
 
-2. **Daten umschalten**:
-   - Wenn `cumulated=true`: Mitarbeiter aus `useCumulatedZtData` verwenden (alle Restaurants, dedupliziert nach ID+Department).
-   - Wochen: Die deduplizierten Wochen aus `cumData` verwenden, aber fuer Shift-Queries alle Week-IDs (aus `weekNumberToAllIds`) der gewaehlten Woche heranziehen.
-   - Shifts: Statt nur den einen `selectedWeekId` zu laden, alle korrespondierenden Week-IDs der selben Wochennummer laden.
+2. **Grosser zentrierter Wechselgeldbestand**: Darunter mit Schriftgroesse 16pt, fett und zentriert der Text "Wechselgeldbestand: €X.XXX,XX" mit farbigem Hintergrund (gruen ab 2.000 EUR, rot darunter).
 
-3. **Shift-Query anpassen**: Im kumulierten Modus werden Shifts per `.in("week_id", allWeekIdsForSelectedWeek)` geladen statt `.eq("week_id", selectedWeekId)`.
+3. **Nichts wird entfernt** – die bestehende kleine Darstellung in der linken Spalte bleibt erhalten.
 
-4. **Period-Shifts**: Analog `allPeriodShifts` auf alle Week-IDs aller Restaurants erweitern.
-
-5. **Bearbeitung**: Beim Upsert wird weiterhin der spezifische `week_id` des aktuell gewaehlten Restaurants verwendet. Im kumulierten Modus muss der passende `week_id` pro Restaurant/Woche ermittelt werden – dazu wird geschaut, welcher `week_id` zum Restaurant des Mitarbeiters gehoert.
-
-6. **Button** neben dem Perioden-Select platzieren (gleiche Position/Style wie in Buchhaltung).
-
-### Technische Details
-
-- `weekNumberToAllIds` aus `useCumulatedZtData` liefert das Mapping von Wochennummer auf alle zugehoerigen Week-IDs.
-- Fuer die Shift-Anzeige werden alle Week-IDs zusammengefuehrt; die Totals-Berechnung bleibt identisch.
-- Der Export (PDF/Excel) wird im kumulierten Modus mit den erweiterten Daten gefuettert.
-- Konflikterkennung (`getConflict`) bleibt unveraendert, da sie bereits Cross-Week arbeitet.
+### Betroffene Datei
+- `src/utils/pdfExport.ts` – nur Einfuegung nach Zeile 363, vor dem Footer-Block.
 
