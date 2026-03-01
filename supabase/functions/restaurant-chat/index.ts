@@ -123,7 +123,7 @@ Deno.serve(async (req) => {
     });
 
     contextParts.push("\n=== KELLNER-SCHICHTEN ===");
-    contextParts.push("Session-Datum | Restaurant | Name | POS-Umsatz | Kassiert | Differenz | Küchen-TG | Stunden");
+    contextParts.push("Session-Datum | Restaurant | Name | POS-Umsatz | Kassiert | Kellner-TG (Pool-Anteil) | Küchen-TG | Stunden");
     waiterShifts.forEach((ws: any) => {
       const info = sessionInfoMap[ws.session_id] || { date: "?", restaurant: "?" };
       contextParts.push(
@@ -179,6 +179,7 @@ Wichtige Regeln:
 - Antworte präzise und basierend auf den Daten
 - Wenn Daten nicht vorhanden sind, sage das klar
 - Wenn mehrere Restaurants vorhanden sind, gliedere deine Antwort immer nach Restaurant
+- "Kellner-TG (Pool-Anteil)" ist das Trinkgeld das der Kellner behält (sein Anteil am Trinkgeld-Pool). "Küchen-TG" ist der separate Anteil der an die Küche abgeführt wird. Wenn nach "Trinkgeld" eines Kellners gefragt wird, verwende den "Kellner-TG (Pool-Anteil)".
 - Heute ist ${new Date().toISOString().split("T")[0]}`;
 
     // Call AI Gateway
