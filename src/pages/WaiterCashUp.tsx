@@ -374,23 +374,6 @@ export default function WaiterCashUp() {
                 {/* Preview Calculations */}
                 <div className="bg-muted rounded-lg p-4 space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Erwartet ({getLabel('pos_sales')}
-                      {!isFieldHidden('hilf_mahl') ? ` + ${getLabel('hilf_mahl')}` : ''}
-                      {!isFieldHidden('open_invoices') ? ` - ${getLabel('open_invoices')}` : ''}
-                      {!isFieldHidden('card_total_gl') ? ` - ${getLabel('card_total_gl')}` : ''}):
-                    </span>
-                    <span className="font-medium tabular-nums">
-                      {formatCurrency(newPosSales + newHilfMahl - newOpenInvoices - newCardTotal)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Küchen Trinkgeld (2% vom Umsatz):</span>
-                    <span className="font-medium tabular-nums">
-                      {formatCurrency(newPosSales * 0.02)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Trinkgeld:</span>
                     <span className="font-medium tabular-nums">
                       {formatCurrency(newCashHandedIn - (newPosSales + newHilfMahl - newOpenInvoices - newCardTotal) - newPosSales * 0.02)}
