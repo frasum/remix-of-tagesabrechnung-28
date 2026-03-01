@@ -152,19 +152,17 @@ export default function ZtWochenplan() {
 
   // Auto-scroll to today's column
   useEffect(() => {
-    if (!weekDays.length || !scrollContainerRef.current) return;
+    if (!selectedWeekId || !selectedWeek) return;
     const todayStr = format(new Date(), "yyyy-MM-dd");
-    // Only scroll if today is in this week
-    if (!weekDays.some(d => format(d, "yyyy-MM-dd") === todayStr)) return;
-    // Small delay to ensure DOM is rendered
+    // Small delay to ensure DOM is rendered after data loads
     const timer = setTimeout(() => {
       const el = scrollContainerRef.current?.querySelector(`[data-date="${todayStr}"]`);
       if (el) {
         el.scrollIntoView({ inline: "center", behavior: "smooth" });
       }
-    }, 100);
+    }, 300);
     return () => clearTimeout(timer);
-  }, [selectedWeekId, weekDays]);
+  }, [selectedWeekId, selectedWeek]);
 
   const sortedEmployees = employees
     ? [...employees].sort((a, b) => {
