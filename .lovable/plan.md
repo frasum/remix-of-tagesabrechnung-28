@@ -1,20 +1,35 @@
 
 
-## Änderung: Rollenbezeichnung "Mitarbeiter" → "Service"
+## Änderung: "Name" → "Spitzname", altes Spitzname-Feld entfernen
 
-Nur dort, wo "Mitarbeiter" als Rollenbezeichnung (Gegenstück zu "Küche") verwendet wird, wird der Text zu "Service" geändert. Seitenüberschriften wie "Mitarbeiterverwaltung" oder Buttons wie "Neuer Mitarbeiter" bleiben unverändert.
+Das Feld "Anzeigename" (intern `name`) wird zu **"Spitzname"** umbenannt. Das separate Feld "Spitzname" (intern `nickname`) wird komplett entfernt, da es redundant ist.
 
-### Betroffene Stellen
+### Betroffene Dateien
 
-**`src/components/staff/StaffCard.tsx`** (Zeile 18):
-- `'Mitarbeiter'` → `'Service'` in `roleLabel`
+**`src/components/staff/StaffDialog.tsx`**:
+- Label "Anzeigename *" → "Spitzname *"
+- Placeholder anpassen (z.B. "Maxi")
+- Das gesamte Nickname-Feld (Zeilen 161-169) entfernen
+- State `nickname` und zugehörige Logik entfernen
+- `nickname` aus `handleSubmit` / `onSave` entfernen
 
-**`src/pages/StaffManagement.tsx`**:
-- Tab-Label `Mitarbeiter ({waiterCount})` → `Service ({waiterCount})` (Zeile 185)
-- Gruppenüberschrift `Mitarbeiter ({group.waiters.length})` → `Service ({group.waiters.length})` (Zeile 257)
-- Gruppenüberschrift ohne Restaurant `Mitarbeiter ({...length})` → `Service ({...length})` (Zeile 291)
+**`src/components/staff/StaffDialogNative.tsx`** und **`StaffDialogSafe.tsx`**:
+- Gleiche Änderungen falls dort ebenfalls ein Nickname-Feld existiert
 
-**`src/hooks/useStaff.ts`** — Prüfen ob dort "Mitarbeiter" als Rollenbezeichnung in Fehlermeldungen vorkommt (vermutlich nicht, da es dort "Mitarbeiter" im Sinne von "Angestellter" ist → bleibt).
+**`src/hooks/useStaff.ts`**:
+- `nickname` aus `StaffInput` entfernen (sofern vorhanden)
+- Mutation-Logik: `nickname` nicht mehr separat senden (das `name`-Feld speichert jetzt den Spitznamen)
 
-**`src/components/staff/StaffDialog.tsx`** — Prüfen ob Rollen-Dropdown "Mitarbeiter" als Option zeigt → falls ja, zu "Service" ändern.
+### Layout nach Änderung
+
+```text
+Spitzname *        [____________]
+Nachname    Vorname
+[________]  [________]
+Perso-Nr.
+[________]
+Rolle *            [Service ▼]
+```
+
+Das Perso-Nr.-Feld rutscht in eine eigene Zeile oder teilt sich die Zeile mit einem anderen Feld.
 
