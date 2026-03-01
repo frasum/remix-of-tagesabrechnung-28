@@ -1,14 +1,44 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Settings, Loader2, EyeOff, Eye, Search } from "lucide-react";
 import { calculateShiftHours } from "@/lib/shiftCalculations";
 import { toast } from "@/hooks/use-toast";
+
+const HIDDEN_STORAGE_KEY = "zt-shift-override-hidden";
+
+function loadHiddenIds(): Set<string> {
+  try {
+    const stored = localStorage.getItem(HIDDEN_STORAGE_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHiddenIds(ids: Set<string>) {
+  localStorage.setItem(HIDDEN_STORAGE_KEY, JSON.stringify(Array.from(ids)));
+}
+
+function getEmployeeLabel(emp: Employee): string {
+  const nick = emp.nickname ? `${emp.nickname} – ` : "";
+  const name = [emp.first_name, emp.last_name].filter(Boolean).join(" ") || emp.name;
+  const dept = emp.department ? ` (${emp.department})` : "";
+  return `${nick}${name}${dept}`;
+}
+
+function matchesSearch(emp: Employee, search: string): boolean {
+  if (!search) return true;
+  const s = search.toLowerCase();
+  return getEmployeeLabel(emp).toLowerCase().includes(s);
+}
 
 interface Employee {
   id: string;
@@ -83,7 +113,20 @@ export default function ShiftTimeOverride({
   const [isGenerating, setIsGenerating] = useState(false);
   const [dailyIds, setDailyIds] = useState<Set<string>>(new Set());
   const [isDailyGenerating, setIsDailyGenerating] = useState(false);
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(loadHiddenIds);
+  const [showHidden, setShowHidden] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const queryClient = useQueryClient();
+
+  const toggleHidden = useCallback((id: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveHiddenIds(next);
+      return next;
+    });
+  }, []);
 
   // Deduplicate employees by id
   const uniqueEmployees = React.useMemo(() => {
@@ -457,9 +500,43 @@ export default function ShiftTimeOverride({
 
   if (uniqueEmployees.length === 0 && uniqueAllEmployees.length === 0 && uniqueDailyEmployees.length === 0) return null;
 
-  const allSelected = selectedIds.size === uniqueEmployees.length && uniqueEmployees.length > 0;
-  const allGenerateSelected = generateIds.size === uniqueAllEmployees.length && uniqueAllEmployees.length > 0;
-  const allDailySelected = dailyIds.size === uniqueDailyEmployees.length && uniqueDailyEmployees.length > 0;
+  const hiddenCount = hiddenIds.size;
+
+  const filterList = (list: Employee[]) =>
+    list.filter((e) => (showHidden || !hiddenIds.has(e.id)) && matchesSearch(e, searchTerm));
+
+  const visibleEmployees = filterList(uniqueEmployees);
+  const visibleAllEmployees = filterList(uniqueAllEmployees);
+  const visibleDailyEmployees = filterList(uniqueDailyEmployees);
+
+  const allSelected = selectedIds.size === visibleEmployees.length && visibleEmployees.length > 0;
+  const allGenerateSelected = generateIds.size === visibleAllEmployees.length && visibleAllEmployees.length > 0;
+  const allDailySelected = dailyIds.size === visibleDailyEmployees.length && visibleDailyEmployees.length > 0;
+
+  const renderEmployeeRow = (emp: Employee, prefix: string, checkedSet: Set<string>, toggleFn: (id: string) => void) => {
+    const isHidden = hiddenIds.has(emp.id);
+    return (
+      <div key={emp.id} className={`flex items-center gap-2 ${isHidden ? "opacity-50" : ""}`}>
+        <Checkbox
+          id={`${prefix}-${emp.id}`}
+          checked={checkedSet.has(emp.id)}
+          onCheckedChange={() => toggleFn(emp.id)}
+          disabled={isHidden}
+        />
+        <Label htmlFor={`${prefix}-${emp.id}`} className={`text-sm cursor-pointer flex-1 ${isHidden ? "line-through" : ""}`}>
+          {getEmployeeLabel(emp)}
+        </Label>
+        <button
+          type="button"
+          onClick={() => toggleHidden(emp.id)}
+          className="p-0.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          title={isHidden ? "Einblenden" : "Ausblenden"}
+        >
+          {isHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <Card>
@@ -475,8 +552,35 @@ export default function ShiftTimeOverride({
           <p>Sonn-/Feiertage: <span className="font-medium text-foreground">15:00 – 02:00</span></p>
         </div>
 
+        {/* Filter controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Mitarbeiter suchen…"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-7 h-8 text-sm"
+            />
+          </div>
+          <Button
+            variant={showHidden ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setShowHidden((v) => !v)}
+            className="gap-1.5"
+          >
+            {showHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            {showHidden ? "Ausgeblendete verbergen" : "Ausgeblendete anzeigen"}
+            {hiddenCount > 0 && (
+              <Badge variant="secondary" className="ml-1 text-[10px] px-1.5 py-0">
+                {hiddenCount}
+              </Badge>
+            )}
+          </Button>
+        </div>
+
         {/* Section 1: Override existing */}
-        {uniqueEmployees.length > 0 && (
+        {visibleEmployees.length > 0 && (
           <>
             <Separator />
             <div className="space-y-2">
@@ -485,20 +589,7 @@ export default function ShiftTimeOverride({
                 Überschreibt die Zeiten aller vorhandenen Schichten (mit Start-/Endzeit, ohne Abwesenheit) auf die Standardwerte. Es werden keine neuen Schichten erzeugt.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {uniqueEmployees.map((emp) => (
-                  <div key={emp.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`override-${emp.id}`}
-                      checked={selectedIds.has(emp.id)}
-                      onCheckedChange={() => toggleEmployee(emp.id)}
-                    />
-                    <Label htmlFor={`override-${emp.id}`} className="text-sm cursor-pointer">
-                      {emp.nickname ? `${emp.nickname} – ` : ""}
-                      {[emp.first_name, emp.last_name].filter(Boolean).join(" ") || emp.name}
-                      {emp.department ? ` (${emp.department})` : ""}
-                    </Label>
-                  </div>
-                ))}
+                {visibleEmployees.map((emp) => renderEmployeeRow(emp, "override", selectedIds, toggleEmployee))}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={toggleAll}>
@@ -514,7 +605,7 @@ export default function ShiftTimeOverride({
         )}
 
         {/* Section 2: Generate Mo-Fr shifts */}
-        {uniqueAllEmployees.length > 0 && (
+        {visibleAllEmployees.length > 0 && (
           <>
             <Separator />
             <div className="space-y-2">
@@ -523,20 +614,7 @@ export default function ShiftTimeOverride({
                 Erzeugt fehlende Mo–Fr Einträge mit 17:00–01:00 für die gesamte Periode (inkl. Feiertage unter der Woche).
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {uniqueAllEmployees.map((emp) => (
-                  <div key={emp.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`generate-${emp.id}`}
-                      checked={generateIds.has(emp.id)}
-                      onCheckedChange={() => toggleGenerate(emp.id)}
-                    />
-                    <Label htmlFor={`generate-${emp.id}`} className="text-sm cursor-pointer">
-                      {emp.nickname ? `${emp.nickname} – ` : ""}
-                      {[emp.first_name, emp.last_name].filter(Boolean).join(" ") || emp.name}
-                      {emp.department ? ` (${emp.department})` : ""}
-                    </Label>
-                  </div>
-                ))}
+                {visibleAllEmployees.map((emp) => renderEmployeeRow(emp, "generate", generateIds, toggleGenerate))}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={toggleAllGenerate}>
@@ -552,7 +630,7 @@ export default function ShiftTimeOverride({
         )}
 
         {/* Section 3: Generate daily Mo-So shifts */}
-        {uniqueDailyEmployees.length > 0 && (
+        {visibleDailyEmployees.length > 0 && (
           <>
             <Separator />
             <div className="space-y-2">
@@ -561,20 +639,7 @@ export default function ShiftTimeOverride({
                 Erzeugt/überschreibt Einträge mit 17:00–01:00 für jeden Tag der Periode (inkl. Wochenende).
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {uniqueDailyEmployees.map((emp) => (
-                  <div key={emp.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`daily-${emp.id}`}
-                      checked={dailyIds.has(emp.id)}
-                      onCheckedChange={() => toggleDaily(emp.id)}
-                    />
-                    <Label htmlFor={`daily-${emp.id}`} className="text-sm cursor-pointer">
-                      {emp.nickname ? `${emp.nickname} – ` : ""}
-                      {[emp.first_name, emp.last_name].filter(Boolean).join(" ") || emp.name}
-                      {emp.department ? ` (${emp.department})` : ""}
-                    </Label>
-                  </div>
-                ))}
+                {visibleDailyEmployees.map((emp) => renderEmployeeRow(emp, "daily", dailyIds, toggleDaily))}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={toggleAllDaily}>
