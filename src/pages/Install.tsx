@@ -81,7 +81,7 @@ export default function Install() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-20 h-20 rounded-2xl overflow-hidden mb-4 shadow-lg">
-            <img src="/pwa-192x192.png" alt="Spicery App Icon" className="w-full h-full" />
+            <img src="/app-icon.png" alt="Spicery App Icon" className="w-full h-full" />
           </div>
           <CardTitle className="text-2xl">Spicery Mitarbeiter</CardTitle>
           <CardDescription>
