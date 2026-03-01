@@ -1,21 +1,31 @@
 
 
-## Problem
+## Problem: Küchenschicht wird nicht in Zeiterfassung übernommen
 
-Das Feld `participates_in_pool` auf der `staff`-Tabelle wird aktuell nur in der **Mitarbeiter-Abrechnung** (WaiterCashUp) als Default berücksichtigt. Die **Küchen-Trinkgeld-Seite** (KitchenTipSplit) prüft dieses Feld nicht — Mitarbeiter mit `participates_in_pool = false` können dort weiterhin hinzugefügt werden und erhalten Trinkgeld.
+Die Sync-Funktion `syncKitchenShiftToZt` sucht den Mitarbeiter über `staff_restaurants` mit `zt_department = 'Küche'`. Wenn der Küchenmitarbeiter aber keine Zuordnung in `staff_restaurants` mit genau dieser Abteilung hat (z.B. gar kein Eintrag in `staff_restaurants` für dieses Restaurant, oder `zt_department` ist `null`/anders), wird er nicht gefunden und der Sync bricht still ab.
 
-## Lösung
+### Lösung
 
-Mitarbeiter mit `participates_in_pool = false` sollen auf der Küchen-Trinkgeld-Seite **nicht auswählbar** sein. Das StaffSelect-Dropdown filtert diese automatisch heraus.
-
-### Änderungen
+Die `findStaffByName`-Funktion in `syncWaiterToZt.ts` erweitern, sodass sie bei Küchenmitarbeitern als Fallback auch ohne exakte `zt_department`-Übereinstimmung sucht. Konkret:
 
 | Datei | Änderung |
 |---|---|
-| `src/components/shared/StaffSelect.tsx` | Neue optionale Prop `excludeNonPoolParticipants?: boolean`. Wenn `true`, werden Mitarbeiter mit `participates_in_pool = false` aus der Liste gefiltert. |
-| `src/pages/KitchenTipSplit.tsx` | `excludeNonPoolParticipants={true}` an das StaffSelect übergeben. |
+| `src/lib/syncWaiterToZt.ts` | `findStaffByName`: Wenn die Suche mit `zt_department = 'Küche'` kein Ergebnis liefert, Fallback-Suche nur nach `restaurant_id` und Name durchführen. Falls gefunden, wird der Eintrag trotzdem für den Sync verwendet. |
 
-### Technisch
+### Alternative (robusterer Ansatz)
 
-Das StaffSelect nutzt `useActiveStaff` / `useActiveStaffByRestaurant`, die bereits `*` von der `staff`-Tabelle laden — das Feld `participates_in_pool` ist also schon verfügbar. Es muss nur ein zusätzlicher Filter auf `filteredStaff` angewendet werden.
+Statt Fallback: Beim Hinzufügen eines Küchenmitarbeiters auf der KitchenTipSplit-Seite direkt die `staff.id` mitgeben (statt nur den Namen), und in `syncKitchenShiftToZt` die `employee_id` direkt verwenden. Dazu:
+
+| Datei | Änderung |
+|---|---|
+| `src/lib/syncWaiterToZt.ts` | `findStaffByName`: Fallback ohne `zt_department`-Filter hinzufügen, wenn erster Versuch fehlschlägt. |
+
+```text
+findStaffByName("Max", restaurantId, "Küche")
+  → 1. Versuch: staff_restaurants WHERE zt_department = 'Küche' → kein Treffer
+  → 2. Versuch: staff_restaurants WHERE restaurant_id = X (ohne dept-Filter) → Treffer
+  → return staff_id
+```
+
+Damit werden auch Mitarbeiter synchronisiert, die zwar der Küche zugeordnet sind (`staff.role = 'kitchen'`), aber in `staff_restaurants` kein explizites `zt_department = 'Küche'` gesetzt haben.
 
