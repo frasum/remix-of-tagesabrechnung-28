@@ -1,26 +1,26 @@
 
 
-## Paginierung für die History-Seite
+## Paginierung für die Audit-Log-Liste
 
 ### Änderungen
 
-**1. `src/hooks/useSession.ts` — `useSessionHistory` erweitern**
-- Neuen Parameter `page` (default 0) hinzufügen
-- Query mit `.range(page * 30, (page + 1) * 30 - 1)` statt `.limit(30)`
-- Zusätzlich `count: 'exact'` in der Query für Gesamtanzahl
-- Rückgabewert: `{ sessions, totalCount }`
-- QueryKey enthält `page` für Cache-Trennung
+**1. `src/hooks/useAuditLogs.ts` — `useAuditLogs` erweitern**
+- Parameter `page` (default 0) hinzufügen, `PAGE_SIZE = 30`
+- Query mit `{ count: 'exact' }` und `.range(page * 30, (page + 1) * 30 - 1)`
+- Rückgabe: `{ logs, totalCount }` statt flachem Array
+- QueryKey enthält `page`
+- Filter `table_name = 'waiter_shifts'` in die DB-Query verschieben (statt client-seitig), damit die Paginierung korrekt zählt
 
-**2. `src/pages/History.tsx` — Paginierungs-UI**
+**2. `src/components/audit/AuditLogList.tsx` — Paginierungs-UI**
 - `page` State (default 0) hinzufügen
-- `totalCount` aus dem Hook auslesen, `totalPages` berechnen
-- Unter der Tabelle Paginierung-Buttons mit Vor/Zurück und Seitenzahlen anzeigen (shadcn Pagination-Komponenten sind bereits vorhanden)
-- `totalSessions` aus `totalCount` statt `sessions.length` berechnen (für die Statistik-Karte oben)
+- `totalCount` aus Hook auslesen, `totalPages` berechnen
+- Unter den Log-Einträgen Pagination-Komponenten (Vor/Zurück + Seitenzahlen) anzeigen
+- Client-seitigen `waiterShiftLogs`-Filter entfernen (wird jetzt in DB gefiltert)
 
 ### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| `src/hooks/useSession.ts` | `useSessionHistory` mit `page`-Parameter und `count: 'exact'` |
-| `src/pages/History.tsx` | Page-State, Paginierungs-UI unter Tabelle |
+| `src/hooks/useAuditLogs.ts` | `page`-Parameter, `count: 'exact'`, `.range()`, `.eq('table_name', 'waiter_shifts')` |
+| `src/components/audit/AuditLogList.tsx` | Page-State, Pagination-UI, DB-Filter statt Client-Filter |
 
