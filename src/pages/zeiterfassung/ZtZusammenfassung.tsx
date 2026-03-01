@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { format, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -197,7 +198,7 @@ export default function ZtZusammenfassung() {
             <tr className="bg-muted">
               <th className="text-left p-2 font-medium sticky left-0 bg-muted z-10">Mitarbeiter</th>
               {weeks?.map((w) => (
-                <th key={w.id} className="text-center p-2 font-medium whitespace-nowrap">W{w.week_number}</th>
+                <th key={w.id} className="text-center p-2 font-medium whitespace-nowrap">W{w.week_number} {format(parseISO(w.start_date), "dd.MM.")}–{format(parseISO(w.end_date), "dd.MM.")}</th>
               ))}
               <th className="text-center p-2 font-medium">Gesamt</th>
               <th className="text-center p-2 font-medium">Schichten</th>

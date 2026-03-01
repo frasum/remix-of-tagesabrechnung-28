@@ -454,7 +454,7 @@ function WochenplanTab({ weeks, shifts, employees, holidays, periodLabel, select
         <div className="flex gap-1 flex-wrap">
           {weeks.map(w => (
             <Button key={w.id} variant={w.id === selectedWeekId ? "default" : "outline"} size="sm" className="h-7 px-2 text-xs" onClick={() => onSelectWeek(w.id)}>
-              W{w.week_number}
+              W{w.week_number} ({format(parseISO(w.start_date), "dd.MM.")}–{format(parseISO(w.end_date), "dd.MM.")})
             </Button>
           ))}
         </div>
