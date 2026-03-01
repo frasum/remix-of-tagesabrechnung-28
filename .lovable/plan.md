@@ -1,23 +1,20 @@
 
 
-## Lohnbuero Portal: Restaurant-Auswahl in CumulatedView
+## Problem
 
-Das Lohnbuero-Portal zeigt aktuell immer die kumulierte Ansicht aller Restaurants. Es fehlt die Moeglichkeit, zwischen einzelnen Restaurants und "Alle" zu wechseln — genau wie es jetzt im Sharing-Link (`/zt/:token`) bereits funktioniert.
+Die PDF/Excel-Exports der Zusammenfassung in **PayrollPortal** und **SharedZtView** uebergeben `weekNumberToAllIds` nicht an die Export-Funktionen. Die Exports bauen daher intern ein Mapping nur aus den deduplizierten Wochen (eine ID pro Wochennummer). Schichten aus anderen Restaurants haben aber andere `week_id`s, die in diesem Mapping fehlen — sie zaehlen zum Gesamt, aber nicht zu den Wochenspalten.
 
-### Aenderungen
+## Loesung
 
-| Datei | Aenderung |
-|---|---|
-| `supabase/functions/payroll-office-data/index.ts` | `restaurant_id` zu jedem Employee und Advance hinzufuegen. `weekToRestaurant`-Mapping (week_id → restaurant_id) und `restaurant_id` in `matchingPeriods` mitliefern. |
-| `src/pages/shared/PayrollPortal.tsx` | `CumulatedView` um Restaurant-Filter erweitern: State `selectedRestaurant`, Buttons fuer jedes Restaurant + "Alle", client-seitige Filterung von Employees, Shifts, Advances, PayrollNotes (identische Logik wie in SharedZtView). |
+| Datei | Zeile | Aenderung |
+|---|---|---|
+| `src/pages/shared/PayrollPortal.tsx` | 866 | `weekNumberToAllIds` an `exportZusammenfassungPdf` uebergeben |
+| `src/pages/shared/PayrollPortal.tsx` | 869 | `weekNumberToAllIds` an `exportZusammenfassungExcel` uebergeben |
+| `src/pages/shared/SharedZtView.tsx` | 709 | `weekNumberToAllIds` an `exportZusammenfassungPdf` uebergeben |
+| `src/pages/shared/SharedZtView.tsx` | 711 (Excel) | `weekNumberToAllIds` an `exportZusammenfassungExcel` uebergeben |
 
-### Details
-
-**Edge Function**: 3 Ergaenzungen in der GET-Response:
-- Employees bekommen `restaurant_id` (aus `staff_restaurants`)
-- Advances bekommen `restaurant_id` (aus `sessions`)
-- Neues Feld `weekToRestaurant` (week_id → restaurant_id via period)
-- `matchingPeriods` bekommt `restaurant_id`
-
-**Frontend CumulatedView**: Restaurant-Buttons zwischen Header und Tabs einfuegen. Filtering-Logik 1:1 aus SharedZtView uebernehmen (filteredEmployees, filteredShifts, filteredAdvances, filteredPayrollNotes, effectiveWeekNumberToAllIds, effectiveStatus).
+Konkret: den 5. Parameter (`externalWeekNumberToIds`) bei den Export-Aufrufen ergaenzen, z.B.:
+```typescript
+exportZusammenfassungPdf(periodLabel, employees, weeks, shifts as any, weekNumberToAllIds)
+```
 
