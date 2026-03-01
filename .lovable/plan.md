@@ -1,15 +1,18 @@
 
 
-## Fix: Abteilungs-Hintergrundfarbe im Wochenplan
+## Inaktive Tage (vor/nach Periode) visuell absetzen
 
 ### Problem
-In `src/index.css` (Zeile 174-175) überschreibt die CSS-Regel `.wochenplan-table .dept-header-row td` den Hintergrund mit `bg-background` -- dadurch wird die Abteilungsfarbe (`dept-kueche-light`, `dept-gl-light`, `dept-service-light`) ignoriert.
+Die Header-Spalten für inaktive Tage (außerhalb der Periode) haben keinen grauen Hintergrund wie im Screenshot. Nur die Datenzellen bekommen `inactive-day`, aber der Spalten-Header bleibt normal gefärbt.
 
-### Lösung
+### Änderungen
 
 | Datei | Änderung |
 |---|---|
-| `src/index.css` | Zeile 174-175: `bg-background` aus `.dept-header-row td` entfernen oder durch einen transparenten Hintergrund ersetzen, damit die `getDepartmentBgClass`-Klassen (z.B. warmer Pfirsich-Ton für Küche) sichtbar werden |
+| `src/pages/zeiterfassung/ZtWochenplan.tsx` | Header-`<th>`-Elemente für inaktive Tage ebenfalls mit `inactive-day`-Klasse versehen (Zeile ~378-386); ggf. auch den Header-Text ausblenden oder abschwächen für inaktive Tage |
+| `src/index.css` | `inactive-day`-Klasse auch für `thead th` wirksam machen, damit der Hintergrund im Header und in den Zellen einheitlich grau ist |
 
-Die Abteilungs-Header im Wochenplan werden dann denselben farblichen Hintergrund zeigen wie in der Buchhaltungsansicht.
+### Detail
+- In der Header-Zeile (`<th>`) wird geprüft ob `activeDates.has(dateStr)` — falls nicht, wird `inactive-day` hinzugefügt und der Tag-Name in `text-muted-foreground` dargestellt
+- Die bestehende `inactive-day`-Farbe `hsl(220 10% 95%)` passt zum Screenshot
 
