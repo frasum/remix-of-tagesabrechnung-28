@@ -2,22 +2,19 @@
 
 ## Problem
 
-Mitarbeiter "Ah" hat `staff.role = 'kitchen'` in der Datenbank, aber `zt_department = NULL` bei Spicery. Das Badge "Küche" kommt aus dem alten `staff.role`-Wert, der vor der Umstellung auf Abteilungs-Checkboxen gesetzt wurde.
+`useRestaurantEmployees` dedupliziert Mitarbeiter nach `staff.id` und behält nur die erste gefundene Abteilung. Mitarbeiter wie "Lam Manager" mit GL + Service erscheinen daher nur in einer Abteilungs-Gruppe im Wochenplan.
 
 ## Lösung
 
-Die Rollen-Badges in der Tabelle sollten nicht mehr aus `staff.role` abgeleitet werden, sondern **direkt aus den tatsächlichen `zt_department`-Zuweisungen** in `staff_restaurants`. So zeigt die Tabelle nur an, was wirklich zugewiesen ist.
+Die Deduplizierung entfernen: Statt nach `staff.id` zu deduplizieren, jeden `staff_restaurants`-Eintrag als eigene Zeile zurückgeben. So erscheint ein Mitarbeiter in jeder zugewiesenen Abteilung.
 
-Zusätzlich: Bestehende Staff-Einträge ohne `zt_department` bereinigen via Migration.
-
-### Betroffene Dateien
+### Betroffene Datei
 
 | Datei | Änderung |
 |---|---|
-| `src/components/staff/StaffTableRow.tsx` | Rollen-Badges aus `staff.staff_restaurants[].zt_department` ableiten statt aus `enumToRoles(staff.role)` — eindeutige Departments über alle Zuweisungen sammeln und als Badges anzeigen |
-| DB-Migration | `UPDATE staff SET role = 'waiter' WHERE id IN (SELECT staff_id FROM staff_restaurants WHERE zt_department IS NULL)` — alternativ: `zt_department` für bestehende Einträge aus `staff.role` ableiten und nachträglich setzen |
+| `src/hooks/useRestaurantEmployees.ts` | Deduplizierung entfernen — stattdessen alle Zeilen direkt mappen. Jede `(staff_id, zt_department)`-Kombination wird zu einem eigenen `RestaurantEmployee`-Eintrag. |
 
-### Option: Bestehende Daten reparieren
+### Auswirkung prüfen
 
-Statt nur die Anzeige zu ändern, könnten wir auch eine Migration laufen lassen, die für alle `staff_restaurants`-Einträge mit `zt_department = NULL` die Abteilung aus `staff.role` ableitet und setzt. So wären die Daten konsistent.
+Der Wochenplan (`ZtWochenplan`) gruppiert Mitarbeiter nach `department`. Durch die Änderung wird "Lam Manager" sowohl unter GL als auch unter SERVICE angezeigt — jeweils mit eigener Schichtzeile.
 
