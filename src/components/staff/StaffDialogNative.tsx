@@ -217,9 +217,9 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
               onChange={(e) => setRole(e.target.value as StaffRole)}
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
-              <option value="waiter">Mitarbeiter</option>
+              <option value="waiter">Service</option>
               <option value="kitchen">Küche</option>
-              <option value="both">Mitarbeiter & Küche</option>
+              <option value="both">Service & Küche</option>
             </select>
           </div>
 
