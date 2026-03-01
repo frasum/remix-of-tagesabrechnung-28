@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/contexts/RestaurantContext";
@@ -55,20 +55,29 @@ export function ZtProvider({ children }: { children: React.ReactNode }) {
     enabled: !!restaurantId,
   });
 
-  const { data: weeks } = useQuery({
-    queryKey: ["zt-weeks", selectedPeriodId],
+  // Load ALL weeks for all periods at once (not dependent on selectedPeriodId)
+  const periodIds = useMemo(() => periods?.map(p => p.id) ?? [], [periods]);
+
+  const { data: allWeeks } = useQuery({
+    queryKey: ["zt-weeks-all", restaurantId],
     queryFn: async () => {
-      if (!selectedPeriodId) return [];
+      if (!periodIds.length) return [];
       const { data, error } = await supabase
         .from("weeks")
         .select("*")
-        .eq("period_id", selectedPeriodId)
+        .in("period_id", periodIds)
         .order("week_number");
       if (error) throw error;
       return data as Week[];
     },
-    enabled: !!selectedPeriodId,
+    enabled: periodIds.length > 0,
   });
+
+  // Filter weeks for the selected period
+  const weeks = useMemo(
+    () => allWeeks?.filter(w => w.period_id === selectedPeriodId) ?? [],
+    [allWeeks, selectedPeriodId]
+  );
 
   // Reset when restaurant changes
   useEffect(() => {
@@ -76,26 +85,33 @@ export function ZtProvider({ children }: { children: React.ReactNode }) {
     setSelectedWeekId("");
   }, [restaurantId]);
 
-  // Auto-select current period
+  // Auto-select period AND week together once both datasets are available
   useEffect(() => {
-    if (!periods?.length || selectedPeriodId) return;
+    if (!periods?.length || !allWeeks?.length || selectedPeriodId) return;
     const today = format(new Date(), "yyyy-MM-dd");
-    const current = periods.find(p => p.start_date <= today && p.end_date >= today);
-    setSelectedPeriodId(current?.id ?? periods[0].id);
-  }, [periods, selectedPeriodId]);
 
-  // Auto-select current week
-  useEffect(() => {
-    if (!weeks?.length || selectedWeekId) return;
+    // Find current period
+    const currentPeriod = periods.find(p => p.start_date <= today && p.end_date >= today);
+    const periodId = currentPeriod?.id ?? periods[0].id;
+
+    // Find current week within that period
+    const periodWeeks = allWeeks.filter(w => w.period_id === periodId);
+    const currentWeek = periodWeeks.find(w => w.start_date <= today && w.end_date >= today);
+    const weekId = currentWeek?.id ?? periodWeeks[0]?.id ?? "";
+
+    setSelectedPeriodId(periodId);
+    setSelectedWeekId(weekId);
+  }, [periods, allWeeks, selectedPeriodId]);
+
+  // Reset week when period changes manually (but not on initial auto-select)
+  const handleSetPeriodId = (id: string) => {
+    setSelectedPeriodId(id);
+    // Auto-select first week of new period
+    const periodWeeks = allWeeks?.filter(w => w.period_id === id) ?? [];
     const today = format(new Date(), "yyyy-MM-dd");
-    const current = weeks.find(w => w.start_date <= today && w.end_date >= today);
-    setSelectedWeekId(current?.id ?? weeks[0].id);
-  }, [weeks, selectedWeekId]);
-
-  // Reset week when period changes
-  useEffect(() => {
-    setSelectedWeekId("");
-  }, [selectedPeriodId]);
+    const currentWeek = periodWeeks.find(w => w.start_date <= today && w.end_date >= today);
+    setSelectedWeekId(currentWeek?.id ?? periodWeeks[0]?.id ?? "");
+  };
 
   const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
   const isPeriodLocked = selectedPeriod?.status === "locked";
@@ -103,11 +119,11 @@ export function ZtProvider({ children }: { children: React.ReactNode }) {
   return (
     <ZtContext.Provider value={{
       selectedPeriodId,
-      setSelectedPeriodId,
+      setSelectedPeriodId: handleSetPeriodId,
       selectedWeekId,
       setSelectedWeekId,
       periods,
-      weeks,
+      weeks: weeks.length > 0 ? weeks : undefined,
       isPeriodsLoading,
       isPeriodLocked,
     }}>
