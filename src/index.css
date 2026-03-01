@@ -163,7 +163,7 @@
     @apply bg-muted/85;
   }
   .wochenplan-table .sunday-col {
-    background-color: hsl(0 70% 95%);
+    background-color: hsl(0 50% 97%);
   }
   .wochenplan-table .inactive-day {
     background-color: hsl(220 10% 95%);
@@ -182,5 +182,17 @@
   }
   .wochenplan-table .totals-header {
     background-color: hsl(220 10% 91%);
+  }
+  .wochenplan-table tbody tr:not(.dept-header-row):hover > td {
+    background-color: hsl(220 30% 95%);
+  }
+  .wochenplan-table tbody tr:not(.dept-header-row):hover > td.sticky-name {
+    background-color: hsl(220 30% 93%);
+  }
+  .wochenplan-table .empty-row > td {
+    @apply opacity-50;
+  }
+  .wochenplan-table .empty-row:hover > td {
+    @apply opacity-80;
   }
 }
