@@ -1,30 +1,15 @@
 
 
-## Wochenplan UI anpassen (Screenshot-Referenz)
+## Inaktive Tage grau statt rosa darstellen
 
-Basierend auf dem Screenshot gibt es folgende visuelle Unterschiede zur aktuellen App:
+Das Screenshot zeigt, dass Tage ausserhalb der aktiven Periode einen neutralen, hellgrauen Hintergrund haben sollen -- nicht den rosa Ton, der aktuell durch die letzte Änderung gesetzt wurde.
 
-1. **Totals-Spalten (Ges, So/F, 20-24, 24-x, U, K)**: Haben einen deutlichen rosa/lachsfarbenen Hintergrund statt dem aktuellen subtilen `bg-muted/20`
-2. **Sonntags-Spalte**: Stärkerer rosa Hintergrund über die gesamte Spalte
-3. **Inaktive Tage**: Ebenfalls rosa statt grau
-4. **Generell saubereres Layout**: Mehr Weißraum, weniger visuelle Elemente
+### Änderung
 
-### Änderungen
-
-**`src/index.css`** — Wochenplan-CSS-Klassen anpassen:
-- `.sunday-col`: Stärkerer rosa Hintergrund (`bg-red-50` / `hsl(0 70% 95%)`)
-- `.inactive-day`: Rosa statt grau (`bg-red-50` ähnlich Sunday)
-- `.totals-col`: Deutlich rosa/lachsfarbener Hintergrund (`hsl(0 60% 94%)`)
-- `.totals-header`: Gleicher rosa Ton für Header
-
-**`src/pages/zeiterfassung/ZtWochenplan.tsx`** — Kleinere Styling-Anpassungen:
-- Sunday-Header-Hintergrund intensivieren (`!bg-destructive/10` → stärker)
-- Totals-Zellen-Klassen vereinheitlichen
-
-### Betroffene Dateien
+**`src/index.css`** -- Eine Zeile ändern:
+- `.wochenplan-table .inactive-day`: Von `hsl(0 60% 96%)` (rosa) zurück zu einem neutralen Grau via `@apply bg-muted/30` oder `hsl(220 10% 95%)`.
 
 | Datei | Änderung |
 |---|---|
-| `src/index.css` | Wochenplan CSS-Klassen für rosa Totals/Sunday/Inactive |
-| `src/pages/zeiterfassung/ZtWochenplan.tsx` | Styling-Klassen anpassen |
+| `src/index.css` | `.inactive-day` Hintergrund auf neutrales Grau setzen |
 
