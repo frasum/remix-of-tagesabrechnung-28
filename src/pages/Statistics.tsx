@@ -302,6 +302,39 @@ export default function Statistics() {
               />
             </div>
 
+            {/* Summary Table */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Zusammenfassung Zeitraum</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-muted rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground">Tage mit Daten</p>
+                    <p className="text-2xl font-bold tabular-nums">{summary?.daysWithData || 0}</p>
+                  </div>
+                  <div className="bg-muted rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground">Küchen Trinkgeld</p>
+                    <p className="text-2xl font-bold tabular-nums text-success">
+                      {formatCurrency(summary?.totalKitchenTip || 0)}
+                    </p>
+                  </div>
+                  <div className="bg-muted rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground">Mitarbeiter Trinkgeld</p>
+                    <p className="text-2xl font-bold tabular-nums text-success">
+                      {formatCurrency(summary?.totalWaiterTip || 0)}
+                    </p>
+                  </div>
+                  <div className="bg-muted rounded-lg p-4">
+                    <p className="text-sm text-muted-foreground">Gesamt Ausgaben</p>
+                    <p className="text-2xl font-bold tabular-nums text-destructive">
+                      {formatCurrency(summary?.totalExpenses || 0)}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Period Comparison Card */}
             {comparisonData && !comparisonLoading && statsMode !== 'compare' && (
               <PeriodComparison data={comparisonData} />
@@ -511,40 +544,6 @@ export default function Statistics() {
 
             {/* Monthly Tip Breakdown */}
             <MonthlyTipBreakdown />
-
-
-            {/* Summary Table */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Zusammenfassung Zeitraum</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="bg-muted rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground">Tage mit Daten</p>
-                    <p className="text-2xl font-bold tabular-nums">{summary?.daysWithData || 0}</p>
-                  </div>
-                  <div className="bg-muted rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground">Küchen Trinkgeld</p>
-                    <p className="text-2xl font-bold tabular-nums text-success">
-                      {formatCurrency(summary?.totalKitchenTip || 0)}
-                    </p>
-                  </div>
-                  <div className="bg-muted rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground">Mitarbeiter Trinkgeld</p>
-                    <p className="text-2xl font-bold tabular-nums text-success">
-                      {formatCurrency(summary?.totalWaiterTip || 0)}
-                    </p>
-                  </div>
-                  <div className="bg-muted rounded-lg p-4">
-                    <p className="text-sm text-muted-foreground">Gesamt Ausgaben</p>
-                    <p className="text-2xl font-bold tabular-nums text-destructive">
-                      {formatCurrency(summary?.totalExpenses || 0)}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </>
         )}
       </div>
