@@ -1,41 +1,27 @@
 
 
-## Abteilungs-Checkboxen pro Restaurant im Staff-Dialog
+## Analyse: Wird `staff.role` anderswo gebraucht?
 
-### Änderung
+**Ja, `staff.role` wird an vielen Stellen in der App aktiv verwendet:**
 
-In `src/components/staff/StaffDialogNative.tsx`:
+| Stelle | Verwendung |
+|---|---|
+| `src/pages/StaffManagement.tsx` | Filter-Tabs (Service / Küche / GL) nutzen `hasRole(s.role, ...)` und zählen Mitarbeiter pro Rolle |
+| `src/components/staff/StaffTableRow.tsx` | Zeigt Rollen-Badges (Service, Küche, GL) basierend auf `enumToRoles(staff.role)` |
+| `src/components/staff/StaffCard.tsx` | Icon und Farbe basierend auf `staff.role` (ChefHat vs UtensilsCrossed) |
+| `src/contexts/AuthContext.tsx` | Login setzt `user.role` aus `staff.role` |
+| `supabase/functions/validate-pin/index.ts` | PIN-Login gibt `staff.role` zurück |
+| `src/pages/Login.tsx` | Übernimmt `role` aus PIN-Validierung |
 
-1. **State** von `selectedRestaurants: string[]` auf `restaurantDepts: Record<string, Set<string>>` umstellen (Key = Restaurant-ID, Value = Set von Abteilungen: "Service", "Küche", "GL")
+### Fazit
 
-2. **UI**: Pro ausgewähltem Restaurant drei Checkboxen einrücken:
-```text
-☑ Spicery
-    ☑ Service  ☐ Küche  ☐ GL
-☑ YUM
-    ☐ Service  ☑ Küche  ☐ GL
-```
+Die "Rolle"-Checkboxen oben im Dialog können **trotzdem entfernt** werden — aber `staff.role` in der DB muss weiterhin gesetzt werden. Das passiert dann **automatisch**, indem beim Speichern alle gewählten Abteilungen über alle Restaurants gesammelt und via `rolesToEnum()` in den Enum-Wert umgewandelt werden.
 
-3. **Init**: Beim Bearbeiten bestehende `zt_department`-Werte aus `staff.staff_restaurants` laden. Mehrere Zeilen pro Restaurant werden zu einem Set zusammengeführt.
-
-4. **Submit**: `restaurant_assignments` statt `restaurant_ids` übergeben — pro Restaurant+Abteilung eine eigene Zeile:
-```typescript
-// z.B. Spicery mit Service+GL → 2 Zeilen
-[
-  { restaurant_id: "spicery-id", zt_department: "Service" },
-  { restaurant_id: "spicery-id", zt_department: "GL" },
-  { restaurant_id: "yum-id", zt_department: "Küche" },
-]
-```
-
-5. **Validierung**: Mindestens eine Abteilung pro ausgewähltem Restaurant erforderlich.
-
-### Betroffene Dateien
+### Plan
 
 | Datei | Änderung |
 |---|---|
-| `src/components/staff/StaffDialogNative.tsx` | State, UI und Submit-Logik wie oben beschrieben |
-| `src/hooks/useRestaurantEmployees.ts` | Deduplizierung hinzufügen, falls ein Mitarbeiter durch mehrere Abteilungs-Zeilen doppelt erscheint |
+| `src/components/staff/StaffDialogNative.tsx` | 1. State-Variablen `roleService`, `roleKitchen`, `roleGl` entfernen. 2. Die UI-Sektion "Rolle" (Zeilen ~240-280) entfernen. 3. Im `handleSubmit`: Rolle aus `restaurantDepts` ableiten — alle Departments über alle Restaurants sammeln, dann `rolesToEnum(allDepts.has('Service'), allDepts.has('Küche'), allDepts.has('GL'))`. 4. Validierung: mindestens eine Abteilung muss gewählt sein. |
 
-Die `useStaff.ts` Hooks (`useCreateStaff`, `useUpdateStaff`) unterstützen bereits `restaurant_assignments` mit `zt_department` — dort ist keine Änderung nötig.
+Keine anderen Dateien betroffen — `staff.role` wird weiterhin korrekt in der DB gespeichert, nur die Quelle ändert sich (abgeleitet statt manuell).
 
