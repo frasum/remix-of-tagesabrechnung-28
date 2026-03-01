@@ -105,7 +105,7 @@ function calculatePercentChange(current: number, previous: number): number {
 
 export function useStatisticsComparison(timeRange: TimeRange = 'month', customRange?: CustomDateRange, restaurantId?: string | null, restaurantIds?: string[]) {
   const effectiveIds = restaurantIds ?? (restaurantId ? [restaurantId] : []);
-  const cacheKey = restaurantIds ? restaurantIds.sort().join(',') : restaurantId;
+  const cacheKey = restaurantIds ? [...restaurantIds].sort().join(',') : restaurantId;
   return useQuery({
     queryKey: ['statistics-comparison', timeRange, customRange?.from?.toISOString(), customRange?.to?.toISOString(), cacheKey],
     enabled: effectiveIds.length > 0,
