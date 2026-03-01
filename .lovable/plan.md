@@ -1,40 +1,47 @@
 
 
-## Problem
+## Export-Funktion für den Wochenplan
 
-Aktuell unterstützt das System nur **einen** zweiten Mitarbeiter pro Schicht (`second_waiter_name`). Wenn alle 4 Mitarbeiter auf einem Schlüssel arbeiten, muss man die anderen 3 als separate Schichten anlegen, was die Pool-Berechnung verfälscht.
+Export der Arbeitszeiten der aktuellen Periode als PDF und Excel direkt aus dem Wochenplan.
 
-## Lösung: Team-Schicht mit mehreren Mitarbeitern
+### Ansatz
 
-Die Spalte `second_waiter_name` (Text, einzelner Name) wird ersetzt durch `additional_waiters` (Text-Array, beliebig viele Namen). Dadurch können auf einer Schicht N Mitarbeiter zugewiesen werden. Der Pool-Anteil wird durch die Anzahl der Teammitglieder geteilt, und die TG%-Statistik wird jedem Mitglied korrekt zugerechnet.
-
-### Beispiel
-
-Statt:
-- Schicht A: Mitarbeiter 1 + Mitarbeiter 2 (second_waiter)
-- Schicht B (Dummy): Mitarbeiter 3 — verfälscht Pool
-- Schicht C (Dummy): Mitarbeiter 4 — verfälscht Pool
-
-Neu:
-- Schicht A: Mitarbeiter 1 + [Mitarbeiter 2, Mitarbeiter 3, Mitarbeiter 4] — Pool wird durch 4 geteilt
+Die Buchhaltung hat bereits einen PDF-Export (`exportBuchhaltungPdf`). Für den Wochenplan wird ein neuer Export erstellt, der die Daten tabellarisch nach Woche und Tag aufschlüsselt — ähnlich der Wochenplan-Ansicht im UI.
 
 ### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| **DB-Migration** | Neue Spalte `additional_waiters text[] DEFAULT '{}'` auf `waiter_shifts`. Bestehende `second_waiter_name`-Werte migrieren. Alte Spalte behalten für Abwärtskompatibilität. |
-| `src/pages/WaiterCashUp.tsx` | Formular: Statt einem einzelnen `SecondWaiterSelect` ein Mehrfach-Auswahl-Feld für Team-Mitglieder. Share-Count = 1 + additional_waiters.length. |
-| `src/components/shared/SecondWaiterSelect.tsx` | Erweitern zu `TeamWaiterSelect` mit Multi-Select-Unterstützung (oder neue Komponente). |
-| `src/hooks/useSession.ts` | `useCreateWaiterShift` / `useUpdateWaiterShift`: `additional_waiters` Array statt einzelnem `second_waiter_name` speichern. `useWaiterTipAverages`: TG% für alle Team-Mitglieder berechnen. |
-| `src/hooks/useStatistics.ts` | Pool-Verteilung: Share-Count = 1 + additional_waiters.length. TG%-Statistik für alle Teammitglieder zurechnen. |
-| `src/pages/DailySummary.tsx` | Share-Count und Anzeige auf Array umstellen. Jedes Teammitglied als eigene Zeile rendern. |
-| `src/types/database.ts` | Interface `WaiterShift`: `additional_waiters: string[]` hinzufügen. |
-| `supabase/functions/send-telegram-summary` | Team-Schichten korrekt anzeigen. |
+| `src/lib/exportWochenplanPdf.ts` | **Neu.** PDF-Export im Querformat: Tabelle mit Mitarbeitern als Zeilen, Tagen als Spalten (Start/Ende pro Tag), gruppiert nach Abteilung. Summenspalten für Gesamt, So/Fei, Abend, Nacht, U, K. Eine Seite pro Woche der Periode. |
+| `src/lib/exportWochenplanExcel.ts` | **Neu.** Excel-Export mit einem Sheet pro Woche. Gleiche Struktur wie PDF: Mitarbeiter × Tage mit Start/Ende-Zeiten, Abteilungs-Gruppierung, Summenspalten. |
+| `src/pages/zeiterfassung/ZtWochenplan.tsx` | Export-Buttons (PDF / Excel) in die Toolbar einfügen. Buttons nutzen `allPeriodShifts` (bereits geladen) + `employees` + `weeks` aus dem Context. |
 
-### Migrationsstrategie
+### Datenfluss
 
-1. Neue Spalte `additional_waiters text[] DEFAULT '{}'` hinzufügen
-2. Bestehende Daten migrieren: `UPDATE waiter_shifts SET additional_waiters = ARRAY[second_waiter_name] WHERE second_waiter_name IS NOT NULL`
-3. Code umstellen auf `additional_waiters`
-4. `second_waiter_name` als berechnete/abgeleitete Spalte behalten oder entfernen
+Alle benötigten Daten sind bereits im Wochenplan verfügbar:
+- `allPeriodShifts` — alle Schichten der gesamten Periode
+- `employees` — Mitarbeiterliste mit Abteilung
+- `weeks` — Wochendefinitionen der Periode
+- `holidays` — Feiertage für Markierung
+- Perioden-Label aus `periods` / `selectedPeriodId`
+
+### PDF-Layout (Querformat A4)
+
+```text
+Wochenplan – März 2026 – Woche 1 (26.02. – 04.03.)
+
+               Mo 26.02.  Di 27.02.  Mi 28.02.  ...  So 04.03.  | Ges   So/F  20-24  24-x  U  K
+─────────────────────────────────────────────────────────────────────────────────────────────────
+KÜCHE
+  Lam          10-22      10-22      —          ...  —           | 48,00  0,00  8,00   0,00  0  0
+  ...
+GL
+  ...
+SERVICE
+  ...
+```
+
+### Excel-Layout
+
+Ein Sheet pro Woche, gleiche Spaltenstruktur. Sheet-Name: "W1", "W2", etc.
 
