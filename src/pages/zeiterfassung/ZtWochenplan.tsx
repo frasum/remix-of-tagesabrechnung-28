@@ -190,6 +190,22 @@ export default function ZtWochenplan() {
       department?: string | null;
       field?: "start_time" | "end_time";
     }) => {
+      // --- Conflict check: does a shift exist for this employee on this date in another dept/week? ---
+      const { data: allShiftsOnDay } = await supabase
+        .from("zt_shifts")
+        .select("id, department, week_id")
+        .eq("employee_id", params.employee_id)
+        .eq("shift_date", params.shift_date);
+
+      const currentDept = params.department ?? '';
+      const hasConflict = allShiftsOnDay?.some(s =>
+        s.department !== currentDept || s.week_id !== params.week_id
+      );
+      if (hasConflict) {
+        const conflicting = allShiftsOnDay?.find(s => s.department !== currentDept || s.week_id !== params.week_id);
+        throw new Error(`Schicht existiert bereits am ${params.shift_date} in Abt. ${conflicting?.department || '?'} (anderes Restaurant/Department)`);
+      }
+
       const { data: fresh } = await supabase
         .from("zt_shifts")
         .select("*")

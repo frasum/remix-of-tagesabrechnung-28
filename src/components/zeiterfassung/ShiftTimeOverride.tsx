@@ -247,6 +247,7 @@ export default function ShiftTimeOverride({
       const selectedEmps = uniqueAllEmployees.filter((e) => generateIds.has(e.id));
       let created = 0;
       let updated = 0;
+      let skipped = 0;
 
       for (const emp of selectedEmps) {
         const department = emp.department || "";
@@ -264,9 +265,19 @@ export default function ShiftTimeOverride({
         const hours = calculateShiftHours("17:00", "01:00", false);
 
         for (const { date, week } of allDates) {
+          // Conflict check: shift in another dept/week?
+          const { data: allShiftsOnDay } = await supabase
+            .from("zt_shifts")
+            .select("id, department, week_id")
+            .eq("employee_id", emp.id)
+            .eq("shift_date", date);
+          const hasConflict = allShiftsOnDay?.some(s =>
+            s.department !== department || s.week_id !== week.id
+          );
+          if (hasConflict) { skipped++; continue; }
+
           const existingShift = existingByDate.get(date);
           if (existingShift) {
-            // Update existing
             const { error: upErr } = await supabase
               .from("zt_shifts")
               .update({
@@ -282,7 +293,6 @@ export default function ShiftTimeOverride({
             if (upErr) throw upErr;
             updated++;
           } else {
-            // Insert new
             const { error: insErr } = await supabase
               .from("zt_shifts")
               .insert({
@@ -305,8 +315,10 @@ export default function ShiftTimeOverride({
       }
 
       toast({
-        title: `${created} Schichten erzeugt, ${updated} aktualisiert`,
-        description: "Mo–Fr 17:00–01:00 für die gesamte Periode.",
+        title: `${created} Schichten erzeugt, ${updated} aktualisiert${skipped > 0 ? `, ${skipped} übersprungen` : ""}`,
+        description: skipped > 0
+          ? `Mo–Fr 17:00–01:00. ${skipped} Tag(e) übersprungen (Schicht in anderem Department/Restaurant).`
+          : "Mo–Fr 17:00–01:00 für die gesamte Periode.",
       });
       queryClient.invalidateQueries({ queryKey: ["zt-summary-shifts"] });
       queryClient.invalidateQueries({ queryKey: ["zt-shifts"] });
@@ -357,6 +369,7 @@ export default function ShiftTimeOverride({
       const selectedEmps = uniqueDailyEmployees.filter((e) => dailyIds.has(e.id));
       let created = 0;
       let updated = 0;
+      let skipped = 0;
 
       for (const emp of selectedEmps) {
         const department = emp.department || "";
@@ -372,6 +385,17 @@ export default function ShiftTimeOverride({
         const existingByDate = new Map((existing ?? []).map((s) => [s.shift_date, s]));
 
         for (const { date, week } of allDates) {
+          // Conflict check: shift in another dept/week?
+          const { data: allShiftsOnDay } = await supabase
+            .from("zt_shifts")
+            .select("id, department, week_id")
+            .eq("employee_id", emp.id)
+            .eq("shift_date", date);
+          const hasConflict = allShiftsOnDay?.some(s =>
+            s.department !== department || s.week_id !== week.id
+          );
+          if (hasConflict) { skipped++; continue; }
+
           const dayOfWeek = new Date(date + "T12:00:00").getDay();
           const isSundayOrHoliday = dayOfWeek === 0 || holidaySet.has(date);
           const hours = calculateShiftHours("17:00", "01:00", isSundayOrHoliday);
@@ -416,8 +440,10 @@ export default function ShiftTimeOverride({
       }
 
       toast({
-        title: `${created} Schichten erzeugt, ${updated} aktualisiert`,
-        description: "Mo–So 17:00–01:00 für die gesamte Periode.",
+        title: `${created} Schichten erzeugt, ${updated} aktualisiert${skipped > 0 ? `, ${skipped} übersprungen` : ""}`,
+        description: skipped > 0
+          ? `Mo–So 17:00–01:00. ${skipped} Tag(e) übersprungen (Schicht in anderem Department/Restaurant).`
+          : "Mo–So 17:00–01:00 für die gesamte Periode.",
       });
       queryClient.invalidateQueries({ queryKey: ["zt-summary-shifts"] });
       queryClient.invalidateQueries({ queryKey: ["zt-shifts"] });
