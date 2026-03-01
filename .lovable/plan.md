@@ -1,22 +1,28 @@
 
 
-## Fix: Wöchentliche Stunden im kumulierten PDF/Excel-Export
+## Plan: Urlaubszeiträume in Besonderheiten anzeigen
 
-### Problem
-Die Export-Funktionen (`exportZusammenfassungPdf`, `exportZusammenfassungExcel`) bauen intern ein `weekNumberToIds`-Mapping aus dem `weeks`-Array. Im kumulierten Modus enthält dieses Array nur eine Week-ID pro Wochennummer (dedupliziert), aber die Shifts referenzieren Week-IDs aus mehreren Restaurants. Daher werden nur Stunden eines Restaurants in den Wochenspalten angezeigt, während "Gesamt" korrekt ist (da es direkt über alle Shifts summiert).
+Analog zur bestehenden Krankheits-Logik (`getSickDateRanges` / `formatSickRanges`) wird eine Urlaubs-Variante erstellt und in allen relevanten Stellen eingebaut.
 
-### Lösung
-Beiden Export-Funktionen ein optionales `weekNumberToIds`-Parameter hinzufügen. Wenn übergeben, wird dieses statt des intern generierten Mappings verwendet.
+### 1. Neue Funktionen in `src/lib/shiftCalculations.ts`
 
-### Änderungen
+- `getVacationDateRanges(shifts)` — identisch zu `getSickDateRanges`, filtert aber auf `absence_type === 'urlaub'`
+- `formatVacationRanges(ranges)` — Wrapper um `formatSickRanges` (gleiche Formatierung), oder direkt `formatSickRanges` wiederverwenden (da die Logik identisch ist)
 
-**1. `src/lib/exportZusammenfassungPdf.ts`**
-- Neuer optionaler Parameter: `weekNumberToIds?: Record<number, string[]>`
-- Wenn übergeben, das interne Mapping überspringen und das übergebene verwenden
+Alternativ: Eine generische `getAbsenceDateRanges(shifts, type)` Funktion, die beide Fälle abdeckt. `formatSickRanges` wird zu `formatAbsenceRanges` (mit Alias für Rückwärtskompatibilität).
 
-**2. `src/lib/exportZusammenfassungExcel.ts`**
-- Gleicher optionaler Parameter und gleiche Logik
+### 2. Änderungen in `BuchhaltungRow.tsx`
 
-**3. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
-- Bei den Export-Aufrufen im kumulierten Modus `cumData.weekNumberToAllIds` als zusätzlichen Parameter übergeben
+- Urlaubszeiträume berechnen und als Text `U: 03.02.–07.02. (5T)` in die `besonderheitenValue` einfügen
+- Gleiche Logik wie bei `sickText`, nur mit `getVacationDateRanges`
+
+### 3. Änderungen in `exportBuchhaltungPdf.ts` und `exportBuchhaltungExcel.ts`
+
+- Urlaubszeiträume analog zu `sickText` berechnen und in `besText` einfügen
+- Import der neuen Funktion(en)
+
+### Ergebnis
+
+Die Besonderheiten-Spalte zeigt dann z.B.:
+`U: 03.02.–07.02. (5T) | K: 15.02.–17.02. (3T)`
 
