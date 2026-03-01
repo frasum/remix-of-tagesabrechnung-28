@@ -1,19 +1,41 @@
 
 
-## Wechselgeldbestand prominent unter Trennlinie im PDF
+## Problem
 
-### Was sich aendert
+Es gibt zwei Bugs:
 
-Der Wechselgeldbestand bleibt in der linken Spalte bestehen (nichts wird entfernt), aber **zusaetzlich** wird nach dem Spalten-Merge (Zeile 363) eine prominente, seitenbreite Sektion eingefuegt:
+### Bug 1: Rollenauswahl-Dialog verschwindet sofort
+In `Login.tsx` (Zeile 62-66) gibt es einen `useEffect`, der bei jeder Aenderung von `user` sofort nach `/select-restaurant` navigiert. Wenn `login()` erfolgreich ist, wird der User im AuthContext gesetzt, was diesen useEffect triggert -- **bevor** der Rollenauswahl-Dialog angezeigt werden kann. Der Dialog blitzt nur kurz auf und wird dann durch die Navigation verdraengt.
 
-### Aenderung in `src/utils/pdfExport.ts` (nach Zeile 363)
+### Bug 2: Doppelte Restaurant-Eintraege
+"Spicery" erscheint zweimal in der Restaurant-Auswahl. Das deutet auf doppelte Eintraege in der `staff_restaurants`-Tabelle fuer diesen Mitarbeiter hin. Das muss in der Datenbank geprueft und bereinigt werden.
 
-1. **Trennlinie**: Horizontale Linie ueber die gesamte Seitenbreite (`margin` bis `pageWidth - margin`), damit der untere Teil abgetrennt und in die Kasse gelegt werden kann.
+## Loesung
 
-2. **Grosser zentrierter Wechselgeldbestand**: Darunter mit Schriftgroesse 16pt, fett und zentriert der Text "Wechselgeldbestand: €X.XXX,XX" mit farbigem Hintergrund (gruen ab 2.000 EUR, rot darunter).
+### Datei: `src/pages/Login.tsx`
 
-3. **Nichts wird entfernt** – die bestehende kleine Darstellung in der linken Spalte bleibt erhalten.
+**useEffect anpassen** (Zeile 62-66): Der Redirect soll nur erfolgen, wenn **kein** `pendingRoleSelection` aktiv ist.
 
-### Betroffene Datei
-- `src/utils/pdfExport.ts` – nur Einfuegung nach Zeile 363, vor dem Footer-Block.
+```typescript
+useEffect(() => {
+  if (user && !pendingRoleSelection) {
+    navigate('/select-restaurant', { replace: true });
+  }
+}, [user, navigate, pendingRoleSelection]);
+```
+
+### Datei: `src/pages/RestaurantSelect.tsx`
+
+**Duplikate entfernen**: Die gemappten Restaurants nach `id` deduplizieren, damit selbst bei doppelten DB-Eintraegen jedes Restaurant nur einmal angezeigt wird.
+
+```typescript
+const mapped = data
+  .map((sr: any) => sr.restaurants as Restaurant)
+  .filter(Boolean);
+
+// Deduplizieren nach ID
+const unique = Array.from(new Map(mapped.map(r => [r.id, r])).values());
+```
+
+Dann `unique` statt `mapped` fuer die `setRestaurants()` und die Einzel-Restaurant-Logik verwenden.
 
