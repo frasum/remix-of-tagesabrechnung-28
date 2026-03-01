@@ -1,32 +1,21 @@
 
 
-## Trinkgeldpool-Ausschluss über Mitarbeitereinstellungen
+## Problem
 
-Aktuell wird `participates_in_pool` pro Schicht in `waiter_shifts` gesetzt (Standard: `true`). Die Idee: Ein neues Feld `participates_in_pool` direkt am Mitarbeiter (`staff`-Tabelle), das als **Standardwert** beim Anlegen einer Abrechnung verwendet wird.
+Das Feld `participates_in_pool` auf der `staff`-Tabelle wird aktuell nur in der **Mitarbeiter-Abrechnung** (WaiterCashUp) als Default berücksichtigt. Die **Küchen-Trinkgeld-Seite** (KitchenTipSplit) prüft dieses Feld nicht — Mitarbeiter mit `participates_in_pool = false` können dort weiterhin hinzugefügt werden und erhalten Trinkgeld.
+
+## Lösung
+
+Mitarbeiter mit `participates_in_pool = false` sollen auf der Küchen-Trinkgeld-Seite **nicht auswählbar** sein. Das StaffSelect-Dropdown filtert diese automatisch heraus.
 
 ### Änderungen
 
-| Datei / Bereich | Änderung |
+| Datei | Änderung |
 |---|---|
-| **Migration** | `ALTER TABLE staff ADD COLUMN participates_in_pool boolean NOT NULL DEFAULT true;` |
-| `src/hooks/useStaff.ts` | `Staff`-Interface und `StaffInput` um `participates_in_pool` erweitern. |
-| `src/components/staff/StaffDialogNative.tsx` | Neuer Toggle/Switch im Dialog: "Am Trinkgeldpool beteiligt". |
-| `src/pages/WaiterCashUp.tsx` | Beim Auswählen eines Kellners den Standardwert aus `staff.participates_in_pool` übernehmen (statt immer `true`). Kann pro Schicht weiterhin überschrieben werden. |
-| `src/components/staff/StaffTableRow.tsx` | Optional: Anzeige "(kein Pool)" Badge wenn `participates_in_pool = false`. |
+| `src/components/shared/StaffSelect.tsx` | Neue optionale Prop `excludeNonPoolParticipants?: boolean`. Wenn `true`, werden Mitarbeiter mit `participates_in_pool = false` aus der Liste gefiltert. |
+| `src/pages/KitchenTipSplit.tsx` | `excludeNonPoolParticipants={true}` an das StaffSelect übergeben. |
 
-### Logik
+### Technisch
 
-- Der Mitarbeiter-Stammdatensatz bestimmt den **Default** — nicht den absoluten Wert
-- Bei der Abrechnung kann der Pool-Status pro Schicht weiterhin manuell geändert werden
-- Bestehende Schichten bleiben unverändert (das Feld auf `waiter_shifts` bleibt maßgeblich)
-
-### Datenfluss
-
-```text
-Staff Dialog → staff.participates_in_pool = false
-                        ↓
-WaiterCashUp → Kellner auswählen → Default aus staff laden
-                        ↓
-waiter_shifts.participates_in_pool = false (überschreibbar)
-```
+Das StaffSelect nutzt `useActiveStaff` / `useActiveStaffByRestaurant`, die bereits `*` von der `staff`-Tabelle laden — das Feld `participates_in_pool` ist also schon verfügbar. Es muss nur ein zusätzlicher Filter auf `filteredStaff` angewendet werden.
 
