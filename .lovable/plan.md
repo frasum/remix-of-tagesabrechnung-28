@@ -1,18 +1,22 @@
 
 
-## Zusammenfassung Zeitraum nach oben verschieben
+## Bug: Falsche Trinkgeld-Berechnung in Statistiken
 
-Die "Zusammenfassung Zeitraum"-Card (Tage mit Daten, Küchen TG, Mitarbeiter TG, Ausgaben) wird über die StatCard-Zeile (Gesamtumsatz, Ø Tagesumsatz, etc.) verschoben.
+### Ursache
 
-### Änderung in `src/pages/Statistics.tsx`
+In `src/hooks/useStatistics.ts` (Zeile ~219) wird für die Pool-Berechnung `kassiert_brutto` verwendet:
+```
+const expected = (shift.kassiert_brutto || 0) + (shift.hilf_mahl || 0) - ...
+```
 
-Reihenfolge ändern von:
-1. StatCards (Gesamtumsatz, Ø Tagesumsatz, Gesamt TG, Lieferumsatz)
-2. Zusammenfassung Zeitraum Card
+Die korrekte Formel in `WaiterCashUp.tsx` (Zeile 202-203) verwendet jedoch `pos_sales`:
+```
+const expected = (shift.pos_sales || 0) + (shift.hilf_mahl || 0) - ...
+```
 
-zu:
-1. Zusammenfassung Zeitraum Card
-2. StatCards (Gesamtumsatz, Ø Tagesumsatz, Gesamt TG, Lieferumsatz)
+`kassiert_brutto` und `pos_sales` sind unterschiedliche Felder — dadurch wird der erwartete Bargeldbetrag falsch berechnet und der resultierende Trinkgeld-Pool-Anteil stimmt nicht.
 
-Rein strukturelle Umstellung, kein inhaltlicher Eingriff.
+### Fix in `src/hooks/useStatistics.ts`
+
+Zeile ~219: `shift.kassiert_brutto` durch `shift.pos_sales` ersetzen, damit die Formel mit der Abrechnung übereinstimmt.
 
