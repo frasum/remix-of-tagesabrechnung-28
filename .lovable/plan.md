@@ -1,30 +1,30 @@
 
 
-## Neues App-Icon ueberall einsetzen
+## Sidebar-Modernisierung (aktualisierte Gruppierung)
 
-### Ist-Zustand
-Das aktuelle orangene Euro-Icon (Lucide `<Euro>`) wird als Branding-Logo in folgenden Layouts verwendet:
-- **AppLayout.tsx** — Sidebar-Header (mobile + desktop), 2 Stellen
-- **GlobalLayout.tsx** — Sidebar-Header (mobile + desktop), 2 Stellen
-- **MobileLayout.tsx** — Header, 1 Stelle (aktuell `<Utensils>`)
-- **Install.tsx** — bereits `app-icon.png`, bleibt
-- **PWA-Manifest / Favicon** — referenzieren bereits `app-icon.png`
+### Gruppierung
 
-Die Euro-Icons in DailySummary und Statistics sind Daten-Icons (Waehrungssymbol), nicht Branding — die bleiben unveraendert.
+**Tagesgeschäft**: Mitarbeiter Abrechnung, Küchen Trinkgeld, Tagesabrechnung, Zeiterfassung, QR-Poster
 
-### Aenderungen
+**Auswertung**: Statistiken, Verlauf, Bargeldbestand
 
-1. **`public/app-icon.png` ersetzen** — Das hochgeladene Bild (`user-uploads://image-2.png`) wird als neues `public/app-icon.png` kopiert. Damit aendern sich automatisch PWA-Icons, Favicon-Referenz und Install-Seite.
+**Verwaltung** (nur Admin): Mitarbeiter, Telegram, Chat
 
-2. **AppLayout.tsx** — An beiden Stellen (Zeile ~142-144 und ~260-262) den `<Euro>`-Lucide-Icon durch `<img src="/app-icon.png" className="w-5 h-5 rounded" />` ersetzen. Import von `Euro` entfernen.
+### Visuelle Änderungen (wie zuvor geplant)
 
-3. **GlobalLayout.tsx** — An beiden Stellen (Zeile ~37-39 und ~105-107) dasselbe: `<Euro>` durch `<img src="/app-icon.png">` ersetzen. Import von `Euro` entfernen.
+- Glassmorphism Header: `backdrop-blur-sm bg-sidebar/80`
+- Gruppenlabels: `text-xs uppercase text-muted-foreground` mit Separatoren zwischen Gruppen
+- Aktiver Eintrag: Linke Amber-Leiste (`border-l-3 border-primary`) + `bg-sidebar-accent/50` + Icon in `text-primary`
+- Gleiche Logik für Desktop-Sidebar und Mobile-Menü
 
-4. **MobileLayout.tsx** — Zeile ~22: `<Utensils>` durch `<img src="/app-icon.png" className="w-4 h-4 rounded" />` ersetzen. Import von `Utensils` entfernen.
+### Technische Umsetzung
 
-### Betroffene Dateien
-- `public/app-icon.png` (Datei ersetzen)
-- `src/components/layout/AppLayout.tsx`
-- `src/components/layout/GlobalLayout.tsx`
-- `src/components/layout/MobileLayout.tsx`
+**Datei: `src/components/layout/AppLayout.tsx`**
+
+- `allNavItems` Array-Reihenfolge anpassen: QR-Poster nach Zeiterfassung
+- Gruppen-Definition: Tagesgeschäft = `['', 'kitchen', 'summary', 'zeiterfassung', 'qr-poster']`, Auswertung = `['statistics', 'history', 'cash-balance']`
+- Admin-Items (Mitarbeiter, Telegram, Chat) als separate Verwaltungs-Gruppe
+- Gruppen mit Permission-Filter kombinieren, leere Gruppen ausblenden
+- Aktiver Zustand und Glassmorphism-Styles anwenden
+- Mobile-Menü dieselbe Gruppierung verwenden
 
