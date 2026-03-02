@@ -1,46 +1,30 @@
 
 
-## Problem
+## Neues App-Icon ueberall einsetzen
 
-In `WaiterMobile.tsx` wird beim Speichern `second_waiter_name` korrekt gesetzt, aber `additional_waiters` bleibt immer leer (`[]`).
+### Ist-Zustand
+Das aktuelle orangene Euro-Icon (Lucide `<Euro>`) wird als Branding-Logo in folgenden Layouts verwendet:
+- **AppLayout.tsx** — Sidebar-Header (mobile + desktop), 2 Stellen
+- **GlobalLayout.tsx** — Sidebar-Header (mobile + desktop), 2 Stellen
+- **MobileLayout.tsx** — Header, 1 Stelle (aktuell `<Utensils>`)
+- **Install.tsx** — bereits `app-icon.png`, bleibt
+- **PWA-Manifest / Favicon** — referenzieren bereits `app-icon.png`
 
-**Create-Fall (Zeile ~119):**
-```typescript
-additional_waiters: [],  // ← immer leer, obwohl secondWaiterName gesetzt
-```
+Die Euro-Icons in DailySummary und Statistics sind Daten-Icons (Waehrungssymbol), nicht Branding — die bleiben unveraendert.
 
-**Update-Fall (Zeile ~112):**
-```typescript
-// additional_waiters wird gar nicht übergeben → wird in useWaiterShiftAudit auf [] gesetzt
-```
+### Aenderungen
 
-Das gesamte System (Trinkgeld-Pool-Aufteilung, ZT-Sync, PDF-Export, Monats-Statistiken) basiert aber auf `additional_waiters`, nicht auf `second_waiter_name`. Das bedeutet:
+1. **`public/app-icon.png` ersetzen** — Das hochgeladene Bild (`user-uploads://image-2.png`) wird als neues `public/app-icon.png` kopiert. Damit aendern sich automatisch PWA-Icons, Favicon-Referenz und Install-Seite.
 
-- Der zweite Kellner wird **nicht** in der Pool-Aufteilung berücksichtigt
-- Der zweite Kellner bekommt **keine** ZT-Schicht synchronisiert
-- Im PDF/Excel-Export fehlt der zweite Kellner
+2. **AppLayout.tsx** — An beiden Stellen (Zeile ~142-144 und ~260-262) den `<Euro>`-Lucide-Icon durch `<img src="/app-icon.png" className="w-5 h-5 rounded" />` ersetzen. Import von `Euro` entfernen.
 
-## Loesung
+3. **GlobalLayout.tsx** — An beiden Stellen (Zeile ~37-39 und ~105-107) dasselbe: `<Euro>` durch `<img src="/app-icon.png">` ersetzen. Import von `Euro` entfernen.
 
-**Datei: `src/pages/WaiterMobile.tsx`** — In `handleSave` das `additional_waiters`-Array aus `secondWaiterName` ableiten:
+4. **MobileLayout.tsx** — Zeile ~22: `<Utensils>` durch `<img src="/app-icon.png" className="w-4 h-4 rounded" />` ersetzen. Import von `Utensils` entfernen.
 
-```typescript
-const additionalWaiters = secondWaiterName !== 'none' ? [secondWaiterName] : [];
-```
-
-Dann bei beiden Aufrufen (create und update) `additional_waiters: additionalWaiters` mitsenden.
-
-### Konkrete Aenderungen:
-
-**Create-Fall (~Zeile 119-127):** `additional_waiters: []` ersetzen durch `additional_waiters: additionalWaiters`
-
-**Update-Fall (~Zeile 112-117):** `additional_waiters: additionalWaiters` hinzufuegen
-
-Einzeilige Ergaenzung vor den mutateAsync-Aufrufen:
-```typescript
-const additionalWaiters = secondWaiterName !== 'none' ? [secondWaiterName] : [];
-```
-
-### Betroffene Datei
-- `src/pages/WaiterMobile.tsx`
+### Betroffene Dateien
+- `public/app-icon.png` (Datei ersetzen)
+- `src/components/layout/AppLayout.tsx`
+- `src/components/layout/GlobalLayout.tsx`
+- `src/components/layout/MobileLayout.tsx`
 
