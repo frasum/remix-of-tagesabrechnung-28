@@ -1,20 +1,26 @@
 
 
-## Berechtigungen-Seite modernisieren
+## CSV-Export für das Lohnbüro-Portal
 
-Die `/permissions`-Seite bekommt dasselbe Design wie die modernisierte Mitarbeiterverwaltung.
+Alle drei Tabs (Wochenplan, Zusammenfassung, Buchhaltung) im PayrollPortal bekommen einen zusätzlichen CSV-Export-Button neben den bestehenden PDF/Excel-Buttons.
 
-### Änderungen in `src/pages/PermissionManagement.tsx`
+### Neue Datei: `src/lib/exportCsv.ts`
 
-1. **Hero Header** mit Gradient-Banner (wie StaffManagement): `bg-gradient-to-br from-primary/10 via-primary/5`, Shield-Icon in abgerundetem Container, Subtitle mit Manager-Anzahl
+Utility-Funktion `downloadCsv(filename, headers, rows)` die:
+- Header-Zeile + Datenzeilen als CSV formatiert (Semikolon-getrennt für deutsche Excel-Kompatibilität)
+- Zahlen mit Komma als Dezimaltrennzeichen
+- UTF-8 BOM voranstellt (damit Excel Umlaute korrekt anzeigt)
+- Als `.csv`-Datei herunterlädt
 
-2. **Manager-Cards modernisieren**:
-   - Avatar-Initialen statt generischem User-Icon (farbiger Kreis mit Buchstabe, wie in StaffTableRow)
-   - Subtilere Card-Styles: `border-border/50` mit leichtem Gradient-Hintergrund
-   - Checkbox-Grid mit etwas mehr Padding und besserer visueller Gruppierung
-   - Speichern-Button mit `shadow-sm` und konsistentem Styling
+### Drei Export-Funktionen in `src/lib/exportCsv.ts`
 
-3. **Empty State** modernisieren: Größeres Icon in abgerundetem Container, wie bei StaffManagement
+1. **`exportBuchhaltungCsv`** — Spalten: Mitarbeiter, Abteilung, Gesamt Std., Schichten, So/Fei, 20-24, 24-x, Urlaub, Krank, Vorschuss, Besonderheiten
+2. **`exportZusammenfassungCsv`** — Spalten: Mitarbeiter, Abteilung, W1..Wn (dynamisch), Gesamt, Schichten, So/Fei, 20-24, 24-x, U, K
+3. **`exportWochenplanCsv`** — Spalten: Mitarbeiter, Abteilung, dann pro Tag (Mo-So): Von, Bis, Stunden, Abwesenheit
 
-4. **Loading State**: Konsistenter animierter Pulse-Text statt nur Spinner
+### Änderungen in `src/pages/shared/PayrollPortal.tsx`
+
+- Import der drei CSV-Funktionen
+- Je Tab einen dritten Button mit `FileDown`-Icon und Label "CSV" neben PDF/Excel einfügen
+- Gleiche Daten wie bei den bestehenden Excel-Exporten übergeben
 
