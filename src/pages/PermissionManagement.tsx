@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, User, Loader2, Save } from 'lucide-react';
+import { Shield, Loader2, Save } from 'lucide-react';
 import { useStaff } from '@/hooks/useStaff';
 import { useAllManagerNavPermissions, useSaveManagerNavPermissions } from '@/hooks/useManagerNavPermissions';
 import { MANAGER_NAV_ITEMS } from '@/types/permissions';
@@ -13,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Hook to fetch all user roles
 function useAllUserRoles() {
   return useQuery({
     queryKey: ['all-user-roles'],
@@ -21,11 +21,21 @@ function useAllUserRoles() {
       const { data, error } = await supabase
         .from('user_roles')
         .select('staff_id, permission_level');
-      
       if (error) throw error;
       return data || [];
     },
   });
+}
+
+const AVATAR_COLORS = [
+  'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500',
+  'bg-violet-500', 'bg-cyan-500', 'bg-orange-500', 'bg-teal-500',
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
 export default function PermissionManagement() {
@@ -36,17 +46,14 @@ export default function PermissionManagement() {
   const { data: userRoles = [], isLoading: rolesLoading } = useAllUserRoles();
   const savePermissions = useSaveManagerNavPermissions();
 
-  // Local state for tracking changes per manager
   const [localPermissions, setLocalPermissions] = useState<Record<string, string[]>>({});
   const [savingStaffId, setSavingStaffId] = useState<string | null>(null);
 
-  // Get all managers from staff list with their roles
   const managers = staffList.filter(staff => {
     const role = userRoles.find(r => r.staff_id === staff.id);
     return role?.permission_level === 'manager';
   });
 
-  // Initialize local state when permissions load
   useEffect(() => {
     if (Object.keys(allPermissions).length > 0 || !permissionsLoading) {
       const initial: Record<string, string[]> = {};
@@ -61,11 +68,9 @@ export default function PermissionManagement() {
   const handleToggle = (staffId: string, path: string, checked: boolean) => {
     setLocalPermissions(prev => {
       const current = prev[staffId] || [];
-      if (checked) {
-        return { ...prev, [staffId]: [...current, path] };
-      } else {
-        return { ...prev, [staffId]: current.filter(p => p !== path) };
-      }
+      return checked
+        ? { ...prev, [staffId]: [...current, path] }
+        : { ...prev, [staffId]: current.filter(p => p !== path) };
     });
   };
 
@@ -77,16 +82,9 @@ export default function PermissionManagement() {
         paths: localPermissions[staffId] || [],
         callerStaffId: user?.id || '',
       });
-      toast({
-        title: 'Berechtigungen gespeichert',
-        description: 'Die Navigationsberechtigungen wurden aktualisiert.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Fehler',
-        description: 'Berechtigungen konnten nicht gespeichert werden.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Berechtigungen gespeichert', description: 'Die Navigationsberechtigungen wurden aktualisiert.' });
+    } catch {
+      toast({ title: 'Fehler', description: 'Berechtigungen konnten nicht gespeichert werden.', variant: 'destructive' });
     } finally {
       setSavingStaffId(null);
     }
@@ -104,25 +102,56 @@ export default function PermissionManagement() {
   return (
     <GlobalLayout>
       <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Shield className="h-8 w-8 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold">Berechtigungen verwalten</h1>
-            <p className="text-muted-foreground">
-              Manager-Navigationszugriff konfigurieren
-            </p>
+        {/* Hero Header */}
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-border/50 p-6">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 ring-1 ring-primary/20">
+              <Shield className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">Berechtigungen verwalten</h1>
+              <p className="text-muted-foreground text-sm mt-0.5">
+                {isLoading
+                  ? 'Lade Manager…'
+                  : `${managers.length} Manager · Navigationszugriff konfigurieren`}
+              </p>
+            </div>
           </div>
         </div>
 
+        {/* Content */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <div className="grid gap-4">
+            {[1, 2].map(i => (
+              <Card key={i} className="border-border/50">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-48" />
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[1, 2, 3, 4, 5, 6].map(j => (
+                      <Skeleton key={j} className="h-5 w-full" />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : managers.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">
-                Keine Manager gefunden. Weisen Sie zunächst Mitarbeitern die Manager-Rolle zu.
+          <Card className="border-border/50">
+            <CardContent className="py-16 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+                <Shield className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground font-medium">Keine Manager gefunden</p>
+              <p className="text-muted-foreground text-sm mt-1">
+                Weisen Sie zunächst Mitarbeitern die Manager-Rolle zu.
               </p>
             </CardContent>
           </Card>
@@ -131,19 +160,20 @@ export default function PermissionManagement() {
             {managers.map(manager => {
               const currentPaths = localPermissions[manager.id] || [];
               const hasNoRestrictions = currentPaths.length === 0;
+              const initial = manager.name.charAt(0).toUpperCase();
 
               return (
-                <Card key={manager.id}>
+                <Card key={manager.id} className="border-border/50 bg-gradient-to-br from-card to-card/80">
                   <CardHeader className="pb-3">
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-5 w-5 text-primary" />
+                      <div className={`h-10 w-10 rounded-full ${getAvatarColor(manager.name)} flex items-center justify-center text-white font-semibold text-sm`}>
+                        {initial}
                       </div>
                       <div>
                         <CardTitle className="text-lg">{manager.name}</CardTitle>
                         <CardDescription>
-                          {hasNoRestrictions 
-                            ? 'Vollzugriff auf alle Manager-Bereiche' 
+                          {hasNoRestrictions
+                            ? 'Vollzugriff auf alle Manager-Bereiche'
                             : `${currentPaths.length} Bereich(e) freigeschaltet`}
                         </CardDescription>
                       </div>
@@ -152,23 +182,23 @@ export default function PermissionManagement() {
                   <CardContent>
                     <div className="space-y-4">
                       <p className="text-sm text-muted-foreground">
-                        {hasNoRestrictions 
+                        {hasNoRestrictions
                           ? 'Wählen Sie Bereiche aus, um den Zugriff einzuschränken. Ohne Auswahl hat der Manager Zugriff auf alle Bereiche.'
                           : 'Aktivierte Bereiche sind für diesen Manager sichtbar.'}
                       </p>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-3">
                         {MANAGER_NAV_ITEMS.map(item => (
-                          <div key={item.path} className="flex items-center space-x-2">
+                          <div key={item.path} className="flex items-center space-x-2.5">
                             <Checkbox
                               id={`${manager.id}-${item.path}`}
                               checked={currentPaths.includes(item.path)}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked) =>
                                 handleToggle(manager.id, item.path, checked as boolean)
                               }
                             />
-                            <Label 
+                            <Label
                               htmlFor={`${manager.id}-${item.path}`}
-                              className="text-sm cursor-pointer"
+                              className="text-sm cursor-pointer leading-tight"
                             >
                               {item.label}
                             </Label>
@@ -180,6 +210,7 @@ export default function PermissionManagement() {
                           onClick={() => handleSave(manager.id)}
                           disabled={!hasChanges(manager.id) || savingStaffId === manager.id}
                           size="sm"
+                          className="shadow-sm"
                         >
                           {savingStaffId === manager.id ? (
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
