@@ -281,17 +281,8 @@ export default function Statistics() {
         {dailyStats.length > 0 && (
           <>
             {/* Summary Table */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center shrink-0">
-                    <Receipt className="w-5 h-5 text-primary" />
-                  </div>
-                  <CardTitle>Zusammenfassung Zeitraum</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <div className="rounded-lg border border-border/50 bg-card p-4 border-l-4 border-l-primary/40">
                     <p className="text-sm text-muted-foreground">Tage mit Daten</p>
                     <p className="text-2xl font-bold tabular-nums">{summary?.daysWithData || 0}</p>
@@ -315,8 +306,7 @@ export default function Statistics() {
                     </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+            </div>
 
             {/* Summary Cards with Comparison */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
