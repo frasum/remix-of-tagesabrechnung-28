@@ -29,6 +29,7 @@ import { exportZusammenfassungPdf } from "@/lib/exportZusammenfassungPdf";
 import { exportZusammenfassungExcel } from "@/lib/exportZusammenfassungExcel";
 import { exportBuchhaltungPdf } from "@/lib/exportBuchhaltungPdf";
 import { exportBuchhaltungExcel } from "@/lib/exportBuchhaltungExcel";
+import { exportWochenplanCsv, exportZusammenfassungCsv, exportBuchhaltungCsv } from "@/lib/exportCsv";
 import type { Shift, PayrollNote, AdvanceEntry } from "@/pages/zeiterfassung/buchhaltung/types";
 import BuchhaltungTableHead from "@/pages/zeiterfassung/buchhaltung/BuchhaltungTableHead";
 import BuchhaltungDeptHeader from "@/pages/zeiterfassung/buchhaltung/BuchhaltungDeptHeader";
@@ -637,6 +638,9 @@ function PayrollWochenplanTab({ weeks, shifts, employees, holidays, periodLabel,
           <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!shifts.length} onClick={() => exportWochenplanExcel(periodLabel, employees, weeks, shifts as any, holidays)}>
             <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
           </Button>
+          <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!shifts.length} onClick={() => { exportWochenplanCsv(periodLabel, employees, weeks, shifts as any, holidays); toast.success("CSV erstellt"); }}>
+            <FileDown className="h-3.5 w-3.5" /> CSV
+          </Button>
         </div>
       </div>
 
@@ -875,6 +879,9 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
         <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => exportZusammenfassungExcel(periodLabel, employees, weeks, shifts as any, weekNumberToAllIds)}>
           <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
         </Button>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportZusammenfassungCsv(periodLabel, employees, weeks, shifts as any, weekNumberToAllIds); toast.success("CSV erstellt"); }}>
+          <FileDown className="mr-1 h-4 w-4" /> CSV
+        </Button>
       </div>
 
       <div className="overflow-x-auto border rounded-lg">
@@ -972,6 +979,9 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
         </Button>
         <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes); toast.success("Excel erstellt"); }}>
           <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
+        </Button>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes); toast.success("CSV erstellt"); }}>
+          <FileDown className="mr-1 h-4 w-4" /> CSV
         </Button>
       </div>
 
