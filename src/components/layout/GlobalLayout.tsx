@@ -28,10 +28,54 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
     navigate('/login');
   };
 
+  const linkClasses = (path: string) =>
+    cn(
+      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+      location.pathname === path
+        ? "border-l-3 border-primary bg-sidebar-accent/50 text-sidebar-foreground"
+        : "text-sidebar-foreground hover:bg-sidebar-accent"
+    );
+
+  const iconClasses = (path: string) =>
+    cn("w-5 h-5", location.pathname === path && "text-primary");
+
+  const renderNav = (onClickLink?: () => void) => (
+    <>
+      <Link
+        to="/spicery"
+        onClick={onClickLink}
+        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-sidebar-foreground hover:bg-sidebar-accent"
+      >
+        <Home className="w-5 h-5" />
+        Zurück zur App
+      </Link>
+      <div className="h-px bg-sidebar-border my-3" />
+      <p className="text-xs uppercase tracking-wider text-muted-foreground px-3 mb-2">
+        Verwaltung
+      </p>
+      <Link
+        to="/staff"
+        onClick={onClickLink}
+        className={linkClasses('/staff')}
+      >
+        <Users className={iconClasses('/staff')} />
+        Mitarbeiter
+      </Link>
+      <Link
+        to="/permissions"
+        onClick={onClickLink}
+        className={linkClasses('/permissions')}
+      >
+        <Shield className={iconClasses('/permissions')} />
+        Berechtigungen
+      </Link>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile Header */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar border-b border-sidebar-border">
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-sidebar/80 backdrop-blur-sm border-b border-sidebar-border">
         <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg overflow-hidden">
@@ -51,43 +95,10 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
           </Button>
         </div>
 
-        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <nav className="px-4 pb-4 bg-sidebar border-b border-sidebar-border animate-slide-in">
-            <Link
-              to="/spicery"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors text-sidebar-foreground hover:bg-sidebar-accent"
-            >
-              <Home className="w-5 h-5" />
-              Zurück zur App
-            </Link>
-            <Link
-              to="/staff"
-              onClick={() => setMobileMenuOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
-                location.pathname === '/staff'
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
-              )}
-            >
-              <Users className="w-5 h-5" />
-              Mitarbeiter
-            </Link>
-            <Link
-              to="/permissions"
-              onClick={() => setMobileMenuOpen(false)}
-              className={cn(
-                "flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors",
-                location.pathname === '/permissions'
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                  : "text-sidebar-foreground hover:bg-sidebar-accent"
-              )}
-            >
-              <Shield className="w-5 h-5" />
-              Berechtigungen
-            </Link>
+          <nav className="px-4 pb-4 bg-sidebar border-b border-sidebar-border animate-slide-in space-y-1">
+            {renderNav(() => setMobileMenuOpen(false))}
+            <div className="h-px bg-sidebar-border my-3" />
             <button
               onClick={() => { setMobileMenuOpen(false); handleLogout(); }}
               className="flex items-center gap-3 px-3 py-3 rounded-lg text-sm font-medium transition-colors text-destructive hover:bg-sidebar-accent w-full"
@@ -101,7 +112,7 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
 
       {/* Desktop Sidebar */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:flex lg:w-64 lg:flex-col bg-sidebar border-r border-sidebar-border">
-        <div className="flex items-center gap-3 px-6 h-16 border-b border-sidebar-border">
+        <div className="flex items-center gap-3 px-6 h-16 border-b border-sidebar-border bg-sidebar/80 backdrop-blur-sm">
           <div className="w-9 h-9 rounded-lg overflow-hidden">
             <img src="/app-icon.png" alt="App" className="w-full h-full object-cover" />
           </div>
@@ -111,37 +122,7 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
         </div>
         
         <nav className="flex-1 px-4 py-6 space-y-1">
-          <Link
-            to="/spicery"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-sidebar-foreground hover:bg-sidebar-accent"
-          >
-            <Home className="w-5 h-5" />
-            Zurück zur App
-          </Link>
-          <Link
-            to="/staff"
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-              location.pathname === '/staff'
-                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            )}
-          >
-            <Users className="w-5 h-5" />
-            Mitarbeiter
-          </Link>
-          <Link
-            to="/permissions"
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-              location.pathname === '/permissions'
-                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            )}
-          >
-            <Shield className="w-5 h-5" />
-            Berechtigungen
-          </Link>
+          {renderNav()}
         </nav>
 
         <div className="px-4 py-4 border-t border-sidebar-border space-y-3">
