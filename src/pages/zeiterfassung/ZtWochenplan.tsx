@@ -19,6 +19,7 @@ import { exportWochenplanPdf } from "@/lib/exportWochenplanPdf";
 import { exportWochenplanExcel } from "@/lib/exportWochenplanExcel";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import SfnTooltipHeader from "@/components/zeiterfassung/SfnTooltipHeader";
 import { useRestaurant, useRestaurants } from "@/hooks/useRestaurant";
 import { useZt } from "@/contexts/ZtContext";
 import { useRestaurantEmployees, type RestaurantEmployee } from "@/hooks/useRestaurantEmployees";
@@ -558,9 +559,9 @@ export default function ZtWochenplan() {
                     );
                   })}
                   <th className="totals-header text-center p-1.5 font-semibold min-w-[50px] border-l-2 border-primary/20 border-b border-border text-xs">Ges</th>
-                  <th className="totals-header text-center p-1.5 font-semibold min-w-[50px] border-b border-border text-xs">So/F</th>
-                  <th className="totals-header text-center p-1.5 font-semibold min-w-[50px] border-b border-border text-xs">20-24</th>
-                  <th className="totals-header text-center p-1.5 font-semibold min-w-[50px] border-b border-border text-xs">24-x</th>
+                  <th className="totals-header text-center p-1.5 font-semibold min-w-[50px] border-b border-border text-xs"><SfnTooltipHeader column="soFei" label="So/F" /></th>
+                  <th className="totals-header text-center p-1.5 font-semibold min-w-[50px] border-b border-border text-xs"><SfnTooltipHeader column="evening" label="20-24" /></th>
+                  <th className="totals-header text-center p-1.5 font-semibold min-w-[50px] border-b border-border text-xs"><SfnTooltipHeader column="night" label="24-x" /></th>
                   <th className="totals-header text-center p-1.5 font-semibold min-w-[35px] border-b border-border text-xs">U</th>
                   <th className="totals-header text-center p-1.5 font-semibold min-w-[35px] border-b border-border text-xs">K</th>
                 </tr>

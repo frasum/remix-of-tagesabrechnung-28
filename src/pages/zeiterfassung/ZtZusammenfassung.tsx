@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import SfnTooltipHeader from "@/components/zeiterfassung/SfnTooltipHeader";
 import { format, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -217,9 +218,9 @@ export default function ZtZusammenfassung() {
               ))}
               <th className="text-center p-2 font-medium">Gesamt</th>
               <th className="text-center p-2 font-medium">Schichten</th>
-              <th className="text-center p-2 font-medium">So/Fei</th>
-              <th className="text-center p-2 font-medium">20-24</th>
-              <th className="text-center p-2 font-medium">24-x</th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" /></th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" /></th>
               <th className="text-center p-2 font-medium">U</th>
               <th className="text-center p-2 font-medium">K</th>
             </tr>

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useCallback } from "react";
+import SfnTooltipHeader from "@/components/zeiterfassung/SfnTooltipHeader";
 import { useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -722,9 +723,9 @@ function ZusammenfassungTab({ weeks, shifts, employees, periodLabel, weekNumberT
               {weeks.map(w => <th key={w.id} className="text-center p-2 font-medium whitespace-nowrap">W{w.week_number}</th>)}
               <th className="text-center p-2 font-medium">Gesamt</th>
               <th className="text-center p-2 font-medium">Schichten</th>
-              <th className="text-center p-2 font-medium">So/Fei</th>
-              <th className="text-center p-2 font-medium">20-24</th>
-              <th className="text-center p-2 font-medium">24-x</th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" /></th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" /></th>
               <th className="text-center p-2 font-medium">U</th>
               <th className="text-center p-2 font-medium">K</th>
             </tr>
