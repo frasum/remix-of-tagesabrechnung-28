@@ -13,6 +13,7 @@ const allTabs = [
   { label: "Zusammenfassung", path: "zusammenfassung", permPath: "zeiterfassung/zusammenfassung" },
   { label: "Buchhaltung", path: "buchhaltung", permPath: "zeiterfassung/buchhaltung" },
   { label: "Perioden", path: "perioden", permPath: "zeiterfassung/perioden" },
+  { label: "Brutto/Netto", path: "brutto-netto", permPath: "zeiterfassung/brutto-netto" },
 ];
 
 export default function ZtLayout() {
