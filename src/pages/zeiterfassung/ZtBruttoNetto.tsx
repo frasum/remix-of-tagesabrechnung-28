@@ -87,7 +87,7 @@ export default function ZtBruttoNetto() {
   });
 
   // Auto-fill when employee changes
-  const effectiveHourlyRate = staffRestaurant?.zt_hourly_rate ?? staffDetails?.hourly_rate ?? 0;
+  const effectiveHourlyRate = (staffRestaurant?.zt_hourly_rate || 0) > 0 ? staffRestaurant!.zt_hourly_rate : (staffDetails?.hourly_rate ?? 0);
 
   // When employee selected, auto-fill fields
   useEffect(() => {
