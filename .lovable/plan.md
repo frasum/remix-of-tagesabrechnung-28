@@ -1,23 +1,27 @@
 
 
-## Plan: Perioden-Dropdown im SFN-Bereich
+## Plan: Stundenlohn-Autofill reparieren
 
-### Änderung
+### Problem
+Der Stundenlohn wird beim Mitarbeiterwechsel nicht angezeigt, weil `useMemo` für State-Updates (`setState`) verwendet wird. `useMemo` ist für berechnete Werte gedacht, nicht für Side-Effects — React garantiert nicht, dass der Callback zuverlässig ausgeführt wird.
+
+### Lösung
 
 **Datei: `src/pages/zeiterfassung/ZtBruttoNetto.tsx`**
 
-Die zwei Datumsfelder "Von" / "Bis" werden durch ein Perioden-Dropdown ersetzt, das alle verfügbaren Perioden aus `useZt()` auflistet. Die aktuelle Periode (`selectedPeriodId`) ist vorausgewählt. Bei Auswahl einer Periode werden `dateFrom`/`dateTo` automatisch gesetzt.
+`useMemo` (Zeile 93) durch `useEffect` ersetzen:
 
-### Umsetzung
+```typescript
+useEffect(() => {
+  if (staffDetails) {
+    if (staffDetails.tax_class) setTaxClass(staffDetails.tax_class);
+    if (effectiveHourlyRate) setHourlyRate(String(effectiveHourlyRate));
+    if (staffDetails.health_insurance) {
+      setInsuranceType(staffDetails.health_insurance === "privat" ? "privat" : "gesetzlich");
+    }
+  }
+}, [staffDetails, effectiveHourlyRate]);
+```
 
-1. Neuen lokalen State `localPeriodId` hinzufügen, initialisiert mit `selectedPeriodId`.
-2. Ein `Select`-Dropdown oberhalb der Datumsfelder einfügen mit allen `periods` als Optionen (Label: z.B. "26.01.2026 – 25.02.2026" oder der Periodenname falls vorhanden).
-3. Bei `onValueChange` des Dropdowns: `localPeriodId` setzen und `dateFrom`/`dateTo` aus der gewählten Periode ableiten.
-4. Die bestehenden Datumsfelder bleiben als read-only Anzeige oder werden komplett entfernt (da die Periode den Zeitraum definiert).
-5. Der bestehende `useEffect` für `selectedPeriodId` wird durch die Initialisierung des `localPeriodId` ersetzt.
-
-### Ergebnis
-- Dropdown zeigt alle Perioden, Standard ist die aktuelle
-- Datumswerte werden automatisch aus der gewählten Periode abgeleitet
-- Keine Datenbankänderungen nötig
+Einzeilige Änderung — `useMemo` → `useEffect`. Keine weiteren Anpassungen nötig.
 
