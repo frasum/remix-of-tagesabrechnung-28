@@ -227,6 +227,7 @@ export default function ShiftTimeOverride({
             total_hours: hours.totalHours,
             evening_hours: hours.eveningHours,
             night_hours: hours.nightHours,
+            night_deep_hours: hours.nightDeepHours,
             sunday_holiday_hours: hours.sundayHolidayHours,
             is_holiday: isSundayOrHoliday,
           })
@@ -307,7 +308,7 @@ export default function ShiftTimeOverride({
         for (const { date, week } of allDates) {
           const isHoliday = holidaySet.has(date);
           const hours = calculateShiftHours("17:00", "01:00", isHoliday);
-          // Conflict check: shift in another dept/week?
+          // Conflict check
           const { data: allShiftsOnDay } = await supabase
             .from("zt_shifts")
             .select("id, department, week_id, start_time, absence_type, total_hours")
@@ -329,6 +330,7 @@ export default function ShiftTimeOverride({
                 total_hours: hours.totalHours,
                 evening_hours: hours.eveningHours,
                 night_hours: hours.nightHours,
+                night_deep_hours: hours.nightDeepHours,
                 sunday_holiday_hours: hours.sundayHolidayHours,
                 is_holiday: isHoliday,
               })
@@ -348,6 +350,7 @@ export default function ShiftTimeOverride({
                 total_hours: hours.totalHours,
                 evening_hours: hours.eveningHours,
                 night_hours: hours.nightHours,
+                night_deep_hours: hours.nightDeepHours,
                 sunday_holiday_hours: hours.sundayHolidayHours,
                 is_holiday: isHoliday,
               });
@@ -454,6 +457,7 @@ export default function ShiftTimeOverride({
                 total_hours: hours.totalHours,
                 evening_hours: hours.eveningHours,
                 night_hours: hours.nightHours,
+                night_deep_hours: hours.nightDeepHours,
                 sunday_holiday_hours: hours.sundayHolidayHours,
                 is_holiday: isSundayOrHoliday,
                 absence_type: null,
@@ -474,6 +478,7 @@ export default function ShiftTimeOverride({
                 total_hours: hours.totalHours,
                 evening_hours: hours.eveningHours,
                 night_hours: hours.nightHours,
+                night_deep_hours: hours.nightDeepHours,
                 sunday_holiday_hours: hours.sundayHolidayHours,
                 is_holiday: isSundayOrHoliday,
               });

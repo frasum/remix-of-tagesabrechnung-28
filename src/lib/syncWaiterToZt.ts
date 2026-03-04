@@ -103,6 +103,7 @@ async function upsertZtShift(params: {
       sunday_holiday_hours: hours.sundayHolidayHours,
       evening_hours: hours.eveningHours,
       night_hours: hours.nightHours,
+      night_deep_hours: hours.nightDeepHours,
       is_holiday: params.isSundayOrHoliday,
     }, {
       onConflict: 'employee_id,shift_date,department',

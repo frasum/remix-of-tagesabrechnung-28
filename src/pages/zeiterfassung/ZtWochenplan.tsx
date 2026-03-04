@@ -36,6 +36,7 @@ type Shift = {
   sunday_holiday_hours: number;
   evening_hours: number;
   night_hours: number;
+  night_deep_hours: number;
   absence_type: string | null;
   department: string | null;
 };
@@ -327,7 +328,7 @@ export default function ZtWochenplan() {
       const isSun = isSunday(dateObj);
       const hasAbsence = !!params.absence_type;
       const hours = hasAbsence
-        ? { totalHours: 0, sundayHolidayHours: 0, eveningHours: 0, nightHours: 0 }
+        ? { totalHours: 0, sundayHolidayHours: 0, eveningHours: 0, nightHours: 0, nightDeepHours: 0 }
         : calculateShiftHours(mergedStart, mergedEnd, isSun || isHoliday);
 
       const { error } = await supabase.from("zt_shifts").upsert({
@@ -341,6 +342,7 @@ export default function ZtWochenplan() {
         sunday_holiday_hours: hours.sundayHolidayHours,
         evening_hours: hours.eveningHours,
         night_hours: hours.nightHours,
+        night_deep_hours: hours.nightDeepHours,
         absence_type: params.absence_type ?? null,
         department: params.department ?? '',
       }, { onConflict: "employee_id,shift_date,department" });
