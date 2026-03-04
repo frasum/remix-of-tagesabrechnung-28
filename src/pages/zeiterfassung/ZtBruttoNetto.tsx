@@ -129,7 +129,7 @@ export default function ZtBruttoNetto() {
       }
       return {
         totalHours: Math.round(agg.total * 100) / 100,
-        nightHours: Math.round(agg.night * 100) / 100,
+        nightHours: Math.round((agg.night + agg.evening) * 100) / 100,
         sundayHours: Math.round(agg.sunday * 100) / 100,
         holidayHours: Math.round(agg.holiday * 100) / 100,
         eveningHours: Math.round(agg.evening * 100) / 100,
@@ -340,7 +340,7 @@ export default function ZtBruttoNetto() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>Gesamtstunden: <strong>{sfnData.totalHours.toFixed(2).replace(".", ",")} h</strong></div>
-                  <div>Nachtstunden: <strong>{sfnData.nightHours.toFixed(2).replace(".", ",")} h</strong></div>
+                  <div>Nachtstunden (20–06 Uhr): <strong>{sfnData.nightHours.toFixed(2).replace(".", ",")} h</strong></div>
                   <div>Sonntagsstunden: <strong>{sfnData.sundayHours.toFixed(2).replace(".", ",")} h</strong></div>
                   <div>Feiertagsstunden: <strong>{sfnData.holidayHours.toFixed(2).replace(".", ",")} h</strong></div>
                 </div>
