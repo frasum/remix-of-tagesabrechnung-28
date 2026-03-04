@@ -336,6 +336,67 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
             <Switch id="staff-pool" checked={participatesInPool} onCheckedChange={setParticipatesInPool} />
           </div>
 
+          {/* Payroll Data Section - read-only, only for existing staff with data */}
+          {staff && (staff as any).tax_class !== undefined && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">Lohnabrechnungsdaten</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ['Steuerklasse', (staff as any).tax_class],
+                    ['Steuer-ID', (staff as any).tax_id],
+                    ['SV-Nr.', (staff as any).social_security_nr],
+                    ['Krankenkasse', (staff as any).health_insurance],
+                    ['Nationalität', (staff as any).nationality],
+                    ['Personengruppe', (staff as any).personnel_group],
+                    ['Geburtsdatum', (staff as any).date_of_birth],
+                    ['Eintritt', (staff as any).employment_start],
+                    ['Austritt', (staff as any).employment_end],
+                  ]
+                    .filter(([, v]) => v != null && v !== '')
+                    .map(([label, value]) => (
+                      <div key={label as string} className="space-y-1">
+                        <p className="text-xs text-muted-foreground">{label}</p>
+                        <p className="text-sm font-medium">{String(value)}</p>
+                      </div>
+                    ))}
+                </div>
+                <div className="flex items-center gap-4">
+                  {(staff as any).is_minijob && (
+                    <span className="text-xs bg-accent text-accent-foreground px-2 py-1 rounded-full">Minijob</span>
+                  )}
+                  {(staff as any).is_sv_exempt && (
+                    <span className="text-xs bg-accent text-accent-foreground px-2 py-1 rounded-full">SV-befreit</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Vacation / Sick days */}
+              {((staff as any).vacation_days_contractual != null || (staff as any).vacation_days_taken != null || (staff as any).sick_days_total != null) && (
+                <div className="space-y-3">
+                  <Label className="text-base font-semibold">Urlaubsdaten</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      ['Vertraglich', (staff as any).vacation_days_contractual],
+                      ['Resturlaub Vorjahr', (staff as any).vacation_days_previous],
+                      ['Aktuelles Jahr', (staff as any).vacation_days_current],
+                      ['Genommen', (staff as any).vacation_days_taken],
+                      ['Kranktage', (staff as any).sick_days_total],
+                    ]
+                      .filter(([, v]) => v != null)
+                      .map(([label, value]) => (
+                        <div key={label as string} className="space-y-1">
+                          <p className="text-xs text-muted-foreground">{label}</p>
+                          <p className="text-sm font-medium">{String(value)} Tage</p>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
           {/* Permission Level Section - only for existing staff */}
           {staff && (
             <>
