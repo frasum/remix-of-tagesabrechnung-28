@@ -1,31 +1,23 @@
 
+## Ergebnis der Prüfung: `night_deep_hours` im Wochenplan
 
-## Fix: `is_holiday` wird fälschlicherweise auch für Sonntage gesetzt
+### Status: Korrekt implementiert — kein Fix nötig
 
-### Problem
+Die `night_deep_hours` werden an allen relevanten Stellen korrekt gespeichert und gelesen:
 
-Das Feld `is_holiday` in `zt_shifts` soll nur `true` sein, wenn der Tag ein **bayerischer Feiertag** ist — NICHT wenn es ein Sonntag ist. Downstream in `ZtBruttoNetto.tsx` wird `is_holiday` verwendet, um zwischen Sonntag (50%) und Feiertag (125%) zu unterscheiden. Aktuell wird `is_holiday` auf `isSundayOrHoliday` gesetzt, wodurch Sonntagsstunden fälschlich den 125%-Feiertagszuschlag bekommen statt 50%.
+| Stelle | Status | Detail |
+|--------|--------|--------|
+| **Wochenplan (Speichern)** | OK | `ZtWochenplan.tsx` Zeile 346: `night_deep_hours: hours.nightDeepHours` wird beim Upsert korrekt gesetzt |
+| **Wochenplan (Anzeige)** | OK | Spalte "24-x" zeigt `night_hours` (gesamte Nachtstunden), `night_deep_hours` ist ein Subset davon und wird nicht separat angezeigt — das ist korrekt |
+| **ShiftTimeOverride (Batch)** | OK | Alle 5 Upsert-Stellen setzen `night_deep_hours` korrekt |
+| **syncWaiterToZt** | OK | Zeile 107: `night_deep_hours: hours.nightDeepHours` |
+| **Brutto-Netto** | OK | Liest `night_deep_hours` aus der DB und aggregiert korrekt für 40%-Zuschlag |
+| **shiftCalculations.ts** | OK | `nightDeepMinutes = Math.min(endMin, 240)` — korrekte Berechnung der 00:00–04:00 Stunden |
 
-### Betroffene Stellen
+### Einziger Hinweis (kosmetisch, kein Bug)
 
-| Datei | Zeile | Bug |
-|-------|-------|-----|
-| `src/lib/syncWaiterToZt.ts` | 107 | `is_holiday: params.isSundayOrHoliday` → sollte separate `isHoliday`-Flag sein |
-| `src/components/zeiterfassung/ShiftTimeOverride.tsx` | 232, 462, 483 | `is_holiday: isSundayOrHoliday` → sollte `holidaySet.has(date)` sein |
+In `ZtBruttoNetto.tsx` wird `(s as any).night_deep_hours` verwendet (Zeilen 123, 128). Das funktioniert, ist aber ein Type-Cast der vermieden werden könnte, indem man den Select-Return-Type explizit definiert. Das ist aber rein kosmetisch und hat keinen Einfluss auf die Berechnung.
 
-`ZtWochenplan.tsx` ist korrekt — nutzt bereits `holidays?.has(date)`.
+### Fazit
 
-### Lösung
-
-**`syncWaiterToZt.ts`**:
-- `upsertZtShift` bekommt einen neuen Parameter `isHoliday: boolean` (nur Feiertag, nicht Sonntag)
-- `is_holiday` wird auf `params.isHoliday` gesetzt statt `params.isSundayOrHoliday`
-- Aufrufer übergeben `isHoliday` separat vom `isSundayOrHoliday`
-
-**`ShiftTimeOverride.tsx`**:
-- `is_holiday` wird auf `holidaySet.has(date)` gesetzt statt `isSundayOrHoliday`
-
-### Auswirkung
-
-Bestehende Schichtdaten, die an Sonntagen fälschlich `is_holiday = true` haben, müssten ggf. korrigiert werden. Neue Syncs und Batch-Updates werden korrekt gespeichert.
-
+Keine Änderungen notwendig. Die `night_deep_hours` werden korrekt berechnet, gespeichert und in der Brutto-Netto-Berechnung für den 40%-Nachtzuschlag verwendet.
