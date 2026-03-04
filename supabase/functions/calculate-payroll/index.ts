@@ -24,24 +24,45 @@ async function callLohnicaApi(body: any, apiKey: string): Promise<any> {
   const month = body.calculationMonth || (now.getMonth() + 1);
   const period = `${year}-${String(month).padStart(2, "0")}`;
 
-  const gross = body.grossMonthly ?? (body.hourlyRate && body.monthlyHours ? body.hourlyRate * body.monthlyHours : 0);
-  if (gross <= 0) throw new Error("Kein Brutto ermittelbar");
+  const gross = body.grossMonthly;
+  if (!gross || gross <= 0) throw new Error("Kein Brutto ermittelbar");
 
   const stateAbbr = STATE_ABBR[body.state] || "by";
-  const taxClassNum = ["I","II","III","IV","V","VI"].indexOf(body.taxClass) + 1 || 1;
+  const taxClassStr = String(["I","II","III","IV","V","VI"].indexOf(body.taxClass) + 1 || 1);
+  const childAllowance = body.childAllowances ?? 0;
 
-  const apiPayload = {
-    gross_salary: Math.round(gross * 100) / 100,
-    tax_class: taxClassNum,
-    state: stateAbbr,
-    church_tax: body.churchTax === true,
-    health_insurance_type: body.insuranceType === "privat" ? "private" : "statutory",
-    children_allowance: body.childAllowances ?? 0,
-    year,
-    month,
+  const apiPayload: Record<string, any> = {
+    "monthly-gross-income": gross,
+    "age": 30,
+    "income-tax-class": taxClassStr,
+    "child-allowance": String(childAllowance),
+    "tax-exempt-amount-monthly": 0,
+    "state": stateAbbr,
+    "church-tax": body.churchTax === true,
+    "pension-insurance": true,
+    "unemployment-insurance": true,
+    "has-children": childAllowance > 0,
+    "children-below-25": childAllowance > 0 ? Math.ceil(childAllowance) : 0,
+    "calculation-month": month,
+    "calculation-year": year,
+    "insurance-type": body.insuranceType === "privat" ? "private" : "compulsory",
+    "health-insurance-company-number": "67450665", // TK as default
+    "collecting-agency-company-number": "67450665",
+    "private-health-insurance-premium": 0,
+    "private-health-insurance-base-amount": 0,
+    "employer-subsidy": false,
+    "income-tax-factor": 1,
+    "midi-job": false,
+    "mini-job": false,
   };
 
-  const url = `https://brutto-netto-api.de/api/v1/gross-net-calc/${period}`;
+  const apiUrl = Deno.env.get("BRUTTO_NETTO_API_URL") || "https://brutto-netto-api.de";
+  const url = `${apiUrl}/api/v1/gross-net-calc/${period}`;
+
+  console.log("Calling Lohnica API:", url);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
 
   const resp = await fetch(url, {
     method: "POST",
@@ -50,44 +71,62 @@ async function callLohnicaApi(body: any, apiKey: string): Promise<any> {
       "X-API-Key": apiKey,
     },
     body: JSON.stringify(apiPayload),
-    signal: AbortSignal.timeout(10_000),
+    signal: controller.signal,
   });
+
+  clearTimeout(timeout);
 
   if (!resp.ok) {
     const text = await resp.text().catch(() => "");
     throw new Error(`API ${resp.status}: ${text}`);
   }
 
-  return resp.json();
+  const apiData = await resp.json();
+  console.log("Lohnica API raw response:", JSON.stringify(apiData));
+
+  // Check validation errors
+  if (apiData?.data?.["validation-errors"]) {
+    console.error("Lohnica validation errors:", JSON.stringify(apiData.data["validation-errors"]));
+    throw new Error("API validation error");
+  }
+
+  return apiData;
 }
 
 function mapLohnicaResponse(apiResult: any, gross: number): any {
-  // Map Lohnica response fields to our PayrollResult format
-  const r = apiResult;
+  const d = apiResult?.data ?? apiResult;
+  const emp = d?.employee ?? {};
+  const ag = d?.employer ?? {};
+
+  const incomeTax = emp["income-tax"] ?? 0;
+  const soli = emp["solidarity-tax"] ?? 0;
+  const churchTax = emp["church-tax"] ?? 0;
+  const anKV = emp["health-insurance"] ?? 0;
+  const anRV = emp["pension-insurance"] ?? 0;
+  const anAV = emp["unemployment-insurance"] ?? 0;
+  const anPV = emp["nursing-care-insurance"] ?? 0;
+  const netMonthly = d["net-salary"] ?? d["net-pay"] ?? (gross - incomeTax - soli - churchTax - anKV - anRV - anAV - anPV);
+
+  const agKV = ag["health-insurance"] ?? 0;
+  const agRV = ag["pension-insurance"] ?? 0;
+  const agAV = ag["unemployment-insurance"] ?? 0;
+  const agPV = ag["nursing-care-insurance"] ?? 0;
+  const agU1 = ag["u1-contribution"] ?? 0;
+  const agU2 = ag["u2-contribution"] ?? 0;
+  const agInsolvenz = ag["insolvency-contribution"] ?? 0;
+  const agUmlagenTotal = Math.round((agU1 + agU2 + agInsolvenz) * 100) / 100;
+  const employerTotal = d["labor-cost"] ?? Math.round((gross + agKV + agRV + agAV + agPV + agUmlagenTotal) * 100) / 100;
 
   return {
     grossMonthly: gross,
-    netMonthly: r.net_salary ?? r.net ?? 0,
-    incomeTax: r.income_tax ?? r.wage_tax ?? 0,
-    soli: r.solidarity_surcharge ?? r.soli ?? 0,
-    churchTax: r.church_tax ?? 0,
-    employee: {
-      kv: r.employee_health_insurance ?? r.health_insurance_employee ?? 0,
-      rv: r.employee_pension_insurance ?? r.pension_insurance_employee ?? 0,
-      av: r.employee_unemployment_insurance ?? r.unemployment_insurance_employee ?? 0,
-      pv: r.employee_nursing_care_insurance ?? r.nursing_care_insurance_employee ?? 0,
-    },
-    employer: {
-      kv: r.employer_health_insurance ?? r.health_insurance_employer ?? 0,
-      rv: r.employer_pension_insurance ?? r.pension_insurance_employer ?? 0,
-      av: r.employer_unemployment_insurance ?? r.unemployment_insurance_employer ?? 0,
-      pv: r.employer_nursing_care_insurance ?? r.nursing_care_insurance_employer ?? 0,
-    },
-    agUmlagen: {
-      u1: r.u1 ?? 0,
-      u2: r.u2 ?? 0,
-      insolvenzumlage: r.insolvency_levy ?? r.insolvenzumlage ?? 0,
-    },
+    netMonthly,
+    incomeTax,
+    soli,
+    churchTax,
+    employee: { kv: anKV, rv: anRV, av: anAV, pv: anPV },
+    employer: { kv: agKV, rv: agRV, av: agAV, pv: agPV },
+    employerTotal,
+    agUmlagen: { u1: agU1, u2: agU2, insolvenzumlage: agInsolvenz },
     source: "api" as const,
   };
 }
