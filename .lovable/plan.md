@@ -1,17 +1,23 @@
 
 
-## Plan: Stundenlohn-Feld in den Lohnabrechnungsdaten anzeigen
+## Plan: Perioden-Dropdown im SFN-Bereich
 
-### Problem
-Das Feld `hourly_rate` wird vom thaitime-Sync korrekt in die `staff`-Tabelle übernommen, aber im Mitarbeiter-Dialog unter "Lohnabrechnungsdaten" nicht angezeigt. Es fehlt sowohl die Darstellung als auch die Möglichkeit, den Wert manuell zu bearbeiten.
+### Änderung
+
+**Datei: `src/pages/zeiterfassung/ZtBruttoNetto.tsx`**
+
+Die zwei Datumsfelder "Von" / "Bis" werden durch ein Perioden-Dropdown ersetzt, das alle verfügbaren Perioden aus `useZt()` auflistet. Die aktuelle Periode (`selectedPeriodId`) ist vorausgewählt. Bei Auswahl einer Periode werden `dateFrom`/`dateTo` automatisch gesetzt.
 
 ### Umsetzung
 
-**Datei: `src/components/staff/StaffDialogNative.tsx`**
+1. Neuen lokalen State `localPeriodId` hinzufügen, initialisiert mit `selectedPeriodId`.
+2. Ein `Select`-Dropdown oberhalb der Datumsfelder einfügen mit allen `periods` als Optionen (Label: z.B. "26.01.2026 – 25.02.2026" oder der Periodenname falls vorhanden).
+3. Bei `onValueChange` des Dropdowns: `localPeriodId` setzen und `dateFrom`/`dateTo` aus der gewählten Periode ableiten.
+4. Die bestehenden Datumsfelder bleiben als read-only Anzeige oder werden komplett entfernt (da die Periode den Zeitraum definiert).
+5. Der bestehende `useEffect` für `selectedPeriodId` wird durch die Initialisierung des `localPeriodId` ersetzt.
 
-1. Neuen State `hourlyRate` hinzufügen und beim Initialisieren aus `staff.hourly_rate` befüllen.
-2. Im Lohnabrechnungsdaten-Grid ein neues Input-Feld "Stundenlohn" einfügen (vor Steuerklasse, als erstes Feld oder nach Austritt -- passend zum Layout).
-3. Beim Speichern `hourly_rate: parseFloat(hourlyRate) || undefined` an `onSave` übergeben.
-
-Keine Datenbankänderungen nötig -- das Feld existiert bereits in der `staff`-Tabelle und im `StaffInput`-Interface.
+### Ergebnis
+- Dropdown zeigt alle Perioden, Standard ist die aktuelle
+- Datumswerte werden automatisch aus der gewählten Periode abgeleitet
+- Keine Datenbankänderungen nötig
 
