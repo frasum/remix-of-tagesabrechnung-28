@@ -49,9 +49,9 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, advances, is
         {formatHours(totals.gesamt)}
       </td>
       <td className="text-center px-1 py-1.5 tabular-nums">{displayNum(totals.schichten)}</td>
-      <td className="text-center px-1 py-1.5 tabular-nums">{displayNum(totals.soFei, formatHours)}</td>
       <td className="text-center px-1 py-1.5 tabular-nums">{displayNum(totals.evening, formatHours)}</td>
       <td className="text-center px-1 py-1.5 tabular-nums">{displayNum(totals.night, formatHours)}</td>
+      <td className="text-center px-1 py-1.5 tabular-nums">{displayNum(totals.soFei, formatHours)}</td>
       <td className="text-center px-1 py-1.5 tabular-nums text-green-600 font-medium border-l border-border/40">
         {totals.urlaubTage > 0 ? totals.urlaubTage.toFixed(2).replace('.', ',') : "–"}
       </td>

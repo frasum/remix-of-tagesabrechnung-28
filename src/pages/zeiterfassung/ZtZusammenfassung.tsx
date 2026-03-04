@@ -218,9 +218,9 @@ export default function ZtZusammenfassung() {
               ))}
               <th className="text-center p-2 font-medium">Gesamt</th>
               <th className="text-center p-2 font-medium">Schichten</th>
-              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
-              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" /></th>
-              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" /></th>
+               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" /></th>
+               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" /></th>
+               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
               <th className="text-center p-2 font-medium">U</th>
               <th className="text-center p-2 font-medium">K</th>
             </tr>
@@ -253,9 +253,9 @@ export default function ZtZusammenfassung() {
                     })}
                     <td className="text-center p-2 font-medium">{formatHours(totals.gesamt)}</td>
                     <td className="text-center p-2">{totals.schichten || ""}</td>
-                    <td className="text-center p-2">{totals.soFei > 0 ? formatHours(totals.soFei) : ""}</td>
-                    <td className="text-center p-2">{totals.evening > 0 ? formatHours(totals.evening) : ""}</td>
-                    <td className="text-center p-2">{totals.night > 0 ? formatHours(totals.night) : ""}</td>
+                     <td className="text-center p-2">{totals.evening > 0 ? formatHours(totals.evening) : ""}</td>
+                     <td className="text-center p-2">{totals.night > 0 ? formatHours(totals.night) : ""}</td>
+                     <td className="text-center p-2">{totals.soFei > 0 ? formatHours(totals.soFei) : ""}</td>
                     <td className="text-center p-2 text-green-600 font-medium">{totals.urlaubTage > 0 ? totals.urlaubTage.toFixed(2).replace('.', ',') : ""}</td>
                     <td className="text-center p-2 text-red-600 font-medium">{totals.krankTage > 0 ? totals.krankTage : ""}</td>
                   </tr>
@@ -267,9 +267,9 @@ export default function ZtZusammenfassung() {
                         {weeks?.map((w) => <td key={w.id} className="text-center p-2"></td>)}
                         <td className="text-center p-2">{formatHours(dt.gesamt)}</td>
                         <td className="text-center p-2">{dt.schichten || ""}</td>
-                        <td className="text-center p-2">{dt.soFei > 0 ? formatHours(dt.soFei) : ""}</td>
-                        <td className="text-center p-2">{dt.evening > 0 ? formatHours(dt.evening) : ""}</td>
-                        <td className="text-center p-2">{dt.night > 0 ? formatHours(dt.night) : ""}</td>
+                         <td className="text-center p-2">{dt.evening > 0 ? formatHours(dt.evening) : ""}</td>
+                         <td className="text-center p-2">{dt.night > 0 ? formatHours(dt.night) : ""}</td>
+                         <td className="text-center p-2">{dt.soFei > 0 ? formatHours(dt.soFei) : ""}</td>
                         <td className="text-center p-2">{dt.urlaubTage > 0 ? dt.urlaubTage.toFixed(2).replace('.', ',') : ""}</td>
                         <td className="text-center p-2">{dt.krankTage > 0 ? dt.krankTage : ""}</td>
                       </tr>
@@ -285,9 +285,9 @@ export default function ZtZusammenfassung() {
               {weeks?.map((w) => <td key={w.id} className="text-center p-2"></td>)}
               <td className="text-center p-2">{formatHours(grandTotals.gesamt)}</td>
               <td className="text-center p-2">{grandTotals.schichten || ""}</td>
-              <td className="text-center p-2">{grandTotals.soFei > 0 ? formatHours(grandTotals.soFei) : ""}</td>
-              <td className="text-center p-2">{grandTotals.evening > 0 ? formatHours(grandTotals.evening) : ""}</td>
-              <td className="text-center p-2">{grandTotals.night > 0 ? formatHours(grandTotals.night) : ""}</td>
+               <td className="text-center p-2">{grandTotals.evening > 0 ? formatHours(grandTotals.evening) : ""}</td>
+               <td className="text-center p-2">{grandTotals.night > 0 ? formatHours(grandTotals.night) : ""}</td>
+               <td className="text-center p-2">{grandTotals.soFei > 0 ? formatHours(grandTotals.soFei) : ""}</td>
               <td className="text-center p-2">{grandTotals.urlaubTage > 0 ? grandTotals.urlaubTage.toFixed(2).replace('.', ',') : ""}</td>
               <td className="text-center p-2">{grandTotals.krankTage > 0 ? grandTotals.krankTage : ""}</td>
             </tr>
