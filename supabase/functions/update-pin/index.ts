@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-staff-id, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 interface UpdatePinRequest {
@@ -24,49 +24,44 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // Verify caller via Supabase Auth
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Missing authorization header" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Dual auth: try OAuth first, fall back to x-staff-id
+    let callerStaffId: string | null = null;
 
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
-    if (authError || !user) {
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ") && authHeader !== `Bearer ${supabaseAnonKey}`) {
+      const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("staff_id")
+          .eq("user_id", user.id)
+          .single();
+        callerStaffId = profile?.staff_id ?? null;
+      }
+    }
+
+    // Fallback: x-staff-id header (PIN-based admin)
+    if (!callerStaffId) {
+      callerStaffId = req.headers.get("x-staff-id");
+    }
+
+    if (!callerStaffId) {
       return new Response(
-        JSON.stringify({ success: false, error: "Invalid authentication token" }),
+        JSON.stringify({ success: false, error: "Missing authentication" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create admin client
-    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-
-    // Resolve caller's staff_id and verify admin permission
-    const { data: callerProfile } = await supabase
-      .from("profiles")
-      .select("staff_id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!callerProfile?.staff_id) {
-      return new Response(
-        JSON.stringify({ success: false, error: "No staff profile linked" }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    // Verify admin/manager permission
     const { data: callerPermission } = await supabase.rpc("get_staff_permission", {
-      p_staff_id: callerProfile.staff_id,
+      p_staff_id: callerStaffId,
     });
 
     if (callerPermission !== "admin" && callerPermission !== "manager") {
