@@ -1,37 +1,32 @@
 
 
-## Problem
+## Plan: Login case-insensitiv machen & Update-Fehler beheben
 
-Currently the Buchhaltung, Zusammenfassung, and Wochenplan pages combine Sunday and Holiday hours into a single "So/Fei" column. The user wants them split into two separate columns: "So" (Sonntag 50%) and "Fei" (Feiertag 125%), so holiday surcharges are transparently shown and not mixed into the Sunday total.
+### Problem 1: Case-sensitiver Login
+Die `validate-pin` Edge Function verwendet `.eq("name", name)` — ein exakter, case-sensitiver Vergleich. "Chefin" ≠ "CHEFIN".
 
-## Changes
+**Fix:** In `supabase/functions/validate-pin/index.ts` den Vergleich auf case-insensitiv umstellen:
+```typescript
+// Zeile 149: .eq("name", name) ersetzen durch:
+.ilike("name", name)
+```
 
-### 1. Update `EmployeeTotals` type (`buchhaltung/types.ts`)
-- Add `sonntagStunden: number` and `feiertagStunden: number` fields
-- Keep `soFei` for backward compatibility or remove it
+### Problem 2: Staff-Update-Fehler debuggen
+Ohne Console-Logs ist die Ursache unklar. Zwei Maßnahmen:
 
-### 2. Update `getEmployeeTotals` in `buchhaltung/utils.ts`
-- Split the current `soFei` aggregation: use `is_holiday` flag on each shift to separate Sunday from Holiday hours
-- The Shift type in `types.ts` needs `is_holiday` added
-- The query already uses `select("*")` so the data is available
+1. **Besseres Error-Logging in `useUpdateStaff`** (`src/hooks/useStaff.ts`): Den tatsächlichen Fehlertext in die Toast-Nachricht aufnehmen, damit der Fehler sichtbar wird:
+```typescript
+onError: (error) => {
+  const msg = error instanceof Error ? error.message : 'Unbekannter Fehler';
+  toast.error(`Fehler beim Aktualisieren: ${msg}`);
+  console.error('Error updating staff:', error);
+},
+```
 
-### 3. Update `BuchhaltungTableHead.tsx`
-- Replace single "So/Fei" column with two columns: "So" and "Fei"
-- Adjust colgroup widths
+2. **`update-pin` Edge Function absichern**: Die Funktion braucht aktuell eine OAuth-Session. Für PIN-basierte Admins den gleichen `x-staff-id` Fallback einbauen wie in den anderen Edge Functions (manage-user-role etc.), damit PINs auch ohne OAuth-Login geändert werden können.
 
-### 4. Update `BuchhaltungRow.tsx`
-- Display `totals.sonntagStunden` and `totals.feiertagStunden` in separate `<td>` cells
-
-### 5. Update `BuchhaltungFooter.tsx`
-- Add the extra footer cell for the new column
-
-### 6. Update `ZtZusammenfassung.tsx` and `ZtWochenplan.tsx`
-- Same split in their local `getEmployeeWeekTotals` / totals computation
-- Both pages have their own table headers that need the column split
-- The Zusammenfassung Shift type needs `is_holiday` added
-
-### 7. Export functions (`exportBuchhaltungPdf.ts`, `exportBuchhaltungExcel.ts`)
-- Update column headers and data mapping to reflect So/Fei split
-
-This change is purely presentational in the table views. The Brutto-Netto calculator already correctly separates Sunday and Holiday hours.
+### Dateien
+- `supabase/functions/validate-pin/index.ts` — `.eq()` → `.ilike()`
+- `supabase/functions/update-pin/index.ts` — x-staff-id Fallback hinzufügen
+- `src/hooks/useStaff.ts` — Fehlermeldung verbessern
 
