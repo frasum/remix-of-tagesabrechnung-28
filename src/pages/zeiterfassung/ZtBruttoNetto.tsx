@@ -138,6 +138,13 @@ export default function ZtBruttoNetto() {
 
   const hasSfnData = sfnData && sfnData.shiftCount > 0;
 
+  // Auto-fill monthly hours from SFN data
+  useEffect(() => {
+    if (sfnData && sfnData.totalHours > 0) {
+      setMonthlyHours(String(sfnData.totalHours));
+    }
+  }, [sfnData]);
+
   // Derive calculation year/month from dateFrom
   const calculationYear = dateFrom ? new Date(dateFrom).getFullYear() : undefined;
   const calculationMonth = dateFrom ? new Date(dateFrom).getMonth() + 1 : undefined;
