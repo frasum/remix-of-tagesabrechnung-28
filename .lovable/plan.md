@@ -1,67 +1,109 @@
 
 
-## Plan: Lohnabrechnungsdaten aus thaitime importieren
+## Plan: Brutto-Netto-Rechner 2026 als neuer Zeiterfassungs-Tab
 
 ### Übersicht
 
-Die thaitime `employees`-Tabelle enthält umfangreiche Lohnabrechnungsdaten (Steuerklasse, Steuer-ID, SV-Nr., Krankenkasse, Urlaubsdaten etc.), die in das Tagesabrechnungssystem übernommen werden sollen. Dafür müssen neue Spalten in der `staff`-Tabelle angelegt, die thaitime `sync-employees` Edge Function erweitert und die lokale Import-Funktion erstellt werden.
+Neuer Tab "Brutto/Netto" im Zeiterfassungs-Layout, der die vorhandenen Schicht- und SFN-Daten nutzt und eine vereinfachte Brutto-Netto-Berechnung für Deutschland 2026 durchführt.
 
-### Neue Felder in der `staff`-Tabelle
+### 1. Navigation erweitern
 
+**ZtLayout.tsx** — Neuen Tab einfügen:
 ```text
-tax_class          text       (Steuerklasse: I-VI)
-is_minijob         boolean    (Minijob 450€-Basis)
-is_sv_exempt       boolean    (SV-befreit)
-date_of_birth      date       (Geburtsdatum)
-employment_start   date       (Einstellungsdatum)
-employment_end     date       (Austrittsdatum)
-tax_id             text       (Steuer-ID)
-social_security_nr text       (Sozialversicherungsnr.)
-nationality        text       (Staatsangehörigkeit)
-personnel_group    text       (Personengruppe)
-health_insurance   text       (Krankenkasse)
-vacation_days_contractual  integer  (Urlaubstage vertraglich)
-vacation_days_previous     integer  (Resturlaub Vorjahr)
-vacation_days_current      integer  (Urlaubstage aktuelles Jahr)
-vacation_days_taken        integer  (Genommene Urlaubstage)
-sick_days_total            integer  (Kranktage gesamt)
+allTabs = [
+  Wochenplan, Zusammenfassung, Buchhaltung, Perioden,
+  + { label: "Brutto/Netto", path: "brutto-netto", permPath: "zeiterfassung/brutto-netto" }
+]
 ```
 
-### Umsetzung (3 Schritte)
-
-**1. DB-Migration** — 16 neue Spalten zur `staff`-Tabelle hinzufügen (alle nullable, keine Breaking Changes).
-
-**2. thaitime `sync-employees` erweitern** — Die bestehende Edge Function im thaitime-Projekt liefert aktuell nur Basisdaten. Sie muss um die Lohnabrechnungsfelder erweitert werden (Select + Mapping). Dies erfordert eine Änderung im thaitime-Projekt.
-
-**3. Lokale Edge Function `sync-thaitime-staff`** — Ruft die erweiterte thaitime-API auf, gleicht per `perso_nr` ab, und importiert/aktualisiert alle Felder inkl. der neuen Lohnabrechnungsdaten.
-
-**4. Import-Button** — Button auf der Mitarbeiterverwaltungsseite, der den Import auslöst und das Ergebnis als Toast anzeigt.
-
-**5. Staff-Dialog erweitern** (optional) — Die neuen Felder im Bearbeitungsdialog anzeigen (read-only oder editierbar), gruppiert unter "Lohnabrechnungsdaten" und "Urlaubsdaten" wie im Screenshot.
-
-### Feld-Mapping thaitime → Tagesabrechnung
-
+**App.tsx** — Neue Route unter `zeiterfassung`:
 ```text
-thaitime.employees              →  staff
-──────────────────────────────────────────────
-tax_class                       →  tax_class
-is_minijob                      →  is_minijob
-is_sv_exempt                    →  is_sv_exempt
-date_of_birth                   →  date_of_birth
-employment_start_date           →  employment_start
-employment_end_date             →  employment_end
-tax_id                          →  tax_id
-social_security_number          →  social_security_nr
-nationality                     →  nationality
-personnel_group                 →  personnel_group
-health_insurance                →  health_insurance
-vacation_days_contractual       →  vacation_days_contractual
-vacation_days_previous_year     →  vacation_days_previous
-vacation_days_current_year      →  vacation_days_current
-vacation_days_taken             →  vacation_days_taken
+<Route path="brutto-netto" element={<ZtBruttoNetto />} />
 ```
 
-### Hinweis
+### 2. Neue Seite: `ZtBruttoNetto.tsx`
 
-Das `THAITIME_SYNC_API_KEY` Secret ist bereits konfiguriert. Die thaitime `sync-employees` Edge Function muss im thaitime-Projekt um die zusätzlichen Felder erweitert werden — das kann parallel oder vorher erfolgen.
+Zwei Bereiche:
+
+**A) Eingabeformular (Lohnparameter)**
+- Mitarbeiter-Auswahl (Dropdown aus `useRestaurantEmployees`) — befüllt automatisch Steuerklasse, Stundenlohn aus `staff`-Tabelle
+- Bruttogehalt ODER Stundenlohn + Monatsstunden
+- Steuerklasse (I–VI), Bundesland, Kirchensteuer (ja/nein)
+- KV-Art (gesetzlich/privat), Kinderfreibeträge (0–8 in 0,5-Schritten)
+- Zeitraum-Auswahl (Monat oder Datums-Range) zum Abruf der Schichtdaten
+
+**B) SFN-Datenblock aus Schichten**
+- Query auf `zt_shifts` für gewählten Mitarbeiter + Zeitraum
+- Aggregation: Gesamtstunden, Nachtstunden, Sonntagsstunden, Feiertagsstunden
+- Info-Block: "Aus deinen erfassten Schichten: X Nachtstd., Y Sonntagsstd., Z Feiertagsstd."
+- Hinweis wenn keine Schichten vorhanden
+
+### 3. Edge Function `calculate-payroll`
+
+Neuer Backend-Endpunkt, der die Steuerberechnung serverseitig durchführt.
+
+**Input (JSON):**
+```text
+{
+  grossMonthly, hourlyRate, monthlyHours,
+  taxClass, state, churchTax, insuranceType,
+  childAllowances,
+  sfnHours: { night, sunday, holiday },
+  sfnHourlyRate
+}
+```
+
+**Berechnung (vereinfacht für 2026):**
+- Lohnsteuer nach Steuerklasse (Tabellenwerte/Formeln)
+- Solidaritätszuschlag (5,5% der LSt wenn über Freigrenze)
+- Kirchensteuer (8% oder 9% der LSt je nach Bundesland)
+- AN-Anteile: KV (7,3% + Zusatzbeitrag ~0,9%), RV (9,3%), AV (1,3%), PV (1,7% + ggf. Zuschlag)
+- AG-Anteile: KV (7,3% + halber Zusatzbeitrag), RV (9,3%), AV (1,3%), PV (1,7%)
+- SFN-Zuschläge: Nacht 25%, Sonntag 50%, Feiertag 125% × Stundenlohn × Stunden (steuerfrei bis Grenze)
+
+**Output:**
+```text
+{
+  grossMonthly, netMonthly,
+  incomeTax, soli, churchTax,
+  employee: { kv, rv, av, pv },
+  employer: { kv, rv, av, pv },
+  employerTotal,
+  sfn: { nightBonus, sundayBonus, holidayBonus, totalBonus },
+  effectiveNetHourlyRate
+}
+```
+
+### 4. Ergebnisdarstellung
+
+Nach "Berechnen"-Klick:
+- **Zusammenfassungskarten**: Grundbrutto, Netto, AG-Kosten
+- **Detailtabelle**: Alle Abzugsposten (LSt, Soli, KiSt, AN-KV/RV/AV/PV, AG-KV/RV/AV/PV)
+- **SFN-Block** (wenn Schichtdaten vorhanden): Nachtzuschlag, Sonntagszuschlag, Feiertagszuschlag, Summe, effektiver Netto-Stundenlohn
+- **Rechtlicher Hinweis**: "Diese Berechnung ist unverbindlich..."
+
+### 5. SFN-Zuschlagsprozente
+
+Bestehende Logik in `shiftCalculations.ts` berechnet nur die **Stunden** pro Kategorie, nicht die Zuschlagsprozente. Neue gemeinsame Konstanten:
+```text
+SFN_RATES = { night: 0.25, sunday: 0.50, holiday: 1.25 }
+```
+In `shiftCalculations.ts` exportieren, im Frontend und in der Edge Function nutzen.
+
+### 6. Neue Dateien
+
+```text
+src/pages/zeiterfassung/ZtBruttoNetto.tsx     — Hauptseite
+src/lib/sfnRates.ts                           — SFN-Zuschlagskonstanten
+src/types/payroll.ts                          — TypeScript-Typen
+supabase/functions/calculate-payroll/index.ts — Edge Function
+```
+
+### 7. Geänderte Dateien
+
+```text
+src/pages/zeiterfassung/ZtLayout.tsx  — Tab hinzufügen
+src/App.tsx                           — Route hinzufügen
+supabase/config.toml                  — JWT-Config für neue Function
+```
 
