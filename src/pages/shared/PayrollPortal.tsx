@@ -893,9 +893,9 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
               {weeks.map(w => <th key={w.id} className="text-center p-2 font-medium whitespace-nowrap">W{w.week_number}</th>)}
               <th className="text-center p-2 font-medium">Gesamt</th>
               <th className="text-center p-2 font-medium">Schichten</th>
-              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
-              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" /></th>
-              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" /></th>
+               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" /></th>
+               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" /></th>
+               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
               <th className="text-center p-2 font-medium">U</th>
               <th className="text-center p-2 font-medium">K</th>
             </tr>
@@ -926,9 +926,9 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
                     })}
                     <td className="text-center p-2 font-medium">{formatHours(totals.gesamt)}</td>
                     <td className="text-center p-2">{totals.schichten || ""}</td>
-                    <td className="text-center p-2">{totals.soFei > 0 ? formatHours(totals.soFei) : ""}</td>
-                    <td className="text-center p-2">{totals.evening > 0 ? formatHours(totals.evening) : ""}</td>
-                    <td className="text-center p-2">{totals.night > 0 ? formatHours(totals.night) : ""}</td>
+                     <td className="text-center p-2">{totals.evening > 0 ? formatHours(totals.evening) : ""}</td>
+                     <td className="text-center p-2">{totals.night > 0 ? formatHours(totals.night) : ""}</td>
+                     <td className="text-center p-2">{totals.soFei > 0 ? formatHours(totals.soFei) : ""}</td>
                     <td className="text-center p-2 text-green-600 font-medium">{totals.urlaubTage > 0 ? totals.urlaubTage.toFixed(2).replace(".", ",") : ""}</td>
                     <td className="text-center p-2 text-red-600 font-medium">{totals.krankTage > 0 ? totals.krankTage : ""}</td>
                   </tr>
