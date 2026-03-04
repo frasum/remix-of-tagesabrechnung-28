@@ -14,7 +14,7 @@ const STATE_ABBR: Record<string, string> = {
 };
 
 // ── SFN rates (local, not covered by API) ──
-const SFN_RATES = { night: 0.25, sunday: 0.50, holiday: 1.25 };
+const SFN_RATES = { night25: 0.25, night40: 0.40, sunday: 0.50, holiday: 1.25 };
 const SFN_TAX_FREE_HOURLY_LIMIT = 50;
 
 // ── Lohnica API call ──
@@ -264,7 +264,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const sfnHours = body.sfnHours || { night: 0, sunday: 0, holiday: 0 };
+    const sfnHours = body.sfnHours || { night25: 0, night40: 0, sunday: 0, holiday: 0 };
     const sfnHourlyRate = body.sfnHourlyRate || 0;
 
     // Determine gross for SFN & effective rate calculation
@@ -312,10 +312,11 @@ Deno.serve(async (req) => {
 
     // ── SFN bonuses (always local) ──
     const effectiveSfnRate = Math.min(sfnHourlyRate, SFN_TAX_FREE_HOURLY_LIMIT);
-    const nightBonus = Math.round(sfnHours.night * effectiveSfnRate * SFN_RATES.night * 100) / 100;
+    const night25Bonus = Math.round(sfnHours.night25 * effectiveSfnRate * SFN_RATES.night25 * 100) / 100;
+    const night40Bonus = Math.round(sfnHours.night40 * effectiveSfnRate * SFN_RATES.night40 * 100) / 100;
     const sundayBonus = Math.round(sfnHours.sunday * effectiveSfnRate * SFN_RATES.sunday * 100) / 100;
     const holidayBonus = Math.round(sfnHours.holiday * effectiveSfnRate * SFN_RATES.holiday * 100) / 100;
-    const totalBonus = Math.round((nightBonus + sundayBonus + holidayBonus) * 100) / 100;
+    const totalBonus = Math.round((night25Bonus + night40Bonus + sundayBonus + holidayBonus) * 100) / 100;
 
     // ── Effective net hourly rate ──
     const totalHours = body.monthlyHours || (body.hourlyRate ? gross / body.hourlyRate : 0);
@@ -325,7 +326,7 @@ Deno.serve(async (req) => {
 
     const result = {
       ...coreResult,
-      sfn: { nightBonus, sundayBonus, holidayBonus, totalBonus },
+      sfn: { night25Bonus, night40Bonus, sundayBonus, holidayBonus, totalBonus },
       effectiveNetHourlyRate,
     };
 

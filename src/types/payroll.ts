@@ -8,7 +8,8 @@ export interface PayrollInput {
   insuranceType: 'gesetzlich' | 'privat';
   childAllowances: number;
   sfnHours: {
-    night: number;
+    night25: number;
+    night40: number;
     sunday: number;
     holiday: number;
   };
@@ -35,7 +36,8 @@ export interface PayrollResult {
   employer: { kv: number; rv: number; av: number; pv: number };
   employerTotal: number;
   sfn: {
-    nightBonus: number;
+    night25Bonus: number;
+    night40Bonus: number;
     sundayBonus: number;
     holidayBonus: number;
     totalBonus: number;

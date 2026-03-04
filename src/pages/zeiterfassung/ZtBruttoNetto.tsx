@@ -109,23 +109,23 @@ export default function ZtBruttoNetto() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("zt_shifts")
-        .select("total_hours, night_hours, sunday_holiday_hours, is_holiday, evening_hours")
+        .select("total_hours, night_hours, night_deep_hours, sunday_holiday_hours, is_holiday, evening_hours")
         .eq("employee_id", employeeId)
         .gte("shift_date", dateFrom)
         .lte("shift_date", dateTo)
         .is("absence_type", null);
       if (error) throw error;
 
-      const agg = { total: 0, night: 0, sunday: 0, holiday: 0, evening: 0, sundayEvening: 0 };
+      const agg = { total: 0, night: 0, nightDeep: 0, sunday: 0, holiday: 0, evening: 0, sundayEvening: 0, sundayNightDeep: 0 };
       for (const s of data) {
         agg.total += s.total_hours || 0;
         agg.night += s.night_hours || 0;
+        agg.nightDeep += (s as any).night_deep_hours || 0;
         agg.evening += s.evening_hours || 0;
         const isSundayOrHoliday = (s.sunday_holiday_hours || 0) > 0;
         if (isSundayOrHoliday) {
-          // Track evening hours on sunday/holiday shifts separately
-          // so we can subtract them from night hours (higher surcharge wins)
           agg.sundayEvening += s.evening_hours || 0;
+          agg.sundayNightDeep += (s as any).night_deep_hours || 0;
         }
         if (s.is_holiday) {
           agg.holiday += s.sunday_holiday_hours || 0;
@@ -133,12 +133,14 @@ export default function ZtBruttoNetto() {
           agg.sunday += s.sunday_holiday_hours || 0;
         }
       }
-      // Night hours = all evening + night hours MINUS those already covered by sunday/holiday surcharge
-      // Per §3b EStG: when sunday (50%) and night (25%) overlap, only the higher surcharge applies
-      const rawNight = agg.night + agg.evening - agg.sundayEvening;
+      // Night 25% = evening (20-00) + shallow night (04-06) MINUS sunday/holiday evening overlap
+      // Night 40% = deep night (00-04) MINUS sunday/holiday deep night overlap
+      const rawNight25 = (agg.evening - agg.sundayEvening) + Math.max(0, (agg.night - agg.nightDeep));
+      const rawNight40 = agg.nightDeep - agg.sundayNightDeep;
       return {
         totalHours: Math.round(agg.total * 100) / 100,
-        nightHours: Math.round(Math.max(0, rawNight) * 100) / 100,
+        night25Hours: Math.round(Math.max(0, rawNight25) * 100) / 100,
+        night40Hours: Math.round(Math.max(0, rawNight40) * 100) / 100,
         sundayHours: Math.round(agg.sunday * 100) / 100,
         holidayHours: Math.round(agg.holiday * 100) / 100,
         eveningHours: Math.round(agg.evening * 100) / 100,
@@ -187,7 +189,8 @@ export default function ZtBruttoNetto() {
         childAllowances,
         isSvExempt,
         sfnHours: {
-          night: sfnData?.nightHours ?? 0,
+          night25: sfnData?.night25Hours ?? 0,
+          night40: sfnData?.night40Hours ?? 0,
           sunday: sfnData?.sundayHours ?? 0,
           holiday: sfnData?.holidayHours ?? 0,
         },
@@ -347,15 +350,16 @@ export default function ZtBruttoNetto() {
                   <Info className="h-4 w-4 text-primary" />
                   Aus {sfnData.shiftCount} Schichten im Zeitraum:
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="grid grid-cols-2 gap-2 text-sm">
                   <div>Gesamtstunden: <strong>{sfnData.totalHours.toFixed(2).replace(".", ",")} h</strong></div>
-                  <div>Nachtstunden (20–06 Uhr): <strong>{sfnData.nightHours.toFixed(2).replace(".", ",")} h</strong></div>
+                  <div>Nachtstunden 25%: <strong>{sfnData.night25Hours.toFixed(2).replace(".", ",")} h</strong></div>
+                  <div>Nachtstunden 40%: <strong>{sfnData.night40Hours.toFixed(2).replace(".", ",")} h</strong></div>
                   <div>Sonntagsstunden: <strong>{sfnData.sundayHours.toFixed(2).replace(".", ",")} h</strong></div>
                   <div>Feiertagsstunden: <strong>{sfnData.holidayHours.toFixed(2).replace(".", ",")} h</strong></div>
                 </div>
                 <Separator />
                 <div className="text-xs text-muted-foreground">
-                  Zuschlagssätze: Nacht {SFN_RATES.night * 100}%, Sonntag {SFN_RATES.sunday * 100}%, Feiertag {SFN_RATES.holiday * 100}%
+                  Zuschlagssätze: Nacht 25% (20–00, 04–06 Uhr), Nacht 40% (00–04 Uhr), Sonntag {SFN_RATES.sunday * 100}%, Feiertag {SFN_RATES.holiday * 100}%
                 </div>
               </div>
             ) : employeeId && dateFrom && dateTo ? (
@@ -461,8 +465,11 @@ export default function ZtBruttoNetto() {
                     {result.sfn.totalBonus > 0 && (
                       <>
                         <tr className="border-t"><td className="py-2 pt-4 font-medium" colSpan={2}>Steuerfreie Zuschläge (SFN)</td></tr>
-                        {result.sfn.nightBonus > 0 && (
-                          <tr className="text-muted-foreground"><td className="py-2 pl-4">+ Nachtzuschlag {SFN_RATES.night * 100}% (steuerfrei)</td><td className="text-right">{fmt(result.sfn.nightBonus)}</td></tr>
+                        {result.sfn.night25Bonus > 0 && (
+                          <tr className="text-muted-foreground"><td className="py-2 pl-4">+ Nachtzuschlag 25% (20–00, 04–06 Uhr)</td><td className="text-right">{fmt(result.sfn.night25Bonus)}</td></tr>
+                        )}
+                        {result.sfn.night40Bonus > 0 && (
+                          <tr className="text-muted-foreground"><td className="py-2 pl-4">+ Nachtzuschlag 40% (00–04 Uhr)</td><td className="text-right">{fmt(result.sfn.night40Bonus)}</td></tr>
                         )}
                         {result.sfn.sundayBonus > 0 && (
                           <tr className="text-muted-foreground"><td className="py-2 pl-4">+ Sonntagszuschlag {SFN_RATES.sunday * 100}% (steuerfrei)</td><td className="text-right">{fmt(result.sfn.sundayBonus)}</td></tr>
@@ -524,10 +531,14 @@ export default function ZtBruttoNetto() {
                 <CardTitle className="text-lg">Gastro-Zuschläge (SFN)</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Nachtzuschlag</p>
-                    <p className="font-semibold">{fmt(result.sfn.nightBonus)}</p>
+                    <p className="text-muted-foreground">Nacht 25%</p>
+                    <p className="font-semibold">{fmt(result.sfn.night25Bonus)}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Nacht 40%</p>
+                    <p className="font-semibold">{fmt(result.sfn.night40Bonus)}</p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Sonntagszuschlag</p>
