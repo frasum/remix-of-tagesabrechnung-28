@@ -2,23 +2,36 @@
 
 ## Problem
 
-The badge "12/2025" is derived from `dateFrom` (the period's `start_date`). For the "Januar 2026" period, the start date is **26.12.2025**, so the code computes month=12, year=2025 -- which is misleading. It should reflect the actual payroll month from the period label (Januar 2026 = 01/2026).
+Currently the Buchhaltung, Zusammenfassung, and Wochenplan pages combine Sunday and Holiday hours into a single "So/Fei" column. The user wants them split into two separate columns: "So" (Sonntag 50%) and "Fei" (Feiertag 125%), so holiday surcharges are transparently shown and not mixed into the Sunday total.
 
-**Root cause** (lines 174-175 in `ZtBruttoNetto.tsx`):
-```typescript
-const calculationYear = dateFrom ? new Date(dateFrom).getFullYear() : undefined;
-const calculationMonth = dateFrom ? new Date(dateFrom).getMonth() + 1 : undefined;
-```
+## Changes
 
-## Fix
+### 1. Update `EmployeeTotals` type (`buchhaltung/types.ts`)
+- Add `sonntagStunden: number` and `feiertagStunden: number` fields
+- Keep `soFei` for backward compatibility or remove it
 
-Derive the calculation month/year from the period's `end_date` instead of `start_date`. Since periods run from the 26th to the 25th, the end date always falls in the correct payroll month (e.g., 25.01.2026 = January 2026).
+### 2. Update `getEmployeeTotals` in `buchhaltung/utils.ts`
+- Split the current `soFei` aggregation: use `is_holiday` flag on each shift to separate Sunday from Holiday hours
+- The Shift type in `types.ts` needs `is_holiday` added
+- The query already uses `select("*")` so the data is available
 
-**Change**: Replace `dateFrom` with `dateTo` in lines 174-175:
-```typescript
-const calculationYear = dateTo ? new Date(dateTo).getFullYear() : undefined;
-const calculationMonth = dateTo ? new Date(dateTo).getMonth() + 1 : undefined;
-```
+### 3. Update `BuchhaltungTableHead.tsx`
+- Replace single "So/Fei" column with two columns: "So" and "Fei"
+- Adjust colgroup widths
 
-This single two-line change fixes both the badge display and the value sent to the `calculate-payroll` edge function.
+### 4. Update `BuchhaltungRow.tsx`
+- Display `totals.sonntagStunden` and `totals.feiertagStunden` in separate `<td>` cells
+
+### 5. Update `BuchhaltungFooter.tsx`
+- Add the extra footer cell for the new column
+
+### 6. Update `ZtZusammenfassung.tsx` and `ZtWochenplan.tsx`
+- Same split in their local `getEmployeeWeekTotals` / totals computation
+- Both pages have their own table headers that need the column split
+- The Zusammenfassung Shift type needs `is_holiday` added
+
+### 7. Export functions (`exportBuchhaltungPdf.ts`, `exportBuchhaltungExcel.ts`)
+- Update column headers and data mapping to reflect So/Fei split
+
+This change is purely presentational in the table views. The Brutto-Netto calculator already correctly separates Sunday and Holiday hours.
 
