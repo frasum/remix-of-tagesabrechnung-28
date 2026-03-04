@@ -1,23 +1,24 @@
 
-## Ergebnis der Prüfung: `night_deep_hours` im Wochenplan
 
-### Status: Korrekt implementiert — kein Fix nötig
+## Problem
 
-Die `night_deep_hours` werden an allen relevanten Stellen korrekt gespeichert und gelesen:
+The badge "12/2025" is derived from `dateFrom` (the period's `start_date`). For the "Januar 2026" period, the start date is **26.12.2025**, so the code computes month=12, year=2025 -- which is misleading. It should reflect the actual payroll month from the period label (Januar 2026 = 01/2026).
 
-| Stelle | Status | Detail |
-|--------|--------|--------|
-| **Wochenplan (Speichern)** | OK | `ZtWochenplan.tsx` Zeile 346: `night_deep_hours: hours.nightDeepHours` wird beim Upsert korrekt gesetzt |
-| **Wochenplan (Anzeige)** | OK | Spalte "24-x" zeigt `night_hours` (gesamte Nachtstunden), `night_deep_hours` ist ein Subset davon und wird nicht separat angezeigt — das ist korrekt |
-| **ShiftTimeOverride (Batch)** | OK | Alle 5 Upsert-Stellen setzen `night_deep_hours` korrekt |
-| **syncWaiterToZt** | OK | Zeile 107: `night_deep_hours: hours.nightDeepHours` |
-| **Brutto-Netto** | OK | Liest `night_deep_hours` aus der DB und aggregiert korrekt für 40%-Zuschlag |
-| **shiftCalculations.ts** | OK | `nightDeepMinutes = Math.min(endMin, 240)` — korrekte Berechnung der 00:00–04:00 Stunden |
+**Root cause** (lines 174-175 in `ZtBruttoNetto.tsx`):
+```typescript
+const calculationYear = dateFrom ? new Date(dateFrom).getFullYear() : undefined;
+const calculationMonth = dateFrom ? new Date(dateFrom).getMonth() + 1 : undefined;
+```
 
-### Einziger Hinweis (kosmetisch, kein Bug)
+## Fix
 
-In `ZtBruttoNetto.tsx` wird `(s as any).night_deep_hours` verwendet (Zeilen 123, 128). Das funktioniert, ist aber ein Type-Cast der vermieden werden könnte, indem man den Select-Return-Type explizit definiert. Das ist aber rein kosmetisch und hat keinen Einfluss auf die Berechnung.
+Derive the calculation month/year from the period's `end_date` instead of `start_date`. Since periods run from the 26th to the 25th, the end date always falls in the correct payroll month (e.g., 25.01.2026 = January 2026).
 
-### Fazit
+**Change**: Replace `dateFrom` with `dateTo` in lines 174-175:
+```typescript
+const calculationYear = dateTo ? new Date(dateTo).getFullYear() : undefined;
+const calculationMonth = dateTo ? new Date(dateTo).getMonth() + 1 : undefined;
+```
 
-Keine Änderungen notwendig. Die `night_deep_hours` werden korrekt berechnet, gespeichert und in der Brutto-Netto-Berechnung für den 40%-Nachtzuschlag verwendet.
+This single two-line change fixes both the badge display and the value sent to the `calculate-payroll` edge function.
+
