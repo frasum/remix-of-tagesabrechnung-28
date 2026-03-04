@@ -21,7 +21,7 @@ export default function SfnTooltipHeader({ column, label, className }: Props) {
         <TooltipTrigger asChild>
           <span className={`cursor-help underline decoration-dotted underline-offset-4 ${className ?? ""}`}>{label}</span>
         </TooltipTrigger>
-        <TooltipContent>
+        <TooltipContent side="bottom" className="z-50">
           <p className="text-xs">{TOOLTIP_TEXT[column]}</p>
         </TooltipContent>
       </Tooltip>
