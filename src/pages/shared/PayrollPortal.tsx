@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import SfnTooltipHeader from "@/components/zeiterfassung/SfnTooltipHeader";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -892,9 +893,9 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
               {weeks.map(w => <th key={w.id} className="text-center p-2 font-medium whitespace-nowrap">W{w.week_number}</th>)}
               <th className="text-center p-2 font-medium">Gesamt</th>
               <th className="text-center p-2 font-medium">Schichten</th>
-              <th className="text-center p-2 font-medium">So/Fei</th>
-              <th className="text-center p-2 font-medium">20-24</th>
-              <th className="text-center p-2 font-medium">24-x</th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" /></th>
+              <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" /></th>
               <th className="text-center p-2 font-medium">U</th>
               <th className="text-center p-2 font-medium">K</th>
             </tr>

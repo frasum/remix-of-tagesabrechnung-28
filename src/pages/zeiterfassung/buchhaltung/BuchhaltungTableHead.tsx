@@ -1,3 +1,5 @@
+import SfnTooltipHeader from "@/components/zeiterfassung/SfnTooltipHeader";
+
 export default function BuchhaltungTableHead() {
   return (
     <>
@@ -18,9 +20,9 @@ export default function BuchhaltungTableHead() {
           <th className="text-left px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground">Mitarbeiter</th>
           <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground border-l border-border">Gesamt</th>
           <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground">Schichten</th>
-          <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground">So/Fei</th>
-          <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground">20–24</th>
-          <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground">24–x</th>
+          <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
+          <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground"><SfnTooltipHeader column="evening" label="20–24" /></th>
+          <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground"><SfnTooltipHeader column="night" label="24–x" /></th>
           <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground border-l border-border">U</th>
           <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground">K</th>
           <th className="text-center px-2 py-2.5 font-semibold text-xs text-muted-foreground border-l border-border">Vorschuss</th>
