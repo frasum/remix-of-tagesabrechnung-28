@@ -146,7 +146,7 @@ Deno.serve(async (req: Request) => {
     const { data: staffData, error: staffError } = await supabase
       .from("staff")
       .select("id, name, role, is_active")
-      .eq("name", name)
+      .ilike("name", name)
       .eq("is_active", true)
       .single();
 

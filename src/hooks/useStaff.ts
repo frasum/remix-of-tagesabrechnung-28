@@ -465,7 +465,8 @@ export function useUpdateStaff() {
       toast.success('Mitarbeiter erfolgreich aktualisiert');
     },
     onError: (error) => {
-      toast.error('Fehler beim Aktualisieren des Mitarbeiters');
+      const msg = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      toast.error(`Fehler beim Aktualisieren: ${msg}`);
       console.error('Error updating staff:', error);
     },
   });
