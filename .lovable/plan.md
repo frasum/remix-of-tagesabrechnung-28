@@ -1,31 +1,17 @@
 
 
-## Plan: Schichtdaten-Zeitraum aus aktueller Periode übernehmen
+## Plan: Stundenlohn-Feld in den Lohnabrechnungsdaten anzeigen
 
 ### Problem
-Die Felder "Von" und "Bis" unter "Schichtdaten (SFN)" sind leer und müssen manuell eingegeben werden. Sie sollen automatisch mit dem Start- und Enddatum der aktuell gewählten Abrechnungsperiode befüllt werden.
+Das Feld `hourly_rate` wird vom thaitime-Sync korrekt in die `staff`-Tabelle übernommen, aber im Mitarbeiter-Dialog unter "Lohnabrechnungsdaten" nicht angezeigt. Es fehlt sowohl die Darstellung als auch die Möglichkeit, den Wert manuell zu bearbeiten.
 
 ### Umsetzung
 
-**Datei: `src/pages/zeiterfassung/ZtBruttoNetto.tsx`**
+**Datei: `src/components/staff/StaffDialogNative.tsx`**
 
-1. `useZt()` importieren und `selectedPeriodId` sowie `periods` auslesen.
-2. Die aktuell gewählte Periode ermitteln und `dateFrom`/`dateTo` als Initialwerte auf `period.start_date` / `period.end_date` setzen.
-3. Per `useEffect` bei Periodenwechsel die Datumswerte automatisch aktualisieren, sodass der Zeitraum immer der gewählten Periode entspricht.
-4. Manuelle Änderungen bleiben weiterhin möglich.
+1. Neuen State `hourlyRate` hinzufügen und beim Initialisieren aus `staff.hourly_rate` befüllen.
+2. Im Lohnabrechnungsdaten-Grid ein neues Input-Feld "Stundenlohn" einfügen (vor Steuerklasse, als erstes Feld oder nach Austritt -- passend zum Layout).
+3. Beim Speichern `hourly_rate: parseFloat(hourlyRate) || undefined` an `onSave` übergeben.
 
-### Technisches Detail
-
-```
-// Neuer useEffect:
-useEffect(() => {
-  const period = periods?.find(p => p.id === selectedPeriodId);
-  if (period) {
-    setDateFrom(period.start_date);
-    setDateTo(period.end_date);
-  }
-}, [selectedPeriodId, periods]);
-```
-
-Kein Datenbankänderungen nötig -- reine Frontend-Logik.
+Keine Datenbankänderungen nötig -- das Feld existiert bereits in der `staff`-Tabelle und im `StaffInput`-Interface.
 
