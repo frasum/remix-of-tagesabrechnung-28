@@ -292,8 +292,8 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
       });
 
       const kitchenTipStats: KitchenTipStats[] = Object.entries(kitchenTipMap)
-        .map(([name, data]) => ({
-          name,
+        .map(([_, data]) => ({
+          name: data.displayName,
           totalTip: data.totalTip,
           totalHours: data.totalHours,
           avgTipPerHour: data.totalHours > 0 ? data.totalTip / data.totalHours : 0,
