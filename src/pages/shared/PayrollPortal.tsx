@@ -490,6 +490,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             isLocked={isLocked}
             onUpsertNote={(p) => upsertNote.mutate(p)}
             sfnMode={sfnMode}
+            holidayRates={holidayRates}
           />
         </TabsContent>
       </Tabs>
