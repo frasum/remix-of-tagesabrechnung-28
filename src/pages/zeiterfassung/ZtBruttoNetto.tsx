@@ -14,7 +14,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Calculator, Info, AlertTriangle, CheckCircle, AlertCircle } from "lucide-react";
+import { Calculator, Info, AlertTriangle, CheckCircle, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { SFN_RATES } from "@/lib/sfnRates";
 import { GERMAN_STATES, TAX_CLASSES, type PayrollResult } from "@/types/payroll";
 import { useZt } from "@/contexts/ZtContext";
@@ -318,6 +318,24 @@ export default function ZtBruttoNetto() {
 
   const fmt = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
+  /** Compute total SFN bonus from aggregated hours and hourly rate */
+  function computeSfnBonus(agg: SfnAggResult | undefined, rate: number): number {
+    if (!agg) return 0;
+    return (
+      agg.night25Hours * rate * SFN_RATES.night25 +
+      agg.night40Hours * rate * SFN_RATES.night40 +
+      agg.sundayHours * rate * SFN_RATES.sunday +
+      agg.holidayHours * rate * SFN_RATES.holiday +
+      agg.holiday150Hours * rate * SFN_RATES.holiday150
+    );
+  }
+
+  const sfnHourlyRate = hourlyRate ? parseFloat(hourlyRate) : (grossMonthly && monthlyHours ? parseFloat(grossMonthly) / parseFloat(monthlyHours) : 0);
+  const currentBonus = computeSfnBonus(sfnData, sfnHourlyRate);
+  const otherBonus = computeSfnBonus(sfnOther, sfnHourlyRate);
+  const sfnDelta = otherBonus - currentBonus;
+  const otherModeName = isExtended ? "Einfacher Modus" : "§3b-Modus";
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Brutto-Netto-Rechner</h1>
@@ -584,12 +602,26 @@ export default function ZtBruttoNetto() {
                 {result.sfn.totalBonus > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">inkl. {fmt(result.sfn.totalBonus)} SFN-Zuschläge</p>
                 )}
+                {sfnDelta !== 0 && (
+                  <div className={`flex items-center justify-center gap-1 mt-1.5 text-xs ${sfnDelta > 0 ? "text-success" : "text-destructive"}`}>
+                    {sfnDelta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    <span className="tabular-nums font-medium">{sfnDelta > 0 ? "+" : ""}{fmt(sfnDelta)}</span>
+                    <span className="text-muted-foreground">im {otherModeName}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6 text-center">
                 <p className="text-sm text-muted-foreground">AG-Gesamtkosten</p>
                 <p className="text-2xl font-bold">{fmt(result.employerTotal)}</p>
+                {sfnDelta !== 0 && (
+                  <div className={`flex items-center justify-center gap-1 mt-1.5 text-xs ${sfnDelta > 0 ? "text-success" : "text-destructive"}`}>
+                    {sfnDelta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    <span className="tabular-nums font-medium">{sfnDelta > 0 ? "+" : ""}{fmt(sfnDelta)}</span>
+                    <span className="text-muted-foreground">im {otherModeName}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
