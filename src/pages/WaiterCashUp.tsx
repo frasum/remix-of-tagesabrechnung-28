@@ -4,7 +4,7 @@ import { useSelectedDate } from '@/contexts/DateContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { isSessionLocked } from '@/utils/businessDate';
 import { SessionLockedBanner } from '@/components/shared/SessionLockedBanner';
-import { Pencil, Percent, Plus, Trash2, User, Users, X } from 'lucide-react';
+import { Clock, Pencil, Percent, Plus, Trash2, User, Users, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { CurrencyInput } from '@/components/shared/CurrencyInput';
@@ -228,6 +228,11 @@ export default function WaiterCashUp() {
   }, 0);
   const totalPool = waiterShifts.reduce((sum, shift) => sum + calculateContribution(shift), 0);
   const tipPerWaiter = waiterShareCount > 0 ? totalPool / waiterShareCount : 0;
+  const totalPoolHours = waiterShifts.reduce((sum, shift) => {
+    if (!shift.participates_in_pool) return sum;
+    return sum + (shift.hours_worked || 0);
+  }, 0);
+  const tipPerHour = totalPoolHours > 0 ? totalPool / totalPoolHours : 0;
   const totalKitchenTip = waiterShifts.reduce((sum, shift) => sum + shift.kitchen_tip, 0);
   const totalSales = waiterShifts.reduce((sum, s) => sum + s.pos_sales, 0);
   const totalTip = totalPool + totalKitchenTip;
@@ -437,7 +442,8 @@ export default function WaiterCashUp() {
                     <div className="grid grid-cols-2 gap-3">
                       <StatCard label="Trinkgeld ohne Küche" value={totalPool} icon={<Users className="w-5 h-5" />} variant={totalPool >= 0 ? 'success' : 'error'} />
                       <StatCard label="Trinkgeld %" value={`${tipPercentage.toFixed(1)} %`} icon={<Percent className="w-5 h-5" />} variant="success" />
-                      <StatCard label={`Pro Mitarbeiter (${waiterShareCount})`} value={tipPerWaiter} icon={<User className="w-5 h-5" />} variant={tipPerWaiter >= 0 ? 'success' : 'error'} className="col-span-2 [&>div]:justify-center [&>div>.flex-1]:text-center [&>div>.flex-1]:flex [&>div>.flex-1]:flex-col [&>div>.flex-1]:items-center" />
+                      <StatCard label={`Pro Mitarbeiter (${waiterShareCount})`} value={tipPerWaiter} icon={<User className="w-5 h-5" />} variant={tipPerWaiter >= 0 ? 'success' : 'error'} />
+                      <StatCard label="TG / Stunde" value={totalPoolHours > 0 ? tipPerHour : '—'} icon={<Clock className="w-5 h-5" />} variant="success" />
                     </div>
 
                     {/* Pool Breakdown Table */}
