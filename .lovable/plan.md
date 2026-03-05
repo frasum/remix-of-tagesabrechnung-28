@@ -1,33 +1,24 @@
 
 
-## Problem
+## Tooltips für erweiterten SFN-Modus anpassen
 
-`PayrollZusammenfassungTab` ruft `useSfnMode()` eigenständig auf (Zeile 874). Dieser Hook nutzt `useState` — jede Komponente bekommt eine eigene, unabhängige Kopie des States. Wenn der Parent-Toggle den Modus ändert, bekommt die Zusammenfassung davon nichts mit.
+Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
 
-Im Gegensatz dazu funktioniert `PayrollBuchhaltungTab` korrekt, weil dort `sfnMode` als **Prop vom Parent** durchgereicht wird (Zeile 493).
+### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
 
-## Lösung
+- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
+- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
+- Im Extended-Modus erklären die Tooltips die additive Logik:
 
-`PayrollZusammenfassungTab` soll `sfnMode` als Prop erhalten (wie Buchhaltung), statt den Hook selbst aufzurufen.
+| Spalte | Simple | Extended |
+|--------|--------|----------|
+| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
+| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
+| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
+| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
+| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
 
-### Änderungen in `src/pages/shared/PayrollPortal.tsx`
+### Aufrufer anpassen
 
-1. **Prop `sfnMode` an `PayrollZusammenfassungTab` durchreichen** (Zeile 474):
-   ```tsx
-   <PayrollZusammenfassungTab
-     sfnMode={sfnMode}          // ← NEU
-     weeks={weeks}
-     shifts={filteredShifts}
-     ...
-   />
-   ```
-
-2. **Funktionssignatur erweitern** (Zeile 867): `sfnMode: SfnMode` als Prop hinzufügen.
-
-3. **`useSfnMode()`-Aufruf entfernen** (Zeile 874) und stattdessen die Prop verwenden.
-
-4. **`key` hinzufügen** auf der Komponente für sauberen Remount:
-   ```tsx
-   <PayrollZusammenfassungTab key={`zus-${sfnMode}`} sfnMode={sfnMode} ... />
-   ```
+`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
 
