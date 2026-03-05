@@ -1101,7 +1101,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                 );
               })}
             </tbody>
-            {employees.length > 0 && <BuchhaltungFooter grandTotals={grandTotals} />}
+            {employees.length > 0 && <BuchhaltungFooter grandTotals={grandTotals} sfnMode={sfnMode} />}
           </table>
         </div>
       </Card>
