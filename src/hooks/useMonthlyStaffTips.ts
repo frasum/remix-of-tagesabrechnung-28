@@ -19,6 +19,22 @@ export interface MonthlyTipData {
   totalKitchenHours: number;
 }
 
+function deduplicateByName(
+  entries: { name: string; tip: number; hours: number }[],
+  staffNames: Record<string, string>
+): { name: string; tip: number; hours: number }[] {
+  const merged: Record<string, { name: string; tip: number; hours: number }> = {};
+  for (const entry of entries) {
+    const key = entry.name.toLowerCase().trim();
+    if (!merged[key]) {
+      merged[key] = { name: staffNames[key] || entry.name, tip: 0, hours: 0 };
+    }
+    merged[key].tip += entry.tip;
+    merged[key].hours += entry.hours;
+  }
+  return Object.values(merged).sort((a, b) => b.tip - a.tip);
+}
+
 async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: string[]): Promise<MonthlyTipData[]> {
   const now = new Date();
   const monthsData: MonthlyTipData[] = [];
@@ -66,13 +82,16 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
   const waiterShifts = waiterShiftsResult.data || [];
   const kitchenShifts = kitchenShiftsResult.data || [];
 
-  // Build pool participation lookup and name→id mapping
+  // Build pool participation lookup, name→id mapping, and canonical name map
   const poolStatusMap: Record<string, boolean> = {};
   const nameToStaffId: Record<string, string> = {};
+  const canonicalNames: Record<string, string> = {}; // normalized → display name from staff table
   if (staffResult.data) {
     for (const s of staffResult.data) {
       poolStatusMap[s.name] = s.participates_in_pool;
-      nameToStaffId[s.name.toLowerCase().trim()] = s.id;
+      const normalized = s.name.toLowerCase().trim();
+      nameToStaffId[normalized] = s.id;
+      canonicalNames[normalized] = s.name;
     }
   }
   const isPoolParticipant = (name: string) => poolStatusMap[name] !== false;
@@ -209,13 +228,15 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
     }
 
     // Convert maps to arrays sorted by tip amount
-    const waiterTips: MonthlyStaffTip[] = Object.entries(waiterTipsMap)
-      .map(([_, data]) => ({ name: data.displayName, hours: data.hours, tip: data.tip }))
-      .sort((a, b) => b.tip - a.tip);
+    const waiterTipsRaw: MonthlyStaffTip[] = Object.entries(waiterTipsMap)
+      .map(([_, data]) => ({ name: data.displayName, hours: data.hours, tip: data.tip }));
 
-    const kitchenTips: MonthlyStaffTip[] = Object.entries(kitchenTipsMap)
-      .map(([_, data]) => ({ name: data.displayName, hours: data.hours, tip: data.tip }))
-      .sort((a, b) => b.tip - a.tip);
+    const kitchenTipsRaw: MonthlyStaffTip[] = Object.entries(kitchenTipsMap)
+      .map(([_, data]) => ({ name: data.displayName, hours: data.hours, tip: data.tip }));
+
+    // Deduplicate by normalized name (handles casing variants like "Pongsri" vs "PONGSRI")
+    const waiterTips = deduplicateByName(waiterTipsRaw, canonicalNames);
+    const kitchenTips = deduplicateByName(kitchenTipsRaw, canonicalNames);
 
     // Parse month for label
     const [year, month] = monthKey.split('-');
