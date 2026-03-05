@@ -35,10 +35,13 @@ export default function ZtLayout() {
   );
   const hasCustomPermissions = isManager && managerPaths.length > 0;
 
+  // "Zusammenfassung" is always visible for managers (like Kellnerabrechnung)
+  const alwaysVisiblePaths = ["zeiterfassung/zusammenfassung"];
+
   const tabs = useMemo(() => {
     if (isAdmin) return allTabs;
     if (isManager && hasCustomPermissions) {
-      return allTabs.filter(t => managerPaths.includes(t.permPath));
+      return allTabs.filter(t => alwaysVisiblePaths.includes(t.permPath) || managerPaths.includes(t.permPath));
     }
     return allTabs; // manager without custom perms sees all
   }, [isAdmin, isManager, hasCustomPermissions, managerPaths]);
