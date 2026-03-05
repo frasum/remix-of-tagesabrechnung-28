@@ -35,6 +35,8 @@ import type { Shift, PayrollNote, AdvanceEntry } from "@/pages/zeiterfassung/buc
 import BuchhaltungTableHead from "@/pages/zeiterfassung/buchhaltung/BuchhaltungTableHead";
 import BuchhaltungDeptHeader from "@/pages/zeiterfassung/buchhaltung/BuchhaltungDeptHeader";
 import BuchhaltungFooter from "@/pages/zeiterfassung/buchhaltung/BuchhaltungFooter";
+import { useSfnMode, type SfnMode } from "@/hooks/useSfnMode";
+import { effectiveEveningHours, effectiveNightHours } from "@/lib/shiftCalculations";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -296,6 +298,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
   const [activeTab, setActiveTab] = useState("wochenplan");
   const [selectedWeekId, setSelectedWeekId] = useState<string>("");
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all");
+  const { sfnMode, setSfnMode } = useSfnMode();
 
   const { period, weeks, shifts, employees, payrollNotes, advances, holidays, weekNumberToAllIds, weekToRestaurant, matchingPeriods } = data;
   const holidayMap = new Map(holidays.map(h => [h.holiday_date, h.name]));
@@ -431,6 +434,13 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
         </div>
       )}
 
+      {(activeTab === "zusammenfassung" || activeTab === "buchhaltung") && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant={sfnMode === "simple" ? "default" : "outline"} onClick={() => setSfnMode("simple")}>Einfach</Button>
+          <Button size="sm" variant={sfnMode === "extended" ? "default" : "outline"} onClick={() => setSfnMode("extended")}>§3b EStG</Button>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="wochenplan">Wochenplan</TabsTrigger>
@@ -461,6 +471,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             employees={employeesWithShifts}
             periodLabel={period.label}
             weekNumberToAllIds={effectiveWeekNumberToAllIds}
+            sfnMode={sfnMode}
           />
         </TabsContent>
 
@@ -473,6 +484,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             periodLabel={period.label}
             isLocked={isLocked}
             onUpsertNote={(p) => upsertNote.mutate(p)}
+            sfnMode={sfnMode}
           />
         </TabsContent>
       </Tabs>
@@ -845,13 +857,17 @@ function PayrollWochenplanTab({ weeks, shifts, employees, holidays, periodLabel,
 
 // =================== Zusammenfassung Tab ===================
 
-function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, weekNumberToAllIds }: {
+function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, weekNumberToAllIds, sfnMode = "simple" }: {
   weeks: any[];
   shifts: Shift[];
   employees: any[];
   periodLabel: string;
   weekNumberToAllIds: Record<number, string[]>;
+  sfnMode?: SfnMode;
 }) {
+  const additive = sfnMode === "extended";
+  const isExtended = sfnMode === "extended";
+
   const getWeeklyHours = (empId: string, weekNumber: number, department?: string) => {
     const wIds = weekNumberToAllIds[weekNumber] ?? weeks.filter(w => w.week_number === weekNumber).map(w => w.id);
     return shifts.filter(s => s.employee_id === empId && wIds.includes(s.week_id) && (!department || s.department === department))
@@ -863,8 +879,10 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
     return {
       gesamt: empShifts.reduce((sum, s) => sum + Number(s.total_hours), 0),
       soFeiStunden: empShifts.reduce((sum, s) => sum + Number(s.sunday_holiday_hours), 0),
-      evening: empShifts.reduce((sum, s) => sum + Number(s.evening_hours), 0),
-      night: empShifts.reduce((sum, s) => sum + Number(s.night_hours), 0),
+      sonntagStunden: empShifts.filter(s => !s.is_holiday).reduce((sum, s) => sum + Number(s.sunday_holiday_hours), 0),
+      feiertagStunden: empShifts.filter(s => s.is_holiday).reduce((sum, s) => sum + Number(s.sunday_holiday_hours), 0),
+      evening: empShifts.reduce((sum, s) => sum + effectiveEveningHours(s, additive), 0),
+      night: empShifts.reduce((sum, s) => sum + effectiveNightHours(s, additive), 0),
       schichten: empShifts.filter(s => s.start_time && s.end_time && !s.absence_type).length,
       urlaubTage: countVacationDays(empShifts),
       krankTage: countSickDays(empShifts),
@@ -893,9 +911,16 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
               {weeks.map(w => <th key={w.id} className="text-center p-2 font-medium whitespace-nowrap">W{w.week_number}</th>)}
               <th className="text-center p-2 font-medium">Gesamt</th>
               <th className="text-center p-2 font-medium">Schichten</th>
-               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" /></th>
-               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" /></th>
-               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" /></th>
+               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="evening" label="20-24" sfnMode={sfnMode} /></th>
+               <th className="text-center p-2 font-medium"><SfnTooltipHeader column="night" label="24-x" sfnMode={sfnMode} /></th>
+               {isExtended ? (
+                 <>
+                   <th className="text-center p-2 font-medium"><SfnTooltipHeader column="sonntag" label="So" sfnMode={sfnMode} /></th>
+                   <th className="text-center p-2 font-medium"><SfnTooltipHeader column="feiertag" label="Fei" sfnMode={sfnMode} /></th>
+                 </>
+               ) : (
+                 <th className="text-center p-2 font-medium"><SfnTooltipHeader column="soFei" label="So/Fei" sfnMode={sfnMode} /></th>
+               )}
               <th className="text-center p-2 font-medium">U</th>
               <th className="text-center p-2 font-medium">K</th>
             </tr>
@@ -908,9 +933,9 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
 
               return (
                 <React.Fragment key={`${emp.id}-${emp.department}`}>
-                  {showDeptHeader && (
+                   {showDeptHeader && (
                     <tr>
-                      <td colSpan={weeks.length + 8} className={`p-2 font-bold text-xs uppercase tracking-wide ${getDepartmentBgClass(emp.department)}`}>
+                      <td colSpan={weeks.length + (isExtended ? 9 : 8)} className={`p-2 font-bold text-xs uppercase tracking-wide ${getDepartmentBgClass(emp.department)}`}>
                         {emp.department}
                       </td>
                     </tr>
@@ -928,7 +953,14 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
                     <td className="text-center p-2">{totals.schichten || ""}</td>
                      <td className="text-center p-2">{totals.evening > 0 ? formatHours(totals.evening) : ""}</td>
                      <td className="text-center p-2">{totals.night > 0 ? formatHours(totals.night) : ""}</td>
-                     <td className="text-center p-2">{totals.soFeiStunden > 0 ? formatHours(totals.soFeiStunden) : ""}</td>
+                     {isExtended ? (
+                       <>
+                         <td className="text-center p-2">{totals.sonntagStunden > 0 ? formatHours(totals.sonntagStunden) : ""}</td>
+                         <td className="text-center p-2">{totals.feiertagStunden > 0 ? formatHours(totals.feiertagStunden) : ""}</td>
+                       </>
+                     ) : (
+                       <td className="text-center p-2">{totals.soFeiStunden > 0 ? formatHours(totals.soFeiStunden) : ""}</td>
+                     )}
                     <td className="text-center p-2 text-green-600 font-medium">{totals.urlaubTage > 0 ? totals.urlaubTage.toFixed(2).replace(".", ",") : ""}</td>
                     <td className="text-center p-2 text-red-600 font-medium">{totals.krankTage > 0 ? totals.krankTage : ""}</td>
                   </tr>
@@ -944,7 +976,7 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
 
 // =================== Buchhaltung Tab ===================
 
-function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote }: {
+function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple" }: {
   shifts: Shift[];
   employees: any[];
   payrollNotes: PayrollNote[];
@@ -952,7 +984,10 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   periodLabel: string;
   isLocked: boolean;
   onUpsertNote: (p: { employee_id: string; field: string; value: any }) => void;
+  sfnMode?: SfnMode;
 }) {
+  const additive = sfnMode === "extended";
+  const isExtended = sfnMode === "extended";
   const advancesByName = useMemo(() => {
     const map: Record<string, AdvanceEntry[]> = {};
     advances.forEach(a => { (map[a.staff_name] ??= []).push(a); });
@@ -962,13 +997,13 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   const grandTotals = useMemo(() => {
     const t = { gesamt: 0, schichten: 0, soFeiStunden: 0, sonntagStunden: 0, feiertagStunden: 0, evening: 0, night: 0, urlaubTage: 0, krankTage: 0 };
     employees.forEach(emp => {
-      const row = getEmployeeTotals(emp.id, shifts, emp.department);
+      const row = getEmployeeTotals(emp.id, shifts, emp.department, additive);
       t.gesamt += row.gesamt; t.schichten += row.schichten; t.soFeiStunden += row.soFeiStunden;
       t.sonntagStunden += row.sonntagStunden; t.feiertagStunden += row.feiertagStunden;
       t.evening += row.evening; t.night += row.night; t.urlaubTage += row.urlaubTage; t.krankTage += row.krankTage;
     });
     return t;
-  }, [employees, shifts]);
+  }, [employees, shifts, additive]);
 
   let zebraIdx = 0;
   let lastDept: string | null = null;
@@ -979,10 +1014,10 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
         <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungPdf(periodLabel, employees, shifts, payrollNotes); toast.success("PDF erstellt"); }}>
           <FileDown className="mr-1 h-4 w-4" /> PDF
         </Button>
-        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes); toast.success("Excel erstellt"); }}>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes, sfnMode); toast.success("Excel erstellt"); }}>
           <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
         </Button>
-        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes); toast.success("CSV erstellt"); }}>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes, sfnMode); toast.success("CSV erstellt"); }}>
           <FileDown className="mr-1 h-4 w-4" /> CSV
         </Button>
       </div>
@@ -990,7 +1025,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm table-fixed">
-            <BuchhaltungTableHead />
+            <BuchhaltungTableHead sfnMode={sfnMode} />
             <tbody>
               {employees.map(emp => {
                 const showDeptHeader = emp.department !== lastDept;
@@ -998,7 +1033,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                 const isEven = zebraIdx % 2 === 1;
                 zebraIdx++;
 
-                const totals = getEmployeeTotals(emp.id, shifts, emp.department);
+                const totals = getEmployeeTotals(emp.id, shifts, emp.department, additive);
                 const note = payrollNotes.find(n => n.employee_id === emp.id);
                 const empShifts = shifts.filter(s => s.employee_id === emp.id && s.department === emp.department);
                 const empAdvances = advancesByName[emp.name] ?? [];
@@ -1019,7 +1054,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
 
                 return (
                   <React.Fragment key={`${emp.id}-${emp.department}`}>
-                    {showDeptHeader && <BuchhaltungDeptHeader department={emp.department} />}
+                    {showDeptHeader && <BuchhaltungDeptHeader department={emp.department} sfnMode={sfnMode} />}
                     <tr className={`border-t border-border/50 hover:bg-primary/5 transition-colors ${rowBg}`}>
                       <td className="px-2 py-1.5 font-medium whitespace-nowrap">
                         {nameParts}
@@ -1029,7 +1064,14 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                        <td className="text-center px-1 py-1.5 tabular-nums">{totals.schichten || "–"}</td>
                       <td className="text-center px-1 py-1.5 tabular-nums">{totals.evening > 0 ? formatHours(totals.evening) : "–"}</td>
                       <td className="text-center px-1 py-1.5 tabular-nums">{totals.night > 0 ? formatHours(totals.night) : "–"}</td>
-                      <td className="text-center px-1 py-1.5 tabular-nums">{totals.soFeiStunden > 0 ? formatHours(totals.soFeiStunden) : "–"}</td>
+                      {isExtended ? (
+                        <>
+                          <td className="text-center px-1 py-1.5 tabular-nums">{totals.sonntagStunden > 0 ? formatHours(totals.sonntagStunden) : "–"}</td>
+                          <td className="text-center px-1 py-1.5 tabular-nums">{totals.feiertagStunden > 0 ? formatHours(totals.feiertagStunden) : "–"}</td>
+                        </>
+                      ) : (
+                        <td className="text-center px-1 py-1.5 tabular-nums">{totals.soFeiStunden > 0 ? formatHours(totals.soFeiStunden) : "–"}</td>
+                      )}
                       <td className="text-center px-1 py-1.5 tabular-nums text-green-600 font-medium border-l border-border/40">
                         {totals.urlaubTage > 0 ? totals.urlaubTage.toFixed(2).replace(".", ",") : "–"}
                       </td>
@@ -1059,7 +1101,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                 );
               })}
             </tbody>
-            {employees.length > 0 && <BuchhaltungFooter grandTotals={grandTotals} />}
+            {employees.length > 0 && <BuchhaltungFooter grandTotals={grandTotals} sfnMode={sfnMode} />}
           </table>
         </div>
       </Card>

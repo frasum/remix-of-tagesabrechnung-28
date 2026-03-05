@@ -1,25 +1,24 @@
 
 
-## Plan: §3b-Modus für Lohnbüro-Buchhaltungstabelle
+## Tooltips für erweiterten SFN-Modus anpassen
 
-### Problem
-Die `PayrollBuchhaltungTab` in `PayrollPortal.tsx` nutzt immer den einfachen Modus — `sfnMode` wird weder gelesen noch an `BuchhaltungTableHead`, `BuchhaltungDeptHeader`, `BuchhaltungFooter` oder die Datenzeilen weitergegeben. So/Fei wird immer als eine Spalte dargestellt.
+Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
 
-### Umsetzung
+### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
 
-**Datei: `src/pages/shared/PayrollPortal.tsx`**
+- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
+- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
+- Im Extended-Modus erklären die Tooltips die additive Logik:
 
-1. **`useSfnMode` importieren** und im `PayrollBuchhaltungTab` aufrufen
-2. **SFN-Modus-Toggle** hinzufügen (wie in der Buchhaltung-Seite — einfacher Toggle-Button in der Toolbar neben den Export-Buttons)
-3. **`sfnMode` durchreichen** an:
-   - `BuchhaltungTableHead` (Zeile 993)
-   - `BuchhaltungDeptHeader` (Zeile 1022)
-   - `BuchhaltungFooter` (Zeile 1062)
-4. **Datenzeilen anpassen** (Zeilen 1030–1032): Im Extended-Modus statt einer `soFeiStunden`-Spalte zwei getrennte Spalten (`sonntagStunden`, `feiertagStunden`) rendern — analog zu `BuchhaltungRow.tsx`
-5. **`getEmployeeTotals` mit `additive`-Flag** aufrufen: `getEmployeeTotals(emp.id, shifts, emp.department, sfnMode === "extended")`
-6. **Grand Totals** ebenfalls mit `additive`-Flag berechnen
-7. **Export-Funktionen** `sfnMode` übergeben (die Funktionen unterstützen es bereits)
+| Spalte | Simple | Extended |
+|--------|--------|----------|
+| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
+| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
+| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
+| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
+| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
 
-### Auch betroffen: Zusammenfassungs-Tab (Zeilen 893–943)
-Die Zusammenfassungs-Tabelle (`PayrollSummaryTab`) hat dieselben SFN-Spalten (Zeilen 929–931) und braucht dieselbe Anpassung. Der sfnMode-Toggle wird einmal oben im Portal angezeigt und gilt für beide Tabs.
+### Aufrufer anpassen
+
+`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
 
