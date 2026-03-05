@@ -5,6 +5,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { calculateShiftHours } from '@/lib/shiftCalculations';
+import { logSyncError } from '@/hooks/useSyncLogs';
 
 interface SyncParams {
   waiterName: string;
