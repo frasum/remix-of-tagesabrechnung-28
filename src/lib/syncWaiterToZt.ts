@@ -33,29 +33,43 @@ async function findWeekForDate(date: string, restaurantId: string): Promise<stri
   return data?.id ?? null;
 }
 
+function staffMatchesName(staff: any, nameLower: string): boolean {
+  if (staff?.name?.toLowerCase() === nameLower) return true;
+  if (staff?.nickname?.toLowerCase() === nameLower) return true;
+  if (staff?.first_name?.toLowerCase() === nameLower) return true;
+  if (staff?.last_name?.toLowerCase() === nameLower) return true;
+  // Match "Vorname Nachname" or "Nachname Vorname"
+  if (staff?.first_name && staff?.last_name) {
+    const fullA = `${staff.first_name} ${staff.last_name}`.toLowerCase();
+    const fullB = `${staff.last_name} ${staff.first_name}`.toLowerCase();
+    if (fullA === nameLower || fullB === nameLower) return true;
+  }
+  return false;
+}
+
 async function findStaffByName(name: string, restaurantId: string, department: 'Küche' | 'GL' | 'Service' = 'Service'): Promise<string | null> {
-  const nameLower = name.toLowerCase();
+  const nameLower = name.toLowerCase().trim();
 
   // 1. Try exact department match
   const { data } = await supabase
     .from('staff_restaurants')
-    .select('staff_id, staff!inner(id, name)')
+    .select('staff_id, staff!inner(id, name, first_name, last_name, nickname)')
     .eq('restaurant_id', restaurantId)
     .eq('zt_department', department);
 
   if (data) {
-    const match = data.find((sr: any) => sr.staff?.name?.toLowerCase() === nameLower);
+    const match = data.find((sr: any) => staffMatchesName(sr.staff, nameLower));
     if (match?.staff_id) return match.staff_id;
   }
 
-  // 2. Fallback: search without department filter (covers cases where zt_department is null/different)
+  // 2. Fallback: search without department filter
   const { data: fallbackData } = await supabase
     .from('staff_restaurants')
-    .select('staff_id, staff!inner(id, name)')
+    .select('staff_id, staff!inner(id, name, first_name, last_name, nickname)')
     .eq('restaurant_id', restaurantId);
 
   if (!fallbackData) return null;
-  const fallbackMatch = fallbackData.find((sr: any) => sr.staff?.name?.toLowerCase() === nameLower);
+  const fallbackMatch = fallbackData.find((sr: any) => staffMatchesName(sr.staff, nameLower));
   return fallbackMatch?.staff_id ?? null;
 }
 
