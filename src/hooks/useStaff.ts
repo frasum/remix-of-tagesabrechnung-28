@@ -382,7 +382,8 @@ export function useCreateStaff() {
       toast.success('Mitarbeiter erfolgreich hinzugefügt');
     },
     onError: (error) => {
-      toast.error('Fehler beim Hinzufügen des Mitarbeiters');
+      const msg = error instanceof Error ? error.message : 'Unbekannter Fehler';
+      toast.error(msg);
       console.error('Error creating staff:', error);
     },
   });
