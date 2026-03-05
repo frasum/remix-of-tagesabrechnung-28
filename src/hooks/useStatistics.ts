@@ -252,8 +252,8 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
       });
 
       const waiterTipStats: WaiterTipStats[] = Object.entries(waiterTipMap)
-        .map(([name, data]) => ({
-          name,
+        .map(([_, data]) => ({
+          name: data.displayName,
           totalTip: data.totalPoolShare,
           shiftsCount: data.shiftsCount,
           avgTipPerShift: data.shiftsCount > 0 ? data.totalPoolShare / data.shiftsCount : 0,
