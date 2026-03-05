@@ -94,7 +94,9 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
     const monthKitchenShifts = kitchenShifts.filter(ks => sessionIdsInMonth.includes(ks.session_id));
 
     // Calculate waiter tips per session, then aggregate per waiter
-    const waiterTipsMap: Record<string, { tip: number; hours: number }> = {};
+    const waiterTipsMap: Record<string, { tip: number; hours: number; displayName: string }> = {};
+    const waiterKey = (ws: { staff_id?: string | null; waiter_name: string }) =>
+      ws.staff_id || ws.waiter_name.toLowerCase().trim();
     
     // Group waiter shifts by session to calculate pool per session
     const waiterShiftsBySession: Record<string, typeof monthWaiterShifts> = {};
@@ -129,26 +131,30 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
           const waiterHours = ws.hours_worked || 0;
           
           // Primary waiter
-          if (!waiterTipsMap[ws.waiter_name]) {
-            waiterTipsMap[ws.waiter_name] = { tip: 0, hours: 0 };
+          const wKey = waiterKey(ws);
+          if (!waiterTipsMap[wKey]) {
+            waiterTipsMap[wKey] = { tip: 0, hours: 0, displayName: ws.waiter_name };
           }
-          waiterTipsMap[ws.waiter_name].tip += tipPerWaiter;
-          waiterTipsMap[ws.waiter_name].hours += waiterHours;
+          waiterTipsMap[wKey].tip += tipPerWaiter;
+          waiterTipsMap[wKey].hours += waiterHours;
           
           // Additional waiters (no hours tracked for them)
           const additionalWaiters: string[] = (ws as any).additional_waiters || [];
           for (const name of additionalWaiters) {
-            if (!waiterTipsMap[name]) {
-              waiterTipsMap[name] = { tip: 0, hours: 0 };
+            const aKey = name.toLowerCase().trim();
+            if (!waiterTipsMap[aKey]) {
+              waiterTipsMap[aKey] = { tip: 0, hours: 0, displayName: name };
             }
-            waiterTipsMap[name].tip += tipPerWaiter;
+            waiterTipsMap[aKey].tip += tipPerWaiter;
           }
         });
       }
     }
 
     // Calculate kitchen tips proportionally by hours
-    const kitchenTipsMap: Record<string, { hours: number; tip: number }> = {};
+    const kitchenTipsMap: Record<string, { hours: number; tip: number; displayName: string }> = {};
+    const kitchenKey = (ks: { staff_id?: string | null; staff_name: string }) =>
+      ks.staff_id || ks.staff_name.toLowerCase().trim();
     
     // Group kitchen shifts by session
     const kitchenShiftsBySession: Record<string, typeof monthKitchenShifts> = {};
@@ -175,36 +181,36 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
         }, 0);
 
         kitchenShiftsInSession.forEach(ks => {
-          const staffName = ks.staff_name;
+          const kKey = kitchenKey(ks);
           const hours = ks.hours_worked || 0;
-          const inPool = isPoolParticipant(staffName);
+          const inPool = isPoolParticipant(ks.staff_name);
           const tipShare = (inPool && poolHours > 0) ? (hours / poolHours) * sessionKitchenPool : 0;
           
-          if (!kitchenTipsMap[staffName]) {
-            kitchenTipsMap[staffName] = { hours: 0, tip: 0 };
+          if (!kitchenTipsMap[kKey]) {
+            kitchenTipsMap[kKey] = { hours: 0, tip: 0, displayName: ks.staff_name };
           }
-          kitchenTipsMap[staffName].hours += hours;
-          kitchenTipsMap[staffName].tip += tipShare;
+          kitchenTipsMap[kKey].hours += hours;
+          kitchenTipsMap[kKey].tip += tipShare;
         });
       } else {
         // Even if no tips, track hours
         kitchenShiftsInSession.forEach(ks => {
-          const staffName = ks.staff_name;
-          if (!kitchenTipsMap[staffName]) {
-            kitchenTipsMap[staffName] = { hours: 0, tip: 0 };
+          const kKey = kitchenKey(ks);
+          if (!kitchenTipsMap[kKey]) {
+            kitchenTipsMap[kKey] = { hours: 0, tip: 0, displayName: ks.staff_name };
           }
-          kitchenTipsMap[staffName].hours += ks.hours_worked || 0;
+          kitchenTipsMap[kKey].hours += ks.hours_worked || 0;
         });
       }
     }
 
     // Convert maps to arrays sorted by tip amount
     const waiterTips: MonthlyStaffTip[] = Object.entries(waiterTipsMap)
-      .map(([name, data]) => ({ name, hours: data.hours, tip: data.tip }))
+      .map(([_, data]) => ({ name: data.displayName, hours: data.hours, tip: data.tip }))
       .sort((a, b) => b.tip - a.tip);
 
     const kitchenTips: MonthlyStaffTip[] = Object.entries(kitchenTipsMap)
-      .map(([name, data]) => ({ name, hours: data.hours, tip: data.tip }))
+      .map(([_, data]) => ({ name: data.displayName, hours: data.hours, tip: data.tip }))
       .sort((a, b) => b.tip - a.tip);
 
     // Parse month for label
