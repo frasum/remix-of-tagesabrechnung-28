@@ -57,7 +57,7 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
       .in('session_id', sessionIds),
     supabase
       .from('staff')
-      .select('name, participates_in_pool'),
+      .select('id, name, participates_in_pool'),
   ]);
 
   if (waiterShiftsResult.error) throw waiterShiftsResult.error;
@@ -66,11 +66,13 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
   const waiterShifts = waiterShiftsResult.data || [];
   const kitchenShifts = kitchenShiftsResult.data || [];
 
-  // Build pool participation lookup by staff name
+  // Build pool participation lookup and name→id mapping
   const poolStatusMap: Record<string, boolean> = {};
+  const nameToStaffId: Record<string, string> = {};
   if (staffResult.data) {
     for (const s of staffResult.data) {
       poolStatusMap[s.name] = s.participates_in_pool;
+      nameToStaffId[s.name.toLowerCase().trim()] = s.id;
     }
   }
   const isPoolParticipant = (name: string) => poolStatusMap[name] !== false;
@@ -138,10 +140,11 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
           waiterTipsMap[wKey].tip += tipPerWaiter;
           waiterTipsMap[wKey].hours += waiterHours;
           
-          // Additional waiters (no hours tracked for them)
+          // Additional waiters (no hours tracked for them, but merge into same entry via staff_id)
           const additionalWaiters: string[] = (ws as any).additional_waiters || [];
           for (const name of additionalWaiters) {
-            const aKey = name.toLowerCase().trim();
+            const normalizedName = name.toLowerCase().trim();
+            const aKey = nameToStaffId[normalizedName] || normalizedName;
             if (!waiterTipsMap[aKey]) {
               waiterTipsMap[aKey] = { tip: 0, hours: 0, displayName: name };
             }
