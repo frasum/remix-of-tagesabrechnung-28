@@ -82,6 +82,7 @@ export default function WaiterCashUp() {
   };
   const resetForm = () => {
     setNewWaiterName('');
+    setNewWaiterStaffId(null);
     setNewAdditionalWaiters([]);
     setNewParticipatesInPool(true);
     setNewPosSales(0);
