@@ -1,24 +1,28 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## Plan: Vergleichs-Deltas in den Zusammenfassungskarten anzeigen
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+### Idee
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+In den drei Karten (Grundbrutto, Netto-Auszahlung, AG-Gesamtkosten) wird zusätzlich ein kleiner Delta-Hinweis angezeigt, der den Unterschied zum jeweils anderen SFN-Modus zeigt — z.B. "+85,40 € im §3b-Modus" oder "−85,40 € im einfachen Modus".
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+### Umsetzung
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+**Datei:** `src/pages/zeiterfassung/ZtBruttoNetto.tsx`
 
-### Aufrufer anpassen
+1. **Lokale SFN-Bonus-Differenz berechnen**: Da SFN-Zuschläge immer lokal berechnet werden (nicht über die Lohnica-API), können wir aus `sfnData` und `sfnOther` den Bonus-Unterschied direkt ableiten, ohne die API ein zweites Mal aufzurufen:
+   - Den SFN-Stundensatz (`sfnHourlyRate`) mit den jeweiligen Stunden und Zuschlagssätzen multiplizieren
+   - Differenz = `otherBonus - currentBonus`
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+2. **Hilfsfunktion `computeSfnBonus`**: Nimmt ein `SfnAggResult` und den Stundensatz, berechnet den Gesamtzuschlag nach den Raten aus `sfnRates.ts`.
+
+3. **Delta-Anzeige in den Karten**:
+   - **Grundbrutto**: Kein Delta (bleibt gleich zwischen Modi, da es vom Grundlohn abhängt)
+   - **Netto-Auszahlung**: Delta zeigen, da sich die steuerfreien SFN-Zuschläge ändern → `±XX,XX € im [anderen Modus]`
+   - **AG-Gesamtkosten**: Ebenfalls Delta, da SFN-Zuschläge die Gesamtkosten beeinflussen
+
+4. **Visuelles Design**: Kleiner Text unter dem Hauptbetrag, mit Pfeil-Icon (↑/↓) und farblich codiert (grün = mehr im anderen Modus, rot = weniger). Label zeigt den Namen des anderen Modus.
+
+### Betroffene Datei
+- `src/pages/zeiterfassung/ZtBruttoNetto.tsx` — Zusammenfassungskarten-Bereich (Zeilen 572–595)
 
