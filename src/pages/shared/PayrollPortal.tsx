@@ -60,7 +60,7 @@ type CumulatedData = {
   employees: any[];
   payrollNotes: PayrollNote[];
   advances: AdvanceEntry[];
-  holidays: { holiday_date: string; name: string }[];
+  holidays: { holiday_date: string; name: string; surcharge_rate?: number }[];
   matchingPeriods: { id: string; label: string; restaurant_name: string; restaurant_id: string }[];
 };
 
@@ -302,6 +302,11 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
 
   const { period, weeks, shifts, employees, payrollNotes, advances, holidays, weekNumberToAllIds, weekToRestaurant, matchingPeriods } = data;
   const holidayMap = new Map(holidays.map(h => [h.holiday_date, h.name]));
+  const holidayRates = useMemo(() => {
+    const map = new Map<string, number>();
+    holidays.forEach(h => { if (h.surcharge_rate != null) map.set(h.holiday_date, h.surcharge_rate); });
+    return map;
+  }, [holidays]);
   const hasMultipleRestaurants = matchingPeriods.length > 1;
 
   // Unique restaurants from matchingPeriods

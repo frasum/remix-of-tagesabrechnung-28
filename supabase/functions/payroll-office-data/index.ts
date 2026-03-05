@@ -254,7 +254,7 @@ Deno.serve(async (req) => {
         .lte("sessions.session_date", period_end_date),
       supabase
         .from("bavarian_holidays")
-        .select("holiday_date, name"),
+        .select("holiday_date, name, surcharge_rate"),
     ]);
 
     // Deduplicate employees by id + department
