@@ -602,12 +602,26 @@ export default function ZtBruttoNetto() {
                 {result.sfn.totalBonus > 0 && (
                   <p className="text-xs text-muted-foreground mt-1">inkl. {fmt(result.sfn.totalBonus)} SFN-Zuschläge</p>
                 )}
+                {sfnDelta !== 0 && (
+                  <div className={`flex items-center justify-center gap-1 mt-1.5 text-xs ${sfnDelta > 0 ? "text-success" : "text-destructive"}`}>
+                    {sfnDelta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    <span className="tabular-nums font-medium">{sfnDelta > 0 ? "+" : ""}{fmt(sfnDelta)}</span>
+                    <span className="text-muted-foreground">im {otherModeName}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6 text-center">
                 <p className="text-sm text-muted-foreground">AG-Gesamtkosten</p>
                 <p className="text-2xl font-bold">{fmt(result.employerTotal)}</p>
+                {sfnDelta !== 0 && (
+                  <div className={`flex items-center justify-center gap-1 mt-1.5 text-xs ${sfnDelta > 0 ? "text-success" : "text-destructive"}`}>
+                    {sfnDelta > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    <span className="tabular-nums font-medium">{sfnDelta > 0 ? "+" : ""}{fmt(sfnDelta)}</span>
+                    <span className="text-muted-foreground">im {otherModeName}</span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
