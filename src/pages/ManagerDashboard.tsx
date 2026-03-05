@@ -5,6 +5,7 @@ import { useSelectedDate } from '@/contexts/DateContext';
 import { de } from 'date-fns/locale';
 import { Plus, Trash2, Settings, Truck, Receipt, Wallet, ClipboardList, Clock, CheckCircle2, AlertTriangle, Banknote } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { SyncLogList } from '@/components/sync/SyncLogList';
 import { DateSelector } from '@/components/shared/DateSelector';
 import { CurrencyInput } from '@/components/shared/CurrencyInput';
 import { Button } from '@/components/ui/button';
@@ -269,6 +270,8 @@ export default function ManagerDashboard() {
           </div>
           <DateSelector date={selectedDate} onDateChange={setSelectedDate} />
         </div>
+
+        <SyncLogList />
 
         {/* Warning Cards - Show when there are mismatches */}
         {(() => { const ordersmartInTakeaway = restaurant?.ordersmart_in_takeaway ?? true; const adjustedPosDiff = posMismatch - formData.takeaway_total - (ordersmartInTakeaway ? 0 : formData.ordersmart_revenue); return session && waiterShifts.length > 0 && (Math.abs(adjustedPosDiff) >= 0.01 || Math.abs(cardTerminalMismatch) >= 0.01) && (
