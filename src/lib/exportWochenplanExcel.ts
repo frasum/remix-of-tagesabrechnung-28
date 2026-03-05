@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { format, parseISO, eachDayOfInterval } from "date-fns";
 import { de } from "date-fns/locale";
-import { formatHours, DEPARTMENT_ORDER, countVacationDays, countSickDays, effectiveEveningHours, effectiveNightHours } from "./shiftCalculations";
+import { formatHours, DEPARTMENT_ORDER, countVacationDays, countSickDays, effectiveEveningHours, effectiveNightHours, isSunday } from "./shiftCalculations";
 
 interface Employee {
   id: string;
@@ -44,8 +44,11 @@ export function exportWochenplanExcel(
   employees: Employee[],
   weeks: Week[],
   shifts: Shift[],
-  holidays: Map<string, string>
+  holidays: Map<string, string>,
+  sfnMode: "simple" | "extended" = "simple",
+  holidayRates?: Map<string, number>
 ) {
+  const isExtended = sfnMode === "extended";
   const wb = XLSX.utils.book_new();
 
   const sorted = [...employees].sort((a, b) => {
@@ -62,9 +65,6 @@ export function exportWochenplanExcel(
   for (const week of sortedWeeks) {
     const days = eachDayOfInterval({ start: parseISO(week.start_date), end: parseISO(week.end_date) });
     const dayStrs = days.map(d => format(d, "yyyy-MM-dd"));
-    // Support cumulated mode: match shifts by date range instead of just week_id
-    const weekStart = week.start_date;
-    const weekEnd = week.end_date;
     const weekDayStrs = new Set(dayStrs);
     const weekShifts = shifts.filter(s => weekDayStrs.has(s.shift_date));
 
@@ -73,31 +73,60 @@ export function exportWochenplanExcel(
 
     const wsData: (string | number)[][] = [];
 
-    // Title row
     wsData.push([`Wochenplan – ${periodLabel} – Woche ${week.week_number} (${startFmt} – ${endFmt})`]);
     wsData.push([]);
 
-    // Header
     const dayHeaders = days.map(d => {
       const dayName = format(d, "EE", { locale: de });
       const dayDate = format(d, "dd.MM.");
       return `${dayName} ${dayDate}`;
     });
-    wsData.push(["Mitarbeiter", ...dayHeaders, "Ges", "20-24", "24-x", "So/Fei", "U", "K"]);
+
+    const sfnHeaders = isExtended
+      ? ["Ges", "20-24", "24-x", "So", "Fei 125%", "Fei 150%", "U", "K"]
+      : ["Ges", "20-24", "24-x", "So/Fei", "U", "K"];
+
+    wsData.push(["Mitarbeiter", ...dayHeaders, ...sfnHeaders]);
 
     let lastDept = "";
     for (const emp of sorted) {
       if (emp.department !== lastDept) {
-        const emptyRow = new Array(days.length + 6).fill("");
+        const emptyRow = new Array(days.length + sfnHeaders.length).fill("");
         emptyRow[0] = emp.department;
         wsData.push(emptyRow);
         lastDept = emp.department;
       }
 
       const empShifts = weekShifts.filter(s => s.employee_id === emp.id && s.department === emp.department);
+
+      let sonntagStunden = 0;
+      let feiertag125 = 0;
+      let feiertag150 = 0;
+      let soFeiStunden = 0;
+
+      if (isExtended) {
+        for (const s of empShifts) {
+          const hrs = Number(s.sunday_holiday_hours);
+          if (hrs <= 0) continue;
+          const dateStr = s.shift_date;
+          const isHol = holidays.has(dateStr);
+          const isSun = isSunday(parseISO(dateStr));
+
+          if (isHol) {
+            const rate = holidayRates?.get(dateStr) ?? 1.25;
+            if (rate >= 1.50) feiertag150 += hrs;
+            else feiertag125 += hrs;
+          }
+          if (isSun && !isHol) {
+            sonntagStunden += hrs;
+          }
+        }
+      } else {
+        soFeiStunden = empShifts.reduce((s, x) => s + Number(x.sunday_holiday_hours), 0);
+      }
+
       const totals = {
         gesamt: empShifts.reduce((s, x) => s + Number(x.total_hours), 0),
-        soFeiStunden: empShifts.reduce((s, x) => s + Number(x.sunday_holiday_hours), 0),
         evening: empShifts.reduce((s, x) => s + effectiveEveningHours(x), 0),
         night: empShifts.reduce((s, x) => s + effectiveNightHours(x), 0),
         urlaub: countVacationDays(empShifts),
@@ -115,23 +144,19 @@ export function exportWochenplanExcel(
 
       const displayName = emp.nickname || emp.first_name || emp.name;
 
-      wsData.push([
-        displayName,
-        ...dayCells,
-        totals.gesamt,
-        totals.evening,
-        totals.night,
-        totals.soFeiStunden,
-        totals.urlaub,
-        totals.krank,
-      ]);
+      const sfnCells = isExtended
+        ? [totals.gesamt, totals.evening, totals.night, sonntagStunden, feiertag125, feiertag150, totals.urlaub, totals.krank]
+        : [totals.gesamt, totals.evening, totals.night, soFeiStunden, totals.urlaub, totals.krank];
+
+      wsData.push([displayName, ...dayCells, ...sfnCells]);
     }
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
+    const sfnColCount = sfnHeaders.length;
     ws["!cols"] = [
       { wch: 18 },
       ...days.map(() => ({ wch: 12 })),
-      { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 5 }, { wch: 5 },
+      ...Array(sfnColCount).fill(null).map(() => ({ wch: 8 })),
     ];
 
     XLSX.utils.book_append_sheet(wb, ws, `W${week.week_number}`);
