@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import { useRestaurant, useRestaurants } from "@/hooks/useRestaurant";
 import { useZt } from "@/contexts/ZtContext";
 import { useRestaurantEmployees, type RestaurantEmployee } from "@/hooks/useRestaurantEmployees";
 import { useCumulatedZtData } from "@/hooks/useCumulatedZtData";
+import { useHolidayRates } from "@/hooks/useHolidayRates";
 
 type Shift = {
   id: string;
@@ -96,6 +98,9 @@ export default function ZtWochenplan() {
   const { restaurantId } = useRestaurant();
   const { data: restaurants } = useRestaurants();
   const { selectedPeriodId, setSelectedPeriodId, selectedWeekId, setSelectedWeekId, periods, weeks, isPeriodLocked } = useZt();
+  const outletContext = useOutletContext<{ sfnMode?: string }>();
+  const sfnMode = (outletContext?.sfnMode as "simple" | "extended") ?? "simple";
+  const { data: holidayRatesMap } = useHolidayRates();
 
   const [cumulated, setCumulated] = useState(false);
 
@@ -503,10 +508,10 @@ export default function ZtWochenplan() {
         }}
         actions={
           <>
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!allPeriodShifts?.length || !employees?.length || !effectiveWeeks?.length} onClick={() => { const period = periods?.find(p => p.id === selectedPeriodId); if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return; exportWochenplanPdf(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map()); }}>
+             <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!allPeriodShifts?.length || !employees?.length || !effectiveWeeks?.length} onClick={() => { const period = periods?.find(p => p.id === selectedPeriodId); if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return; exportWochenplanPdf(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map(), sfnMode, holidayRatesMap); }}>
               <FileDown className="h-3.5 w-3.5" /> PDF
             </Button>
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!allPeriodShifts?.length || !employees?.length || !effectiveWeeks?.length} onClick={() => { const period = periods?.find(p => p.id === selectedPeriodId); if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return; exportWochenplanExcel(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map()); }}>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!allPeriodShifts?.length || !employees?.length || !effectiveWeeks?.length} onClick={() => { const period = periods?.find(p => p.id === selectedPeriodId); if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return; exportWochenplanExcel(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map(), sfnMode, holidayRatesMap); }}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
             </Button>
           </>

@@ -46,8 +46,11 @@ export function exportWochenplanPdf(
   employees: Employee[],
   weeks: Week[],
   shifts: Shift[],
-  holidays: Map<string, string>
+  holidays: Map<string, string>,
+  sfnMode: "simple" | "extended" = "simple",
+  holidayRates?: Map<string, number>
 ) {
+  const isExtended = sfnMode === "extended";
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
   const sorted = [...employees].sort((a, b) => {
@@ -67,7 +70,6 @@ export function exportWochenplanPdf(
     const days = eachDayOfInterval({ start: parseISO(week.start_date), end: parseISO(week.end_date) });
     const dayStrs = days.map(d => format(d, "yyyy-MM-dd"));
 
-    // Support cumulated mode: match shifts by date range instead of just week_id
     const weekDayStrs = new Set(dayStrs);
     const weekShifts = shifts.filter(s => weekDayStrs.has(s.shift_date));
 
@@ -78,7 +80,6 @@ export function exportWochenplanPdf(
     doc.setFontSize(12);
     doc.text(title, 14, 12);
 
-    // Build header
     const dayHeaders = days.map(d => {
       const dateStr = format(d, "yyyy-MM-dd");
       const dayName = format(d, "EE", { locale: de });
@@ -87,22 +88,56 @@ export function exportWochenplanPdf(
       return `${dayName} ${dayDate}${isHol ? " *" : ""}`;
     });
 
-    const head = [["Mitarbeiter", ...dayHeaders, "Ges", "20-24", "24-x", "So/Fei", "U", "K"]];
+    const sfnHeaders = isExtended
+      ? ["Ges", "20-24", "24-x", "So", "Fei 125%", "Fei 150%", "U", "K"]
+      : ["Ges", "20-24", "24-x", "So/Fei", "U", "K"];
+
+    const head = [["Mitarbeiter", ...dayHeaders, ...sfnHeaders]];
 
     const rows: any[][] = [];
     let lastDept = "";
 
     for (const emp of sorted) {
       if (emp.department !== lastDept) {
-        const colCount = days.length + 7;
+        const colCount = days.length + 1 + sfnHeaders.length;
         rows.push([{ content: emp.department, colSpan: colCount, styles: { fontStyle: "bold", fillColor: [230, 230, 230] } }]);
         lastDept = emp.department;
       }
 
       const empShifts = weekShifts.filter(s => s.employee_id === emp.id && s.department === emp.department);
+
+      let sonntagStunden = 0;
+      let feiertag125 = 0;
+      let feiertag150 = 0;
+      let soFeiStunden = 0;
+
+      if (isExtended) {
+        for (const s of empShifts) {
+          const hrs = Number(s.sunday_holiday_hours);
+          if (hrs <= 0) continue;
+          const dateStr = s.shift_date;
+          const isHol = holidays.has(dateStr);
+          const isSun = isSunday(parseISO(dateStr));
+
+          if (isHol) {
+            const rate = holidayRates?.get(dateStr) ?? 1.25;
+            if (rate >= 1.50) feiertag150 += hrs;
+            else feiertag125 += hrs;
+          }
+          if (isSun && !isHol) {
+            sonntagStunden += hrs;
+          }
+          // If both Sunday and holiday, hours go to holiday bucket (already handled above)
+          if (isSun && isHol) {
+            // already counted in holiday bucket
+          }
+        }
+      } else {
+        soFeiStunden = empShifts.reduce((s, x) => s + Number(x.sunday_holiday_hours), 0);
+      }
+
       const totals = {
         gesamt: empShifts.reduce((s, x) => s + Number(x.total_hours), 0),
-        soFeiStunden: empShifts.reduce((s, x) => s + Number(x.sunday_holiday_hours), 0),
         evening: empShifts.reduce((s, x) => s + effectiveEveningHours(x), 0),
         night: empShifts.reduce((s, x) => s + effectiveNightHours(x), 0),
         urlaub: countVacationDays(empShifts),
@@ -120,19 +155,31 @@ export function exportWochenplanPdf(
 
       const displayName = emp.nickname || emp.first_name || emp.name;
 
-      rows.push([
-        displayName,
-        ...dayCells,
-        formatHours(totals.gesamt),
-        totals.evening > 0 ? formatHours(totals.evening) : "",
-        totals.night > 0 ? formatHours(totals.night) : "",
-        totals.soFeiStunden > 0 ? formatHours(totals.soFeiStunden) : "",
-        totals.urlaub > 0 ? String(totals.urlaub) : "",
-        totals.krank > 0 ? String(totals.krank) : "",
-      ]);
+      const sfnCells = isExtended
+        ? [
+            formatHours(totals.gesamt),
+            totals.evening > 0 ? formatHours(totals.evening) : "",
+            totals.night > 0 ? formatHours(totals.night) : "",
+            sonntagStunden > 0 ? formatHours(sonntagStunden) : "",
+            feiertag125 > 0 ? formatHours(feiertag125) : "",
+            feiertag150 > 0 ? formatHours(feiertag150) : "",
+            totals.urlaub > 0 ? String(totals.urlaub) : "",
+            totals.krank > 0 ? String(totals.krank) : "",
+          ]
+        : [
+            formatHours(totals.gesamt),
+            totals.evening > 0 ? formatHours(totals.evening) : "",
+            totals.night > 0 ? formatHours(totals.night) : "",
+            soFeiStunden > 0 ? formatHours(soFeiStunden) : "",
+            totals.urlaub > 0 ? String(totals.urlaub) : "",
+            totals.krank > 0 ? String(totals.krank) : "",
+          ];
+
+      rows.push([displayName, ...dayCells, ...sfnCells]);
     }
 
-    const dayColWidth = Math.min(22, (297 - 14 - 14 - 45 - 5 * 13) / days.length);
+    const summaryColCount = sfnHeaders.length;
+    const dayColWidth = Math.min(22, (297 - 14 - 14 - 45 - summaryColCount * 12) / days.length);
 
     const columnStyles: Record<number, any> = {
       0: { cellWidth: 45 },
@@ -141,15 +188,15 @@ export function exportWochenplanPdf(
       columnStyles[i + 1] = { halign: "center", cellWidth: dayColWidth };
     });
     const summaryStart = days.length + 1;
-    for (let i = 0; i < 6; i++) {
-      columnStyles[summaryStart + i] = { halign: "center", cellWidth: 12 };
+    for (let i = 0; i < summaryColCount; i++) {
+      columnStyles[summaryStart + i] = { halign: "center", cellWidth: isExtended ? 11 : 12 };
     }
 
     autoTable(doc, {
       startY: 16,
       head,
       body: rows,
-      styles: { fontSize: 7, cellPadding: 1.5 },
+      styles: { fontSize: isExtended ? 6.5 : 7, cellPadding: 1.5 },
       headStyles: { fillColor: [60, 60, 60], fontSize: 6 },
       columnStyles,
       margin: { left: 7, right: 7 },
