@@ -50,6 +50,8 @@ export default function ZtLayout() {
     return location.pathname.startsWith(`${basePath}/${path}`);
   };
 
+  const showSfnToggle = !isActive("") && !isActive("zusammenfassung");
+
   return (
     <AppLayout>
       <ZtProvider>
@@ -74,7 +76,7 @@ export default function ZtLayout() {
           )}
 
           {/* SFN Mode Toggle */}
-          <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 px-4 py-3">
+          {showSfnToggle && <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 px-4 py-3">
             <div className="flex items-center gap-2 shrink-0 pt-0.5">
               <span className={cn("text-xs font-medium", sfnMode === "simple" ? "text-foreground" : "text-muted-foreground")}>
                 Einfach
@@ -92,7 +94,7 @@ export default function ZtLayout() {
                 ? "Sonntage und Feiertage werden gleich behandelt (50 % Zuschlag). Nachtzuschläge (25 % ab 20:00, 40 % von 00:00–04:00) werden bei Überschneidung mit So/Fei-Stunden nicht zusätzlich berechnet."
                 : "Zuschläge nach §3b EStG: Sonntag 50 %, Feiertag 125 % (besondere Feiertage 150 %). Nachtzuschläge werden additiv berechnet — sie stapeln sich mit Sonntags- und Feiertagszuschlägen."}
             </p>
-          </div>
+          </div>}
 
           <Outlet context={{ sfnMode }} />
         </div>
