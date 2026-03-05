@@ -126,19 +126,22 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
           // Skip waiters who don't participate in pool
           if (!ws.participates_in_pool) return;
           
+          const waiterHours = ws.hours_worked || 0;
+          
           // Primary waiter
           if (!waiterTipsMap[ws.waiter_name]) {
-            waiterTipsMap[ws.waiter_name] = 0;
+            waiterTipsMap[ws.waiter_name] = { tip: 0, hours: 0 };
           }
-          waiterTipsMap[ws.waiter_name] += tipPerWaiter;
+          waiterTipsMap[ws.waiter_name].tip += tipPerWaiter;
+          waiterTipsMap[ws.waiter_name].hours += waiterHours;
           
-          // Additional waiters
+          // Additional waiters (no hours tracked for them)
           const additionalWaiters: string[] = (ws as any).additional_waiters || [];
           for (const name of additionalWaiters) {
             if (!waiterTipsMap[name]) {
-              waiterTipsMap[name] = 0;
+              waiterTipsMap[name] = { tip: 0, hours: 0 };
             }
-            waiterTipsMap[name] += tipPerWaiter;
+            waiterTipsMap[name].tip += tipPerWaiter;
           }
         });
       }
