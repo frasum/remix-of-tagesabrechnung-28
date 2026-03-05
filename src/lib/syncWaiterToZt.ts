@@ -123,12 +123,18 @@ async function upsertZtShift(params: {
   }
 }
 
-export async function syncWaiterShiftToZt(params: SyncParams) {
+export async function syncWaiterShiftToZt(params: SyncParams): Promise<SyncResult> {
+  const result: SyncResult = { synced: [], failed: [] };
   try {
     const weekId = await findWeekForDate(params.sessionDate, params.restaurantId);
     if (!weekId) {
-      console.warn(`ZT-Sync: Keine passende Woche für ${params.sessionDate} gefunden`);
-      return;
+      const reason = 'Keine passende Woche/Periode für dieses Datum gefunden';
+      const allWaiters = [params.waiterName, ...params.additionalWaiters];
+      for (const name of allWaiters) {
+        result.failed.push({ name, reason });
+        await logSyncError({ restaurantId: params.restaurantId, sessionDate: params.sessionDate, staffName: name, reason, source: 'waiter' });
+      }
+      return result;
     }
 
     const dateObj = new Date(params.sessionDate + 'T12:00:00');
@@ -137,12 +143,13 @@ export async function syncWaiterShiftToZt(params: SyncParams) {
     const isSundayOrHoliday = isSunday || holiday;
 
     const allWaiters = [params.waiterName, ...params.additionalWaiters];
-    const notFound: string[] = [];
 
     await Promise.all(allWaiters.map(async (name) => {
       const employeeId = await findStaffByName(name, params.restaurantId);
       if (!employeeId) {
-        notFound.push(name);
+        const reason = 'Mitarbeiter nicht in der Personalverwaltung gefunden';
+        result.failed.push({ name, reason });
+        await logSyncError({ restaurantId: params.restaurantId, sessionDate: params.sessionDate, staffName: name, reason, source: 'waiter' });
         return;
       }
 
@@ -155,13 +162,13 @@ export async function syncWaiterShiftToZt(params: SyncParams) {
         isSundayOrHoliday,
         isHoliday: holiday,
       });
+      result.synced.push(name);
     }));
 
-    if (notFound.length > 0) {
-      console.warn(`ZT-Sync: Mitarbeiter nicht gefunden: ${notFound.join(', ')}`);
-    }
+    return result;
   } catch (err) {
     console.error('syncWaiterShiftToZt error:', err);
+    return result;
   }
 }
 
