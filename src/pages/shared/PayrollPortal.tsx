@@ -60,7 +60,7 @@ type CumulatedData = {
   employees: any[];
   payrollNotes: PayrollNote[];
   advances: AdvanceEntry[];
-  holidays: { holiday_date: string; name: string }[];
+  holidays: { holiday_date: string; name: string; surcharge_rate?: number }[];
   matchingPeriods: { id: string; label: string; restaurant_name: string; restaurant_id: string }[];
 };
 
@@ -302,6 +302,11 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
 
   const { period, weeks, shifts, employees, payrollNotes, advances, holidays, weekNumberToAllIds, weekToRestaurant, matchingPeriods } = data;
   const holidayMap = new Map(holidays.map(h => [h.holiday_date, h.name]));
+  const holidayRates = useMemo(() => {
+    const map = new Map<string, number>();
+    holidays.forEach(h => { if (h.surcharge_rate != null) map.set(h.holiday_date, h.surcharge_rate); });
+    return map;
+  }, [holidays]);
   const hasMultipleRestaurants = matchingPeriods.length > 1;
 
   // Unique restaurants from matchingPeriods
@@ -485,6 +490,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             isLocked={isLocked}
             onUpsertNote={(p) => upsertNote.mutate(p)}
             sfnMode={sfnMode}
+            holidayRates={holidayRates}
           />
         </TabsContent>
       </Tabs>
@@ -976,7 +982,7 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
 
 // =================== Buchhaltung Tab ===================
 
-function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple" }: {
+function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple", holidayRates }: {
   shifts: Shift[];
   employees: any[];
   payrollNotes: PayrollNote[];
@@ -985,6 +991,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   isLocked: boolean;
   onUpsertNote: (p: { employee_id: string; field: string; value: any }) => void;
   sfnMode?: SfnMode;
+  holidayRates?: Map<string, number>;
 }) {
   const additive = sfnMode === "extended";
   const isExtended = sfnMode === "extended";
@@ -1011,13 +1018,13 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   return (
     <div className="space-y-3">
       <div className="flex justify-end gap-1">
-        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungPdf(periodLabel, employees, shifts, payrollNotes); toast.success("PDF erstellt"); }}>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungPdf(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates); toast.success("PDF erstellt"); }}>
           <FileDown className="mr-1 h-4 w-4" /> PDF
         </Button>
-        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes, sfnMode); toast.success("Excel erstellt"); }}>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates); toast.success("Excel erstellt"); }}>
           <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
         </Button>
-        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes, sfnMode); toast.success("CSV erstellt"); }}>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates); toast.success("CSV erstellt"); }}>
           <FileDown className="mr-1 h-4 w-4" /> CSV
         </Button>
       </div>
