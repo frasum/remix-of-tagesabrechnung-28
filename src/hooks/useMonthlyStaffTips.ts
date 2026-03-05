@@ -94,7 +94,7 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
     const monthKitchenShifts = kitchenShifts.filter(ks => sessionIdsInMonth.includes(ks.session_id));
 
     // Calculate waiter tips per session, then aggregate per waiter
-    const waiterTipsMap: Record<string, number> = {};
+    const waiterTipsMap: Record<string, { tip: number; hours: number }> = {};
     
     // Group waiter shifts by session to calculate pool per session
     const waiterShiftsBySession: Record<string, typeof monthWaiterShifts> = {};
