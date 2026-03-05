@@ -7,6 +7,8 @@ import { useManagerNavPermissions } from "@/hooks/useManagerNavPermissions";
 import { hasPermission } from "@/types/permissions";
 import { cn } from "@/lib/utils";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { useSfnMode } from "@/hooks/useSfnMode";
+import { Switch } from "@/components/ui/switch";
 
 const allTabs = [
   { label: "Wochenplan", path: "", permPath: "zeiterfassung" },
@@ -22,6 +24,7 @@ export default function ZtLayout() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const basePath = `/${restaurantSlug}/zeiterfassung`;
+  const { sfnMode, setSfnMode } = useSfnMode();
 
   const userLevel = user?.permissionLevel || 'staff';
   const isAdmin = hasPermission(userLevel, 'admin');
@@ -69,7 +72,29 @@ export default function ZtLayout() {
               ))}
             </nav>
           )}
-          <Outlet />
+
+          {/* SFN Mode Toggle */}
+          <div className="flex items-start gap-3 rounded-md border border-border bg-muted/40 px-4 py-3">
+            <div className="flex items-center gap-2 shrink-0 pt-0.5">
+              <span className={cn("text-xs font-medium", sfnMode === "simple" ? "text-foreground" : "text-muted-foreground")}>
+                Einfach
+              </span>
+              <Switch
+                checked={sfnMode === "extended"}
+                onCheckedChange={(checked) => setSfnMode(checked ? "extended" : "simple")}
+              />
+              <span className={cn("text-xs font-medium", sfnMode === "extended" ? "text-foreground" : "text-muted-foreground")}>
+                §3b
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {sfnMode === "simple"
+                ? "Sonntage und Feiertage werden gleich behandelt (50 % Zuschlag). Nachtzuschläge (25 % ab 20:00, 40 % von 00:00–04:00) werden bei Überschneidung mit So/Fei-Stunden nicht zusätzlich berechnet."
+                : "Zuschläge nach §3b EStG: Sonntag 50 %, Feiertag 125 % (besondere Feiertage 150 %). Nachtzuschläge werden additiv berechnet — sie stapeln sich mit Sonntags- und Feiertagszuschlägen."}
+            </p>
+          </div>
+
+          <Outlet context={{ sfnMode }} />
         </div>
       </ZtProvider>
     </AppLayout>
