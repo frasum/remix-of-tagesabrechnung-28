@@ -471,6 +471,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
 
         <TabsContent value="zusammenfassung">
           <PayrollZusammenfassungTab
+            key={`zus-${sfnMode}`}
             weeks={weeks}
             shifts={filteredShifts}
             employees={employeesWithShifts}
@@ -482,6 +483,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
 
         <TabsContent value="buchhaltung">
           <PayrollBuchhaltungTab
+            key={`buch-${sfnMode}`}
             shifts={filteredShifts}
             employees={employeesWithShifts}
             payrollNotes={filteredPayrollNotes}
