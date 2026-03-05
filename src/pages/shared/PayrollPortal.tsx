@@ -910,7 +910,7 @@ function PayrollZusammenfassungTab({ weeks, shifts, employees, periodLabel, week
       </div>
 
       <div className="overflow-x-auto border rounded-lg">
-        <table className="w-full text-sm">
+        <table key={sfnMode} className="w-full text-sm">
           <thead>
             <tr className="bg-muted">
               <th className="text-left p-2 font-medium">Mitarbeiter</th>
@@ -1031,7 +1031,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm table-fixed">
+          <table key={sfnMode} className="w-full text-sm table-fixed">
             <BuchhaltungTableHead sfnMode={sfnMode} />
             <tbody>
               {employees.map(emp => {
