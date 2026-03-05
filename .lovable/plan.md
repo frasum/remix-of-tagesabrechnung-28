@@ -1,24 +1,21 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## Trinkgeld pro Stunde Kachel hinzufügen
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+### Was wird gemacht
+Eine vierte StatCard "TG / Stunde" wird in der Trinkgeld-Pool-Sektion auf der WaiterCashUp-Seite hinzugefügt. Sie zeigt, wie viel Trinkgeld pro Arbeitsstunde die Pool-Mitarbeiter im Schnitt erhalten haben.
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+### Berechnung
+- Gesamte Pool-Stunden = Summe aller `hours_worked` aus den `waiterShifts` (nur Pool-Teilnehmer, Team-Shifts anteilig)
+- Trinkgeld pro Stunde = `totalPool / totalPoolHours`
+- Wenn keine Stunden erfasst sind: "—" anzeigen
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+### Änderungen
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
-
-### Aufrufer anpassen
-
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+**`src/pages/WaiterCashUp.tsx`**:
+1. Import `Clock` Icon von lucide-react
+2. Neue Variable `totalPoolHours` berechnen (analog zu `waiterShareCount`, nur Pool-Teilnehmer)
+3. `tipPerHour` = `totalPoolHours > 0 ? totalPool / totalPoolHours : 0`
+4. Grid von `grid-cols-2` auf `grid-cols-2` beibehalten, aber die `col-span-2`-Kachel "Pro Mitarbeiter" auf `col-span-1` ändern und die neue "TG / Stunde"-Kachel daneben setzen — so entsteht ein 2x2-Grid mit 4 gleich großen Kacheln
+5. Neue StatCard: `label="TG / Stunde"`, `value` als formatierter String (z.B. "12,50 €/Std.") oder als Zahl, `icon=<Clock>`, `variant="success"`
 
