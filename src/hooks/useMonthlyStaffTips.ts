@@ -200,7 +200,7 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
 
     // Convert maps to arrays sorted by tip amount
     const waiterTips: MonthlyStaffTip[] = Object.entries(waiterTipsMap)
-      .map(([name, tip]) => ({ name, hours: 0, tip }))
+      .map(([name, data]) => ({ name, hours: data.hours, tip: data.tip }))
       .sort((a, b) => b.tip - a.tip);
 
     const kitchenTips: MonthlyStaffTip[] = Object.entries(kitchenTipsMap)
