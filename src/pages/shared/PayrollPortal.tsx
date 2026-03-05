@@ -1003,7 +1003,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
       t.evening += row.evening; t.night += row.night; t.urlaubTage += row.urlaubTage; t.krankTage += row.krankTage;
     });
     return t;
-  }, [employees, shifts]);
+  }, [employees, shifts, additive]);
 
   let zebraIdx = 0;
   let lastDept: string | null = null;
@@ -1014,10 +1014,10 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
         <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungPdf(periodLabel, employees, shifts, payrollNotes); toast.success("PDF erstellt"); }}>
           <FileDown className="mr-1 h-4 w-4" /> PDF
         </Button>
-        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes); toast.success("Excel erstellt"); }}>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes, sfnMode); toast.success("Excel erstellt"); }}>
           <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
         </Button>
-        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes); toast.success("CSV erstellt"); }}>
+        <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes, sfnMode); toast.success("CSV erstellt"); }}>
           <FileDown className="mr-1 h-4 w-4" /> CSV
         </Button>
       </div>
@@ -1025,7 +1025,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm table-fixed">
-            <BuchhaltungTableHead />
+            <BuchhaltungTableHead sfnMode={sfnMode} />
             <tbody>
               {employees.map(emp => {
                 const showDeptHeader = emp.department !== lastDept;
@@ -1033,7 +1033,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                 const isEven = zebraIdx % 2 === 1;
                 zebraIdx++;
 
-                const totals = getEmployeeTotals(emp.id, shifts, emp.department);
+                const totals = getEmployeeTotals(emp.id, shifts, emp.department, additive);
                 const note = payrollNotes.find(n => n.employee_id === emp.id);
                 const empShifts = shifts.filter(s => s.employee_id === emp.id && s.department === emp.department);
                 const empAdvances = advancesByName[emp.name] ?? [];
@@ -1054,7 +1054,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
 
                 return (
                   <React.Fragment key={`${emp.id}-${emp.department}`}>
-                    {showDeptHeader && <BuchhaltungDeptHeader department={emp.department} />}
+                    {showDeptHeader && <BuchhaltungDeptHeader department={emp.department} sfnMode={sfnMode} />}
                     <tr className={`border-t border-border/50 hover:bg-primary/5 transition-colors ${rowBg}`}>
                       <td className="px-2 py-1.5 font-medium whitespace-nowrap">
                         {nameParts}
@@ -1064,7 +1064,14 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                        <td className="text-center px-1 py-1.5 tabular-nums">{totals.schichten || "–"}</td>
                       <td className="text-center px-1 py-1.5 tabular-nums">{totals.evening > 0 ? formatHours(totals.evening) : "–"}</td>
                       <td className="text-center px-1 py-1.5 tabular-nums">{totals.night > 0 ? formatHours(totals.night) : "–"}</td>
-                      <td className="text-center px-1 py-1.5 tabular-nums">{totals.soFeiStunden > 0 ? formatHours(totals.soFeiStunden) : "–"}</td>
+                      {isExtended ? (
+                        <>
+                          <td className="text-center px-1 py-1.5 tabular-nums">{totals.sonntagStunden > 0 ? formatHours(totals.sonntagStunden) : "–"}</td>
+                          <td className="text-center px-1 py-1.5 tabular-nums">{totals.feiertagStunden > 0 ? formatHours(totals.feiertagStunden) : "–"}</td>
+                        </>
+                      ) : (
+                        <td className="text-center px-1 py-1.5 tabular-nums">{totals.soFeiStunden > 0 ? formatHours(totals.soFeiStunden) : "–"}</td>
+                      )}
                       <td className="text-center px-1 py-1.5 tabular-nums text-green-600 font-medium border-l border-border/40">
                         {totals.urlaubTage > 0 ? totals.urlaubTage.toFixed(2).replace(".", ",") : "–"}
                       </td>
