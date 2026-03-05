@@ -67,6 +67,7 @@ type CumulatedData = {
 export default function PayrollPortal() {
   const [pin, setPin] = useState(() => sessionStorage.getItem("payroll_pin") ?? "");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { sfnMode, setSfnMode } = useSfnMode();
 
   useEffect(() => {
     const prev = document.title;
