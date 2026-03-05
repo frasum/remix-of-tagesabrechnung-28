@@ -1,46 +1,35 @@
 
 
-## Plan: Feiertage = Sonntage (50%), eine Spalte "So/Fei"
+## Plan: SFN-Modus Toggle mit Beschreibungstexten
 
-### Was sich ändert
-Im Simple-Modus werden Feiertage nicht mehr mit 125% berechnet, sondern identisch wie Sonntage mit **50%**. Die zwei separaten Spalten "So" und "Fei" werden zu einer einzigen Spalte **"So/Fei"** zusammengelegt. Die `sunday_holiday_hours` im DB bleiben unverändert — die Unterscheidung `is_holiday` wird im Simple-Modus einfach ignoriert.
+### Änderungen
 
-### Betroffene Dateien und Änderungen
+#### 1. Neuer Hook: `src/hooks/useSfnMode.ts`
+- `localStorage`-basierter State: `"simple"` (default) oder `"extended"`
+- Exportiert `{ sfnMode, setSfnMode }`
 
-#### 1. Typen: `src/pages/zeiterfassung/buchhaltung/types.ts`
-- `sonntagStunden` und `feiertagStunden` → durch ein einziges Feld `soFeiStunden` ersetzen (= `sunday_holiday_hours` ohne `is_holiday`-Unterscheidung)
+#### 2. UI: Toggle mit Beschreibung im `ZtLayout.tsx`
+- Unterhalb der Tab-Navigation ein kompaktes Panel mit:
+  - **Switch**-Komponente: "Einfach" / "Erweitert (§3b)"
+  - **Beschreibungstext** der sich je nach Modus ändert:
 
-#### 2. Aggregation: `src/pages/zeiterfassung/buchhaltung/utils.ts`
-- `getEmployeeTotals`: `soFeiStunden = sum(sunday_holiday_hours)` — kein `is_holiday`-Check mehr
+**Einfach (aktiv):**
+> Sonntage und Feiertage werden gleich behandelt (50 % Zuschlag). Nachtzuschläge (25 % ab 20:00, 40 % von 00:00–04:00) werden bei Überschneidung mit So/Fei-Stunden nicht zusätzlich berechnet.
 
-#### 3. UI-Tabellen (eine Spalte statt zwei):
-- **`ZtZusammenfassung.tsx`**: Header "So" + "Fei" → "So/Fei", Totals verwenden `soFeiStunden`
-- **`ZtBuchhaltung.tsx`** + `BuchhaltungFooter.tsx` + `BuchhaltungRow.tsx` + `BuchhaltungTableHead.tsx` + `BuchhaltungDeptHeader.tsx`: Spaltenanzahl -1, "So/Fei" statt zwei Spalten
-- **`SfnTooltipHeader.tsx`**: "feiertag"-Tooltip entfernen oder in "soFei" umwandeln mit 50%-Label
+**Erweitert §3b (aktiv):**
+> Zuschläge nach §3b EStG: Sonntag 50 %, Feiertag 125 % (besondere Feiertage 150 %). Nachtzuschläge werden additiv berechnet — sie stapeln sich mit Sonntags- und Feiertagszuschlägen.
 
-#### 4. SFN-Berechnung in Brutto/Netto: `ZtBruttoNetto.tsx`
-- Aggregation (Zeilen 130–156): `agg.sunday` und `agg.holiday` zusammenlegen → alles geht in `sunday` mit 50%
-- Payload an Edge Function: `holiday: 0` (keine separaten Feiertagsstunden mehr im Simple-Modus)
+- Styling: Kleine Schrift (`text-xs text-muted-foreground`), dezent unter dem Toggle, maximal 2 Zeilen.
+- Der Toggle ist nur für Admins sichtbar (oder immer sichtbar, je nach Wunsch).
 
-#### 5. Edge Function: `calculate-payroll/index.ts`
-- Keine Änderung nötig — `holiday` kommt einfach als 0 rein
+#### 3. Modus an Unterseiten durchreichen
+- `ZtLayout` gibt den Modus via React Context oder als Outlet-Context an die Kind-Routen weiter, damit Zusammenfassung, Buchhaltung und Brutto/Netto darauf reagieren können (Vorbereitung für die Extended-Logik).
 
-#### 6. SFN-Konstanten: `src/lib/sfnRates.ts`
-- `holiday: 1.25` bleibt vorhanden (für Extended-Modus später), wird im Simple-Modus aber nicht genutzt
+### Betroffene Dateien
+| Datei | Änderung |
+|---|---|
+| `src/hooks/useSfnMode.ts` | Neu: localStorage Hook |
+| `src/pages/zeiterfassung/ZtLayout.tsx` | Toggle + Beschreibung + Outlet-Context |
 
-#### 7. Exporte (PDF, Excel, CSV):
-- **`exportZusammenfassungPdf.ts`**: Header und Daten — eine Spalte "So/Fei" statt zwei
-- **`exportBuchhaltungPdf.ts`**: Gleiche Anpassung
-- **`exportBuchhaltungExcel.ts`**: Gleiche Anpassung
-- **`exportZusammenfassungExcel.ts`**: Gleiche Anpassung
-- **`exportWochenplanPdf.ts`** / **`exportWochenplanExcel.ts`**: Falls dort So/Fei-Spalten vorhanden, ebenfalls anpassen
-- **`exportCsv.ts`**: Eine Spalte statt zwei
-
-#### 8. Shared Views:
-- **`SharedZtView.tsx`** und **`PayrollPortal.tsx`**: Gleiche Spalten-Zusammenlegung
-
-### Nicht betroffen
-- DB-Schema (`zt_shifts.is_holiday`, `sunday_holiday_hours`) — bleibt unverändert
-- Wochenplan-Ansicht (dort gibt es keine So/Fei-Spalten)
-- Die Berechnung in `shiftCalculations.ts` (`calculateShiftHours`) — `isSundayOrHoliday` berechnet weiterhin korrekt die Stunden
+**Hinweis**: Die eigentliche Extended-Berechnungslogik (additive Zuschläge, differenzierte Feiertage, DB-Migration) wird in einem Folgeschritt implementiert. Dieser Schritt erstellt nur den Toggle mit den Beschreibungen.
 
