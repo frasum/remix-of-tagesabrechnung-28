@@ -241,11 +241,12 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
         sessionShifts.forEach((shift: any) => {
           const allMembers = [shift.waiter_name, ...(shift.additional_waiters || [])];
           allMembers.forEach((name: string) => {
-            if (!waiterTipMap[name]) {
-              waiterTipMap[name] = { totalPoolShare: 0, shiftsCount: 0 };
+            const key = name.toLowerCase().trim();
+            if (!waiterTipMap[key]) {
+              waiterTipMap[key] = { totalPoolShare: 0, shiftsCount: 0, displayName: canonicalNames[key] || name };
             }
-            waiterTipMap[name].totalPoolShare += sharePerWaiter;
-            waiterTipMap[name].shiftsCount += 1;
+            waiterTipMap[key].totalPoolShare += sharePerWaiter;
+            waiterTipMap[key].shiftsCount += 1;
           });
         });
       });
