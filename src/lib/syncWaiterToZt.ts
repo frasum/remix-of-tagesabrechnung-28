@@ -5,6 +5,7 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import { calculateShiftHours } from '@/lib/shiftCalculations';
+import { logSyncError } from '@/hooks/useSyncLogs';
 
 interface SyncParams {
   waiterName: string;
@@ -13,6 +14,11 @@ interface SyncParams {
   shiftStart: string;        // HH:mm
   shiftEnd: string;          // HH:mm
   restaurantId: string;
+}
+
+export interface SyncResult {
+  synced: string[];
+  failed: { name: string; reason: string }[];
 }
 
 async function findWeekForDate(date: string, restaurantId: string): Promise<string | null> {
@@ -117,12 +123,18 @@ async function upsertZtShift(params: {
   }
 }
 
-export async function syncWaiterShiftToZt(params: SyncParams) {
+export async function syncWaiterShiftToZt(params: SyncParams): Promise<SyncResult> {
+  const result: SyncResult = { synced: [], failed: [] };
   try {
     const weekId = await findWeekForDate(params.sessionDate, params.restaurantId);
     if (!weekId) {
-      console.warn(`ZT-Sync: Keine passende Woche für ${params.sessionDate} gefunden`);
-      return;
+      const reason = 'Keine passende Woche/Periode für dieses Datum gefunden';
+      const allWaiters = [params.waiterName, ...params.additionalWaiters];
+      for (const name of allWaiters) {
+        result.failed.push({ name, reason });
+        await logSyncError({ restaurantId: params.restaurantId, sessionDate: params.sessionDate, staffName: name, reason, source: 'waiter' });
+      }
+      return result;
     }
 
     const dateObj = new Date(params.sessionDate + 'T12:00:00');
@@ -131,12 +143,13 @@ export async function syncWaiterShiftToZt(params: SyncParams) {
     const isSundayOrHoliday = isSunday || holiday;
 
     const allWaiters = [params.waiterName, ...params.additionalWaiters];
-    const notFound: string[] = [];
 
     await Promise.all(allWaiters.map(async (name) => {
       const employeeId = await findStaffByName(name, params.restaurantId);
       if (!employeeId) {
-        notFound.push(name);
+        const reason = 'Mitarbeiter nicht in der Personalverwaltung gefunden';
+        result.failed.push({ name, reason });
+        await logSyncError({ restaurantId: params.restaurantId, sessionDate: params.sessionDate, staffName: name, reason, source: 'waiter' });
         return;
       }
 
@@ -149,13 +162,13 @@ export async function syncWaiterShiftToZt(params: SyncParams) {
         isSundayOrHoliday,
         isHoliday: holiday,
       });
+      result.synced.push(name);
     }));
 
-    if (notFound.length > 0) {
-      console.warn(`ZT-Sync: Mitarbeiter nicht gefunden: ${notFound.join(', ')}`);
-    }
+    return result;
   } catch (err) {
     console.error('syncWaiterShiftToZt error:', err);
+    return result;
   }
 }
 
@@ -167,13 +180,24 @@ interface KitchenSyncParams {
   restaurantId: string;
 }
 
-export async function syncKitchenShiftToZt(params: KitchenSyncParams) {
+export async function syncKitchenShiftToZt(params: KitchenSyncParams): Promise<SyncResult> {
+  const result: SyncResult = { synced: [], failed: [] };
   try {
     const weekId = await findWeekForDate(params.sessionDate, params.restaurantId);
-    if (!weekId) return;
+    if (!weekId) {
+      const reason = 'Keine passende Woche/Periode für dieses Datum gefunden';
+      result.failed.push({ name: params.staffName, reason });
+      await logSyncError({ restaurantId: params.restaurantId, sessionDate: params.sessionDate, staffName: params.staffName, reason, source: 'kitchen' });
+      return result;
+    }
 
     const employeeId = await findStaffByName(params.staffName, params.restaurantId, 'Küche');
-    if (!employeeId) return;
+    if (!employeeId) {
+      const reason = 'Mitarbeiter nicht in der Personalverwaltung gefunden';
+      result.failed.push({ name: params.staffName, reason });
+      await logSyncError({ restaurantId: params.restaurantId, sessionDate: params.sessionDate, staffName: params.staffName, reason, source: 'kitchen' });
+      return result;
+    }
 
     const dateObj = new Date(params.sessionDate + 'T12:00:00');
     const isSunday = dateObj.getDay() === 0;
@@ -190,8 +214,11 @@ export async function syncKitchenShiftToZt(params: KitchenSyncParams) {
       isHoliday: holiday,
       department: 'Küche',
     });
+    result.synced.push(params.staffName);
+    return result;
   } catch (err) {
     console.error('syncKitchenShiftToZt error:', err);
+    return result;
   }
 }
 

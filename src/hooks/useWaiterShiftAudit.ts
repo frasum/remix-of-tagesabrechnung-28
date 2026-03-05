@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { WaiterShift } from '@/types/database';
 import type { Json } from '@/integrations/supabase/types';
 import { syncWaiterShiftToZt } from '@/lib/syncWaiterToZt';
+import { toast } from 'sonner';
 
 type UpdateWaiterShiftParams = {
   id: string;
@@ -98,7 +99,7 @@ export function useUpdateWaiterShiftWithAudit() {
         .eq('id', sessionId)
         .single();
       if (session) {
-        syncWaiterShiftToZt({
+        const syncResult = await syncWaiterShiftToZt({
           waiterName: newData.waiter_name,
           additionalWaiters: newData.additional_waiters || [],
           sessionDate: session.session_date,
@@ -106,6 +107,13 @@ export function useUpdateWaiterShiftWithAudit() {
           shiftEnd: newData.shift_end || '22:00',
           restaurantId,
         });
+        if (syncResult.failed.length > 0) {
+          const names = syncResult.failed.map(f => f.name).join(', ');
+          toast.warning('ZT-Sync fehlgeschlagen', {
+            description: `${names}: ${syncResult.failed[0].reason}`,
+            duration: 8000,
+          });
+        }
       }
     },
   });
