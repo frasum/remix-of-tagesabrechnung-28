@@ -262,36 +262,31 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
 
       // Calculate kitchen tip stats per person
       // For each session, calculate proportional tip based on hours worked
-      const kitchenTipMap: Record<string, { totalTip: number; totalHours: number }> = {};
+      const kitchenTipMap: Record<string, { totalTip: number; totalHours: number; displayName: string }> = {};
       
       (sessions || []).forEach(session => {
         const sessionWaiterShifts = shiftsBySession[session.id] || [];
         const sessionKitchenShifts = kitchenShiftsBySession[session.id] || [];
         
-        // Total kitchen tip pool for this session
         const kitchenTipPool = sessionWaiterShifts.reduce(
-          (sum: number, w: any) => sum + (w.kitchen_tip || 0), 
-          0
+          (sum: number, w: any) => sum + (w.kitchen_tip || 0), 0
         );
         
-        // Total hours worked by all kitchen staff in this session
         const totalHours = sessionKitchenShifts.reduce(
-          (sum: number, k: any) => sum + (k.hours_worked || 0), 
-          0
+          (sum: number, k: any) => sum + (k.hours_worked || 0), 0
         );
         
-        // Distribute proportionally
         if (totalHours > 0 && kitchenTipPool > 0) {
           sessionKitchenShifts.forEach((shift: any) => {
-            const name = shift.staff_name;
+            const key = shift.staff_name.toLowerCase().trim();
             const hours = shift.hours_worked || 0;
             const personalTip = (hours / totalHours) * kitchenTipPool;
             
-            if (!kitchenTipMap[name]) {
-              kitchenTipMap[name] = { totalTip: 0, totalHours: 0 };
+            if (!kitchenTipMap[key]) {
+              kitchenTipMap[key] = { totalTip: 0, totalHours: 0, displayName: canonicalNames[key] || shift.staff_name };
             }
-            kitchenTipMap[name].totalTip += personalTip;
-            kitchenTipMap[name].totalHours += hours;
+            kitchenTipMap[key].totalTip += personalTip;
+            kitchenTipMap[key].totalHours += hours;
           });
         }
       });
