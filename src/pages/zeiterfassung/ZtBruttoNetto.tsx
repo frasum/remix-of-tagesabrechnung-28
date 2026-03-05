@@ -318,6 +318,24 @@ export default function ZtBruttoNetto() {
 
   const fmt = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 
+  /** Compute total SFN bonus from aggregated hours and hourly rate */
+  function computeSfnBonus(agg: SfnAggResult | undefined, rate: number): number {
+    if (!agg) return 0;
+    return (
+      agg.night25Hours * rate * SFN_RATES.night25 +
+      agg.night40Hours * rate * SFN_RATES.night40 +
+      agg.sundayHours * rate * SFN_RATES.sunday +
+      agg.holidayHours * rate * SFN_RATES.holiday +
+      agg.holiday150Hours * rate * SFN_RATES.holiday150
+    );
+  }
+
+  const sfnHourlyRate = hourlyRate ? parseFloat(hourlyRate) : (grossMonthly && monthlyHours ? parseFloat(grossMonthly) / parseFloat(monthlyHours) : 0);
+  const currentBonus = computeSfnBonus(sfnData, sfnHourlyRate);
+  const otherBonus = computeSfnBonus(sfnOther, sfnHourlyRate);
+  const sfnDelta = otherBonus - currentBonus;
+  const otherModeName = isExtended ? "Einfacher Modus" : "§3b-Modus";
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Brutto-Netto-Rechner</h1>
