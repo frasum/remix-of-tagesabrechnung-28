@@ -82,13 +82,16 @@ async function fetchMonthlyStaffTips(monthsBack: number = 12, restaurantIds?: st
   const waiterShifts = waiterShiftsResult.data || [];
   const kitchenShifts = kitchenShiftsResult.data || [];
 
-  // Build pool participation lookup and name→id mapping
+  // Build pool participation lookup, name→id mapping, and canonical name map
   const poolStatusMap: Record<string, boolean> = {};
   const nameToStaffId: Record<string, string> = {};
+  const canonicalNames: Record<string, string> = {}; // normalized → display name from staff table
   if (staffResult.data) {
     for (const s of staffResult.data) {
       poolStatusMap[s.name] = s.participates_in_pool;
-      nameToStaffId[s.name.toLowerCase().trim()] = s.id;
+      const normalized = s.name.toLowerCase().trim();
+      nameToStaffId[normalized] = s.id;
+      canonicalNames[normalized] = s.name;
     }
   }
   const isPoolParticipant = (name: string) => poolStatusMap[name] !== false;
