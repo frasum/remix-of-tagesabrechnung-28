@@ -35,6 +35,8 @@ import type { Shift, PayrollNote, AdvanceEntry } from "@/pages/zeiterfassung/buc
 import BuchhaltungTableHead from "@/pages/zeiterfassung/buchhaltung/BuchhaltungTableHead";
 import BuchhaltungDeptHeader from "@/pages/zeiterfassung/buchhaltung/BuchhaltungDeptHeader";
 import BuchhaltungFooter from "@/pages/zeiterfassung/buchhaltung/BuchhaltungFooter";
+import { useSfnMode, type SfnMode } from "@/hooks/useSfnMode";
+import { effectiveEveningHours, effectiveNightHours } from "@/lib/shiftCalculations";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -431,6 +433,13 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
         </div>
       )}
 
+      {(activeTab === "zusammenfassung" || activeTab === "buchhaltung") && (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant={sfnMode === "simple" ? "default" : "outline"} onClick={() => setSfnMode("simple")}>Einfach</Button>
+          <Button size="sm" variant={sfnMode === "extended" ? "default" : "outline"} onClick={() => setSfnMode("extended")}>§3b EStG</Button>
+        </div>
+      )}
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="wochenplan">Wochenplan</TabsTrigger>
@@ -461,6 +470,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             employees={employeesWithShifts}
             periodLabel={period.label}
             weekNumberToAllIds={effectiveWeekNumberToAllIds}
+            sfnMode={sfnMode}
           />
         </TabsContent>
 
@@ -473,6 +483,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             periodLabel={period.label}
             isLocked={isLocked}
             onUpsertNote={(p) => upsertNote.mutate(p)}
+            sfnMode={sfnMode}
           />
         </TabsContent>
       </Tabs>
