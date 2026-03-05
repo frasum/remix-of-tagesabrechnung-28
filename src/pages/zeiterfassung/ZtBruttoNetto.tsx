@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { useRestaurantEmployees } from "@/hooks/useRestaurantEmployees";
@@ -224,6 +224,28 @@ export default function ZtBruttoNetto() {
       setMonthlyHours(String(sfnData.totalHours));
     }
   }, [sfnData]);
+
+  // Auto-recalculate when sfnMode changes
+  const pendingRecalcRef = useRef(false);
+  const prevSfnModeRef = useRef(sfnMode);
+  useEffect(() => {
+    if (sfnMode !== prevSfnModeRef.current) {
+      prevSfnModeRef.current = sfnMode;
+      if (result) {
+        pendingRecalcRef.current = true;
+        setResult(null);
+        setError(null);
+      }
+    }
+  }, [sfnMode, result]);
+
+  useEffect(() => {
+    if (pendingRecalcRef.current && sfnData && !calculating) {
+      pendingRecalcRef.current = false;
+      handleCalculate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sfnData, calculating]);
 
   // Derive calculation year/month from dateTo (end_date falls in the correct payroll month)
   const calculationYear = dateTo ? new Date(dateTo).getFullYear() : undefined;
