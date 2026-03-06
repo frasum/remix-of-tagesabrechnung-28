@@ -384,17 +384,14 @@ Wichtige Regeln:
     );
 
     if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit erreicht. Bitte versuche es später erneut." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const errText = await aiResponse.text();
       console.error("OpenAI API error:", aiResponse.status, errText);
+      const errorMsg = aiResponse.status === 429
+        ? `Rate limit / Kontingent: ${errText}`
+        : `OpenAI Fehler (${aiResponse.status}): ${errText}`;
       return new Response(
-        JSON.stringify({ error: "AI-Fehler" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: errorMsg }),
+        { status: aiResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
