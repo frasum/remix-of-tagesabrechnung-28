@@ -188,7 +188,7 @@ export function ExcelLayout({
 
             {/* Section: Kredit Karten */}
             <div className="bg-muted/50 px-3 py-2 border-y border-l-4 border-l-amber-500">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">KK GL</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Kredit Karten </span>
             </div>
             <table className="w-full text-sm">
               <tbody>
@@ -205,10 +205,10 @@ export function ExcelLayout({
               {formData.pos_total > 0 &&
               <span className="text-xs text-muted-foreground tabular-nums">
                   {new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(
-                  (ordersmartInTakeaway
-                    ? formData.takeaway_total
-                    : (formData.takeaway_total + formData.ordersmart_revenue)
-                  ) / formData.pos_total * 100
+                  (ordersmartInTakeaway ?
+                  formData.takeaway_total :
+                  formData.takeaway_total + formData.ordersmart_revenue) /
+                  formData.pos_total * 100
                 )} %
                 </span>
               }
