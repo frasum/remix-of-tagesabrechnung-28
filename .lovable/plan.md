@@ -1,24 +1,26 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## Plan: Notizen in Telegram-Nachricht einbinden
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+### Ausgangslage
+- Die `sessions`-Tabelle hat bereits ein `notes`-Feld (text, nullable)
+- Die Edge Function `send-telegram-summary` liest bereits `session.*`, hat also Zugriff auf `session.notes`
+- Es fehlt lediglich die Ausgabe im Nachrichtentext und ein Toggle in den Einstellungen
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+### Änderungen
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+**1. Telegram-Einstellungen: Neuen Toggle hinzufügen**
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+- **DB-Migration**: Neue Spalte `show_notes boolean default true` zur Tabelle `telegram_settings` hinzufügen
+- **`src/hooks/useTelegramSettings.ts`**: `show_notes` in Interface und Query ergänzen
+- **`src/pages/TelegramSettings.tsx`**: Neuen Toggle `Notizen` in die `metricToggles`-Liste einfügen
 
-### Aufrufer anpassen
+**2. Edge Function: Notizen ausgeben**
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+- **`supabase/functions/send-telegram-summary/index.ts`**:
+  - `show_notes` aus den Settings laden (mit Default `true`)
+  - Nach den bestehenden Abschnitten (Küche etc.) prüfen: wenn `settings.show_notes` und `session.notes` nicht leer ist, eine Zeile `📝 Notizen: {text}` ausgeben
+
+### Ergebnis
+Wenn in der Tagesabrechnung Notizen eingetragen wurden, erscheinen diese automatisch in der Telegram-Nachricht. Über den neuen Toggle kann die Anzeige deaktiviert werden.
 
