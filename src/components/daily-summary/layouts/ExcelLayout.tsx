@@ -314,7 +314,7 @@ export function ExcelLayout({
             </div>
             <div className="p-3">
               <Textarea
-                placeholder="Notizen für diesen Tag..."
+                placeholder="wird an Chefin übertragen..."
                 value={formData.notes}
                 onChange={(e) => onFieldChange('notes', e.target.value)}
                 rows={3}
