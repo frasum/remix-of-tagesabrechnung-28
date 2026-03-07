@@ -191,12 +191,23 @@ export default function ZtProvision() {
       {/* Threshold input */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground">Mindest-Durchschnittsumsatz / Tag / MA</label>
+          <label className="text-sm font-medium text-foreground">Mindest-Ø-Umsatz / Tag / MA</label>
           <div className="w-48">
             <CurrencyInput
               value={minRevenue}
               onChange={handleMinRevenueChange}
               onBlur={handleMinRevenueBlur}
+            />
+          </div>
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-foreground">Provisionssatz</label>
+          <div className="w-32">
+            <CurrencyInput
+              value={commissionPct}
+              onChange={handleCommissionPctChange}
+              onBlur={handleCommissionPctBlur}
+              suffix="%"
             />
           </div>
         </div>
