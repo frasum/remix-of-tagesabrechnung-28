@@ -1,24 +1,28 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## Analyse
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+Der "Umsatzentwicklung"-Chart (Zeile 479-548 in Statistics.tsx) zeigt aktuell keinen Hinweis darauf, welche Periode gerade dargestellt wird. Das `data`-Objekt aus `useStatistics` liefert bereits `dateRange: { start, end }` zurueck.
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+## Plan
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+**Datei: `src/pages/Statistics.tsx`**
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+Unter dem CardTitle "Umsatzentwicklung" (Zeile 486) einen Untertitel mit dem aktuellen Zeitraum anzeigen:
 
-### Aufrufer anpassen
+```tsx
+<CardTitle className="flex items-center gap-3">
+  <div className="...">
+    <TrendingUp className="w-5 h-5 text-primary" />
+  </div>
+  <div>
+    Umsatzentwicklung
+    <p className="text-sm font-normal text-muted-foreground mt-0.5">
+      {format(data.dateRange.start, 'dd. MMMM yyyy', { locale: de })} – {format(data.dateRange.end, 'dd. MMMM yyyy', { locale: de })}
+    </p>
+  </div>
+</CardTitle>
+```
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+Dies zeigt z.B. "01. März 2026 – 31. März 2026" als Untertitel an. Bei Wechsel der Periode (Woche, Monat, 3 Monate, Benutzerdefiniert) aktualisiert sich der Text automatisch.
 
