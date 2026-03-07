@@ -1,9 +1,8 @@
 import { useMemo, useCallback, useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useZt } from "@/contexts/ZtContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
-import { useSettings } from "@/hooks/useSettings";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
@@ -20,7 +19,7 @@ type WaiterAggregate = {
 export default function ZtProvision() {
   const { selectedPeriodId, periods } = useZt();
   const { restaurantId } = useRestaurant();
-  const { settings, updateSetting } = useSettings(restaurantId);
+  const queryClient = useQueryClient();
 
   const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
 
