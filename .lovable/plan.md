@@ -1,24 +1,22 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## Plan: BARGELD durch Kreditkarten ersetzen im Umsatz-Chart
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+### Kontext
+Der Nutzer möchte im Umsatzentwicklungs-Chart statt "BARGELD" die "Kreditkarten" sehen. Kreditkarten beinhaltet: Terminal 1 + Terminal 2 + Wolt + OrderSmart (alles Unbar).
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+### Änderungen
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+**1. `src/hooks/useStatistics.ts`**
+- `DailyStats` Interface: `bargeld` durch `kreditkarten` ersetzen
+- In der `dailyStats.map()`: Statt Bargeld die Summe berechnen:
+  ```
+  kreditkarten = terminal_1_total + terminal_2_total + ordersmart_revenue + wolt_revenue
+  ```
+- Dafür müssen die Session-Felder `terminal_1_total`, `terminal_2_total`, `ordersmart_revenue`, `wolt_revenue` in die map-Funktion durchgereicht werden (sind bereits im Select enthalten)
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
-
-### Aufrufer anpassen
-
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+**2. `src/pages/Statistics.tsx`**
+- Im Chart: `dataKey="bargeld"` → `dataKey="kreditkarten"`, `name="BARGELD"` → `name="Kreditkarten"`
+- Gradient-ID umbenennen: `colorBargeld` → `colorKreditkarten`
+- `chartData` mapping anpassen falls nötig
 
