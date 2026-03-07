@@ -103,15 +103,21 @@ export default function ZtProvision() {
     return Array.from(map.values()).map(e => ({ ...e, commission: 0 }));
   }, [waiterData]);
 
-  // Count unique sessions (days) for the threshold calculation
-  const sessionCount = useMemo(() => {
-    if (!waiterData?.length) return 0;
-    const dates = new Set<string>();
+  // Count unique sessions (days) and staffDays (sum of distinct staff per day)
+  const { sessionCount, staffDays } = useMemo(() => {
+    if (!waiterData?.length) return { sessionCount: 0, staffDays: 0 };
+    const dateStaffMap = new Map<string, Set<string>>();
     for (const ws of waiterData) {
       const session = ws.sessions as any;
-      if (session?.session_date) dates.add(session.session_date);
+      const date = session?.session_date;
+      if (!date) continue;
+      const key = ws.staff_id || ws.waiter_name;
+      if (!dateStaffMap.has(date)) dateStaffMap.set(date, new Set());
+      dateStaffMap.get(date)!.add(key);
     }
-    return dates.size;
+    let total = 0;
+    for (const staff of dateStaffMap.values()) total += staff.size;
+    return { sessionCount: dateStaffMap.size, staffDays: total };
   }, [waiterData]);
 
   // Commission calculation
@@ -119,12 +125,12 @@ export default function ZtProvision() {
     const staffCount = aggregated.length;
     const totalRevenue = aggregated.reduce((s, w) => s + w.revenue, 0);
     const totalHours = aggregated.reduce((s, w) => s + w.hours, 0);
-    const avgRevenue = staffCount > 0 ? totalRevenue / sessionCount : 0;
-    const thresholdMet = avgRevenue >= minRevenue && sessionCount > 0;
+    const avgRevenue = staffDays > 0 ? totalRevenue / staffDays : 0;
+    const thresholdMet = avgRevenue >= minRevenue && staffDays > 0;
 
     let pool = 0;
     if (thresholdMet) {
-      const excess = totalRevenue - (minRevenue * sessionCount);
+      const excess = totalRevenue - (minRevenue * staffDays);
       pool = Math.max(0, excess * 0.05);
     }
 
@@ -136,8 +142,8 @@ export default function ZtProvision() {
 
     const totalCommission = withCommission.reduce((s, w) => s + w.commission, 0);
 
-    return { staffCount, totalRevenue, totalHours, avgRevenue, thresholdMet, pool, withCommission, totalCommission, sessionCount };
-  }, [aggregated, minRevenue, sessionCount]);
+    return { staffCount, totalRevenue, totalHours, avgRevenue, thresholdMet, pool, withCommission, totalCommission, sessionCount, staffDays };
+  }, [aggregated, minRevenue, sessionCount, staffDays]);
 
   const fmt = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -146,7 +152,7 @@ export default function ZtProvision() {
       {/* Threshold input */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground">Mindest-Durchschnittsumsatz / Tag</label>
+          <label className="text-sm font-medium text-foreground">Mindest-Durchschnittsumsatz / Tag / MA</label>
           <div className="w-48">
             <CurrencyInput
               value={minRevenue}
@@ -169,12 +175,12 @@ export default function ZtProvision() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Ø Umsatz / Tag</p>
+          <p className="text-xs text-muted-foreground">Ø Umsatz / Tag / MA</p>
           <p className="text-lg font-semibold tabular-nums">{fmt(result.avgRevenue)} €</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Abrechnungstage</p>
-          <p className="text-lg font-semibold tabular-nums">{result.sessionCount}</p>
+          <p className="text-xs text-muted-foreground">Staff-Tage</p>
+          <p className="text-lg font-semibold tabular-nums">{result.staffDays}</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Provisions-Topf</p>

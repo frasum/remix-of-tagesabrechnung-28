@@ -1,31 +1,24 @@
 
 
-# Plan: Provisionsberechnung auf "Pro Tag pro Mitarbeiter" umstellen
+## Tooltips für erweiterten SFN-Modus anpassen
 
-## Was sich ändert
+Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
 
-Die Berechnung in `ZtProvision.tsx` muss angepasst werden:
+### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
 
-**Aktuell:**
-```
-Ø Umsatz = Gesamtumsatz / Anzahl Tage
-Überbetrag = Gesamtumsatz - (Schwellwert × Anzahl Tage)
-```
+- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
+- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
+- Im Extended-Modus erklären die Tooltips die additive Logik:
 
-**Neu:**
-```
-Staff-Tage = Summe der Mitarbeiteranzahl pro Tag (z.B. 3 Tage × je 4 Kellner = 12 Staff-Tage)
-Ø Umsatz/Tag/MA = Gesamtumsatz / Staff-Tage
-Überbetrag = Gesamtumsatz - (Schwellwert × Staff-Tage)
-Pool = Überbetrag × 5%
-```
+| Spalte | Simple | Extended |
+|--------|--------|----------|
+| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
+| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
+| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
+| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
+| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
 
-## Änderung in `src/pages/zeiterfassung/ZtProvision.tsx`
+### Aufrufer anpassen
 
-1. **Neues Aggregat `staffDays`**: Für jede Session (Tag) die Anzahl der **distinkten Mitarbeiter** zählen und summieren.
-2. **`avgRevenue`**: `totalRevenue / staffDays` statt `totalRevenue / sessionCount`
-3. **Pool-Berechnung**: `excess = totalRevenue - (minRevenue × staffDays)`
-4. **Label anpassen**: "Ø Umsatz / Tag" → "Ø Umsatz / Tag / MA" und ggf. "Abrechnungstage" durch "Staff-Tage" ergänzen
-
-Keine DB-Änderungen nötig — reine Frontend-Logik-Anpassung in einer Datei.
+`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
 
