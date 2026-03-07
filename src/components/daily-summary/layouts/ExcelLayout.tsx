@@ -113,6 +113,23 @@ export function ExcelLayout({
 }: ExcelLayoutProps) {
   const getLabel = gl || ((key: LabelKey) => key);
   const isFieldHidden = ifh || (() => false);
+  const [showAvgWarning, setShowAvgWarning] = useState(false);
+  const [pendingGuestCount, setPendingGuestCount] = useState(0);
+  const [pendingAverage, setPendingAverage] = useState(0);
+
+  const handleGuestCountChange = (newCount: number) => {
+    if (newCount > 0) {
+      const avg = (formData.pos_total - (formData.takeaway_total || 0)) / newCount;
+      if (avg > 50) {
+        setPendingGuestCount(newCount);
+        setPendingAverage(avg);
+        setShowAvgWarning(true);
+        return;
+      }
+    }
+    onGuestCountChange?.(newCount);
+  };
+
   const fmt = (value: number) =>
   new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
 
@@ -171,7 +188,7 @@ export function ExcelLayout({
                         placeholder="0"
                         onChange={(e) => {
                           const cleaned = e.target.value.replace(/\D/g, '');
-                          onGuestCountChange?.(cleaned ? parseInt(cleaned, 10) : 0);
+                          handleGuestCountChange(cleaned ? parseInt(cleaned, 10) : 0);
                         }}
                         className="h-7 text-sm border-primary/20 bg-primary/5 w-20 text-right"
                         disabled={locked} />
@@ -332,6 +349,25 @@ export function ExcelLayout({
           {advances}
         </div>
       </div>
+      <AlertDialog open={showAvgWarning} onOpenChange={setShowAvgWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hoher Durchschnittsverzehr</AlertDialogTitle>
+            <AlertDialogDescription>
+              Der Durchschnitt pro Gast beträgt{' '}
+              <span className="font-semibold">{fmt(pendingAverage)} €</span>.
+              Ist das korrekt?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              onGuestCountChange?.(pendingGuestCount);
+              setShowAvgWarning(false);
+            }}>Bestätigen</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>);
 
 }
