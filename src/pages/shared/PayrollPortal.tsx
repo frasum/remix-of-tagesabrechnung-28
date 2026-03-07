@@ -993,7 +993,7 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
 
 // =================== Buchhaltung Tab ===================
 
-function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple", holidayRates }: {
+function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple", holidayRates, showCommission = false, commissionMap }: {
   shifts: Shift[];
   employees: any[];
   payrollNotes: PayrollNote[];
@@ -1003,6 +1003,8 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   onUpsertNote: (p: { employee_id: string; field: string; value: any }) => void;
   sfnMode?: SfnMode;
   holidayRates?: Map<string, number>;
+  showCommission?: boolean;
+  commissionMap?: Map<string, number>;
 }) {
   const additive = sfnMode === "extended";
   const isExtended = sfnMode === "extended";
