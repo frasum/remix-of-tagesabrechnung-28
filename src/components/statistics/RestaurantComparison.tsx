@@ -128,8 +128,46 @@ export function RestaurantComparison({ restaurants }: RestaurantComparisonProps)
 
   if (!a || !b) return null;
 
+  const totalSummary = useMemo(() => {
+    if (!a || !b) return null;
+    const sa = a.summary;
+    const sb = b.summary;
+    return {
+      totalRevenue: sa.totalRevenue + sb.totalRevenue,
+      avgDailyRevenue: sa.avgDailyRevenue + sb.avgDailyRevenue,
+      totalKitchenTip: sa.totalKitchenTip + sb.totalKitchenTip,
+      totalWaiterTip: sa.totalWaiterTip + sb.totalWaiterTip,
+      totalDelivery: sa.totalDelivery + sb.totalDelivery,
+      totalExpenses: sa.totalExpenses + sb.totalExpenses,
+      daysWithData: Math.max(sa.daysWithData, sb.daysWithData),
+    };
+  }, [a, b]);
+
   return (
     <div className="space-y-4">
+      {/* Total summary row */}
+      {totalSummary && (
+        <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4 space-y-2">
+          <div className="text-center">
+            <span className="text-sm font-bold text-primary">Gesamt (Spicery + YUM)</span>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="text-center">
+              <span className="text-[11px] text-muted-foreground">Gesamtumsatz</span>
+              <div className="text-lg font-bold tabular-nums text-foreground">{formatCurrency(totalSummary.totalRevenue)}</div>
+            </div>
+            <div className="text-center">
+              <span className="text-[11px] text-muted-foreground">Ø Tagesumsatz</span>
+              <div className="text-lg font-bold tabular-nums text-foreground">{formatCurrency(totalSummary.avgDailyRevenue)}</div>
+            </div>
+            <div className="text-center">
+              <span className="text-[11px] text-muted-foreground">Trinkgeld gesamt</span>
+              <div className="text-lg font-bold tabular-nums text-foreground">{formatCurrency(totalSummary.totalKitchenTip + totalSummary.totalWaiterTip)}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid sm:grid-cols-2 gap-3">
         {metrics.map((m) => (
           <MetricCard key={m.label} {...m} nameA={nameA} nameB={nameB} />
