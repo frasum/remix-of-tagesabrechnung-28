@@ -532,7 +532,7 @@ export default function ZtProvision() {
                        </Tooltip>
                      </TooltipProvider>
                    </TableHead>
-                  <TableHead className="text-right">Prov. (€)</TableHead>
+                  <TableHead className="text-right">Provision</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
