@@ -182,7 +182,7 @@ export default function ZtProvision() {
     const totalCommission = withCommission.reduce((s, w) => s + w.commission, 0);
 
     return { staffCount, totalRevenue, totalHours, avgRevenue, thresholdMet, pool, withCommission, totalCommission, sessionCount, staffDays };
-  }, [aggregated, minRevenue, sessionCount, staffDays]);
+  }, [aggregated, minRevenue, commissionPct, sessionCount, staffDays]);
 
   const fmt = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
