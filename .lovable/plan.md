@@ -1,24 +1,29 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## History-Tabelle übersichtlicher gestalten
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+### Änderungen in `src/pages/History.tsx`
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+**1. Jahreszahl entfernen**
+Datumsformat von `"EEEE, d. MMM yyyy"` → `"EEEE, d. MMM"` ändern (z.B. "Freitag, 6. März" statt "Freitag, 6. März 2026"). Spart Platz und vermeidet Zeilenumbrüche in der Datum-Spalte.
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+**2. Spaltenbreiten optimieren**
+- Datum schmaler (`w-[160px]`), da Jahreszahl wegfällt
+- Restliche Spalten gleichmäßiger verteilen mit relativen Breiten statt fixen Pixelwerten
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+**3. Kompaktere Darstellung der Prozent-Spalten**
+Kreditkarten und Take Away: Betrag und Prozent in einer Zeile statt untereinander, z.B. `3.606 € (79.6%)` — wie es teilweise schon der Fall ist, aber konsistent machen.
 
-### Aufrufer anpassen
+**4. Zeilenabstand reduzieren**
+`TableCell` mit `py-2` statt Standard-Padding für kompaktere Zeilen.
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+**Vorher → Nachher Beispiel:**
+```text
+Vorher:  Freitag, 6. März 2026    5.952,50 €    5.606,47 €
+                                                  (94.2%)
+
+Nachher: Freitag, 6. März         5.952,50 €    5.606,47 € (94.2%)
+```
+
+Nur `src/pages/History.tsx` betroffen — eine Datei, reine Darstellungsänderung.
 
