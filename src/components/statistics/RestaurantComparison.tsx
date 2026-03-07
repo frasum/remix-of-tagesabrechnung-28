@@ -23,42 +23,35 @@ interface MetricDef {
   invert?: boolean;
 }
 
+function DiffBadge({ pct, invert }: { pct: number; invert?: boolean }) {
+  const effective = invert ? -pct : pct;
+  const color = effective > 0
+    ? 'border-success/30 text-success bg-success/10'
+    : effective < 0
+      ? 'border-destructive/30 text-destructive bg-destructive/10'
+      : 'text-muted-foreground';
+  return (
+    <Badge variant="outline" className={`text-[10px] px-1.5 py-0 font-semibold ${color}`}>
+      {formatPercent(pct)}
+    </Badge>
+  );
+}
+
 function MetricCard({ label, valA, valB, nameA, nameB, invert }: MetricDef & { nameA: string; nameB: string }) {
   const total = Math.abs(valA) + Math.abs(valB);
   const ratioA = total > 0 ? (Math.abs(valA) / total) * 100 : 50;
   const ratioB = total > 0 ? (Math.abs(valB) / total) * 100 : 50;
-  const rawDiff = valB !== 0 ? ((valA - valB) / Math.abs(valB)) * 100 : 0;
-  const effectiveDiff = invert ? -rawDiff : rawDiff;
+  const diffA = valB !== 0 ? ((valA - valB) / Math.abs(valB)) * 100 : 0;
+  const diffB = valA !== 0 ? ((valB - valA) / Math.abs(valA)) * 100 : 0;
   const leadA = Math.abs(valA) > Math.abs(valB);
   const leadB = Math.abs(valB) > Math.abs(valA);
   const tie = Math.abs(valA) === Math.abs(valB);
 
   return (
     <div className="rounded-xl border border-border/60 bg-card p-4 space-y-3">
-      {/* Header: label + diff badge */}
-      <div className="flex items-center justify-between">
+      {/* Header: label centered */}
+      <div className="text-center">
         <span className="text-sm font-semibold text-foreground">{label}</span>
-        <div className="flex items-center gap-1">
-          {effectiveDiff > 0 ? (
-            <TrendingUp className="w-3.5 h-3.5 text-success" />
-          ) : effectiveDiff < 0 ? (
-            <TrendingDown className="w-3.5 h-3.5 text-destructive" />
-          ) : (
-            <Minus className="w-3.5 h-3.5 text-muted-foreground" />
-          )}
-          <Badge
-            variant="outline"
-            className={`text-[10px] px-1.5 py-0 font-semibold ${
-              effectiveDiff > 0
-                ? 'border-success/30 text-success bg-success/10'
-                : effectiveDiff < 0
-                  ? 'border-destructive/30 text-destructive bg-destructive/10'
-                  : 'text-muted-foreground'
-            }`}
-          >
-            {formatPercent(rawDiff)}
-          </Badge>
-        </div>
       </div>
 
       {/* Values: left vs right */}
@@ -68,9 +61,12 @@ function MetricCard({ label, valA, valB, nameA, nameB, invert }: MetricDef & { n
             <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-1))] shrink-0" />
             <span className="text-[11px] text-muted-foreground truncate">{nameA}</span>
           </div>
-          <span className={`tabular-nums block ${leadA ? 'text-lg font-bold text-foreground' : 'text-sm text-muted-foreground'}`}>
-            {formatCurrency(valA)}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className={`tabular-nums ${leadA ? 'text-lg font-bold text-foreground' : 'text-sm text-muted-foreground'}`}>
+              {formatCurrency(valA)}
+            </span>
+            <DiffBadge pct={diffA} invert={invert} />
+          </div>
         </div>
 
         {tie ? (
@@ -84,9 +80,12 @@ function MetricCard({ label, valA, valB, nameA, nameB, invert }: MetricDef & { n
             <span className="text-[11px] text-muted-foreground truncate">{nameB}</span>
             <span className="w-2.5 h-2.5 rounded-full bg-[hsl(var(--chart-2))] shrink-0" />
           </div>
-          <span className={`tabular-nums block ${leadB ? 'text-lg font-bold text-foreground' : 'text-sm text-muted-foreground'}`}>
-            {formatCurrency(valB)}
-          </span>
+          <div className="flex items-center gap-1.5 justify-end">
+            <DiffBadge pct={diffB} invert={invert} />
+            <span className={`tabular-nums ${leadB ? 'text-lg font-bold text-foreground' : 'text-sm text-muted-foreground'}`}>
+              {formatCurrency(valB)}
+            </span>
+          </div>
         </div>
       </div>
 
