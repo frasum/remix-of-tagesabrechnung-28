@@ -351,7 +351,7 @@ export default function ZtProvision() {
         return { date, staffCount: d.staffSet.size, staffNames: Array.from(d.nameSet).sort(), hours: hasZt ? ztTotal : d.waiterHours, revenue: d.revenue };
       })
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [filteredWaiterData, isGlByName, ztHoursByStaffDate]);
+  }, [filteredWaiterData, isGlByName, ztHoursByStaffDate, staffNameToId]);
 
   // Commission calculation
   const result = useMemo(() => {
