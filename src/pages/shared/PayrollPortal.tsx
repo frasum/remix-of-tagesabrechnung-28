@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import SfnTooltipHeader from "@/components/zeiterfassung/SfnTooltipHeader";
+import { supabase } from "@/integrations/supabase/client";
+import { useCommissionData } from "@/hooks/useCommissionData";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
