@@ -13,7 +13,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Loader2, ChevronDown } from "lucide-react";
 
-const GL_ROLES = new Set(["gl", "waiter_gl", "kitchen_gl", "all"]);
+const GL_ROLES = new Set(["gl", "kitchen_gl"]);
 
 type WaiterAggregate = {
   staffId: string | null;
