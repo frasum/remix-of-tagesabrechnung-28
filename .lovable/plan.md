@@ -1,30 +1,24 @@
 
 
-# Tagesaufschlüsselung & GL-Ausschluss für Provision
+## Tooltips für erweiterten SFN-Modus anpassen
 
-## Zusammenfassung
-Zwei Änderungen in `ZtProvision.tsx`:
-1. **GL-Mitarbeiter ausschließen** — Mitarbeiter mit GL-Rolle (`gl`, `waiter_gl`, `kitchen_gl`, `all`) werden aus der Provisionsberechnung herausgefiltert.
-2. **Tagesaufschlüsselung** — Neue aufklappbare Tabelle unter den Summary-Karten mit pro Tag: Datum, Anzahl Service-MA (ohne GL), Service-Stunden, Gesamtumsatz.
+Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
 
-## Technische Umsetzung
+### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
 
-### 1. GL-Ausschluss
-- Die Query erweitern: zusätzlich zu `waiter_shifts` auch `staff_id` gegen die `staff`-Tabelle prüfen.
-- Separate Query auf `staff` mit Rollen laden (oder in der bestehenden Query über `staff_id` filtern).
-- Da Supabase keine direkte FK-Beziehung von `waiter_shifts.staff_id` → `staff.id` hat, wird eine separate Query auf `staff` gemacht, um die Rollen zu laden.
-- Beim Aggregieren werden Einträge gefiltert, deren `staff_id` eine GL-Rolle hat (Rollen `gl`, `waiter_gl`, `kitchen_gl`, `all` → alle die `enumToRoles(role).gl === true`).
-- Hinweis-Text unter den Karten: "ohne GL-Mitarbeiter".
+- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
+- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
+- Im Extended-Modus erklären die Tooltips die additive Logik:
 
-### 2. Tagesaufschlüsselung
-- Neues `useMemo` das `waiterData` (nach GL-Filter) pro `session_date` gruppiert:
-  - Datum (formatiert dd.MM.)
-  - Anzahl Service-MA (distinct `staff_id || waiter_name`)
-  - Σ Stunden
-  - Σ Umsatz
-- Darstellung als kleine Tabelle mit `Collapsible` (zugeklappt per default) mit dem Label "Tagesdetails".
-- Footer-Zeile mit Gesamtsummen.
+| Spalte | Simple | Extended |
+|--------|--------|----------|
+| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
+| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
+| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
+| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
+| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
 
-### Dateien
-- `src/pages/zeiterfassung/ZtProvision.tsx` — einzige Datei die geändert wird
+### Aufrufer anpassen
+
+`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
 

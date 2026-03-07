@@ -6,7 +6,10 @@ import { useRestaurant } from "@/hooks/useRestaurant";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Loader2, ChevronDown } from "lucide-react";
+
+const GL_ROLES = new Set(["gl", "waiter_gl", "kitchen_gl", "all"]);
 
 type WaiterAggregate = {
   staffId: string | null;
@@ -14,6 +17,13 @@ type WaiterAggregate = {
   revenue: number;
   hours: number;
   commission: number;
+};
+
+type DayBreakdown = {
+  date: string;
+  staffCount: number;
+  hours: number;
+  revenue: number;
 };
 
 export default function ZtProvision() {
@@ -120,11 +130,36 @@ export default function ZtProvision() {
     enabled: !!selectedPeriod && !!restaurantId,
   });
 
-  // Aggregate by staff
-  const aggregated = useMemo<WaiterAggregate[]>(() => {
+  // Fetch staff roles to exclude GL
+  const { data: staffRoles } = useQuery({
+    queryKey: ["staff-roles-for-provision"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff")
+        .select("id, role")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Set of staff IDs with GL roles
+  const glStaffIds = useMemo(() => {
+    if (!staffRoles) return new Set<string>();
+    return new Set(staffRoles.filter(s => GL_ROLES.has(s.role)).map(s => s.id));
+  }, [staffRoles]);
+
+  // Filter out GL staff from waiter data
+  const filteredWaiterData = useMemo(() => {
     if (!waiterData?.length) return [];
+    return waiterData.filter(ws => !ws.staff_id || !glStaffIds.has(ws.staff_id));
+  }, [waiterData, glStaffIds]);
+
+  // Aggregate by staff (using filtered data)
+  const aggregated = useMemo<WaiterAggregate[]>(() => {
+    if (!filteredWaiterData.length) return [];
     const map = new Map<string, { staffId: string | null; name: string; revenue: number; hours: number }>();
-    for (const ws of waiterData) {
+    for (const ws of filteredWaiterData) {
       const key = ws.staff_id || ws.waiter_name;
       const existing = map.get(key);
       if (existing) {
@@ -140,13 +175,13 @@ export default function ZtProvision() {
       }
     }
     return Array.from(map.values()).map(e => ({ ...e, commission: 0 }));
-  }, [waiterData]);
+  }, [filteredWaiterData]);
 
-  // Count unique sessions (days) and staffDays (sum of distinct staff per day)
+  // Count unique sessions (days) and staffDays (using filtered data)
   const { sessionCount, staffDays } = useMemo(() => {
-    if (!waiterData?.length) return { sessionCount: 0, staffDays: 0 };
+    if (!filteredWaiterData.length) return { sessionCount: 0, staffDays: 0 };
     const dateStaffMap = new Map<string, Set<string>>();
-    for (const ws of waiterData) {
+    for (const ws of filteredWaiterData) {
       const session = ws.sessions as any;
       const date = session?.session_date;
       if (!date) continue;
@@ -157,7 +192,27 @@ export default function ZtProvision() {
     let total = 0;
     for (const staff of dateStaffMap.values()) total += staff.size;
     return { sessionCount: dateStaffMap.size, staffDays: total };
-  }, [waiterData]);
+  }, [filteredWaiterData]);
+
+  // Daily breakdown (using filtered data)
+  const dailyBreakdown = useMemo<DayBreakdown[]>(() => {
+    if (!filteredWaiterData.length) return [];
+    const dayMap = new Map<string, { staffSet: Set<string>; hours: number; revenue: number }>();
+    for (const ws of filteredWaiterData) {
+      const session = ws.sessions as any;
+      const date = session?.session_date;
+      if (!date) continue;
+      const key = ws.staff_id || ws.waiter_name;
+      if (!dayMap.has(date)) dayMap.set(date, { staffSet: new Set(), hours: 0, revenue: 0 });
+      const day = dayMap.get(date)!;
+      day.staffSet.add(key);
+      day.hours += Number(ws.hours_worked) || 0;
+      day.revenue += Number(ws.pos_sales) || 0;
+    }
+    return Array.from(dayMap.entries())
+      .map(([date, d]) => ({ date, staffCount: d.staffSet.size, hours: d.hours, revenue: d.revenue }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredWaiterData]);
 
   // Commission calculation
   const result = useMemo(() => {
@@ -185,6 +240,7 @@ export default function ZtProvision() {
   }, [aggregated, minRevenue, commissionPct, sessionCount, staffDays]);
 
   const fmt = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
 
   return (
     <div className="space-y-6">
@@ -225,7 +281,7 @@ export default function ZtProvision() {
       {/* Summary cards */}
       {selectedPeriod && (
         <p className="text-sm text-muted-foreground">
-          Zeitraum: {new Date(selectedPeriod.start_date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} – {new Date(selectedPeriod.end_date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+          Zeitraum: {new Date(selectedPeriod.start_date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} – {new Date(selectedPeriod.end_date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })} · ohne GL-Mitarbeiter
         </p>
       )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -246,6 +302,63 @@ export default function ZtProvision() {
           <p className="text-lg font-semibold tabular-nums">{fmt(result.totalCommission)} €</p>
         </div>
       </div>
+
+      {/* Daily breakdown */}
+      {dailyBreakdown.length > 0 && (
+        <Collapsible>
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group">
+            <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
+            Tagesdetails ({dailyBreakdown.length} Tage)
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Datum</TableHead>
+                  <TableHead className="text-right">Service-MA</TableHead>
+                  <TableHead className="text-right">Stunden (h)</TableHead>
+                  <TableHead className="text-right">Umsatz (€)</TableHead>
+                  <TableHead className="text-right">Ø / MA (€)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dailyBreakdown.map((day) => {
+                  const avgPerStaff = day.staffCount > 0 ? day.revenue / day.staffCount : 0;
+                  const belowThreshold = avgPerStaff < minRevenue;
+                  return (
+                    <TableRow key={day.date}>
+                      <TableCell className="font-medium">{fmtDate(day.date)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{day.staffCount}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmt(day.hours)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{fmt(day.revenue)}</TableCell>
+                      <TableCell className={`text-right tabular-nums ${belowThreshold ? "text-destructive" : ""}`}>
+                        {fmt(avgPerStaff)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell className="font-semibold">Gesamt</TableCell>
+                  <TableCell className="text-right tabular-nums font-semibold">
+                    {dailyBreakdown.reduce((s, d) => s + d.staffCount, 0)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums font-semibold">
+                    {fmt(dailyBreakdown.reduce((s, d) => s + d.hours, 0))}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums font-semibold">
+                    {fmt(dailyBreakdown.reduce((s, d) => s + d.revenue, 0))}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums font-semibold">
+                    {fmt(result.avgRevenue)}
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
       {result.withCommission.length > 0 && (
         <p className="text-xs text-muted-foreground">
