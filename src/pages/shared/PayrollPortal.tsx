@@ -1047,7 +1047,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   const totalCommission = useMemo(() => {
     if (!commissionMap) return 0;
     let sum = 0;
-    employees.forEach(emp => { sum += commissionMap.get(emp.id) ?? 0; });
+    employees.forEach(emp => { if (emp.department === "Service") sum += commissionMap.get(emp.id) ?? 0; });
     return sum;
   }, [employees, commissionMap]);
 
@@ -1100,7 +1100,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                       isLocked={isLocked}
                       sfnMode={sfnMode}
                       showCommission={showCommission}
-                      commission={commissionMap?.get(emp.id) ?? 0}
+                      commission={emp.department === "Service" ? (commissionMap?.get(emp.id) ?? 0) : 0}
                       onUpsertNote={onUpsertNote}
                     />
                   </React.Fragment>

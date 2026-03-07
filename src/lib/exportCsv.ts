@@ -149,7 +149,7 @@ export function exportBuchhaltungCsv(
       ? [t.evening, t.night, t.sonntagStunden, t.feiertag125, t.feiertag150]
       : [t.evening, t.night, t.soFeiStunden];
 
-    const commission = commissionMap?.get(emp.id) ?? 0;
+    const commission = emp.department === "Service" ? (commissionMap?.get(emp.id) ?? 0) : 0;
     rows.push([empDisplayName(emp), emp.department, t.gesamt, t.schichten, ...sfnCells, t.urlaubTage, t.krankTage, ...(hasCommission ? [commission] : []), note?.vorschuss || 0, besText]);
   }
 
