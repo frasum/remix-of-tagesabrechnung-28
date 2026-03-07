@@ -255,6 +255,7 @@ export function useStatistics(timeRange: TimeRange = 'month', customRange?: Cust
             waiterTipMap[key].shiftsCount += 1;
           });
         });
+      });
 
       const waiterTipStats: WaiterTipStats[] = Object.entries(waiterTipMap)
         .map(([_, data]) => ({
