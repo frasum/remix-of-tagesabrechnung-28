@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurant } from "@/contexts/RestaurantContext";
 import { ensurePeriodsExist } from "@/lib/periodUtils";
@@ -37,6 +38,7 @@ const ZtContext = createContext<ZtContextType | null>(null);
 
 export function ZtProvider({ children }: { children: React.ReactNode }) {
   const { restaurantId } = useRestaurant();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPeriodId, setSelectedPeriodId] = useState("");
   const [selectedWeekId, setSelectedWeekId] = useState("");
 
@@ -85,16 +87,35 @@ export function ZtProvider({ children }: { children: React.ReactNode }) {
     setSelectedWeekId("");
   }, [restaurantId]);
 
+  // Handle ?date= search param navigation (e.g. from Provision page)
+  useEffect(() => {
+    const targetDate = searchParams.get("date");
+    if (!targetDate || !periods?.length || !allWeeks?.length) return;
+
+    const currentPeriod = periods.find(p => p.start_date <= targetDate && p.end_date >= targetDate);
+    const periodId = currentPeriod?.id ?? periods[0].id;
+    const periodWeeks = allWeeks.filter(w => w.period_id === periodId);
+    const currentWeek = periodWeeks.find(w => w.start_date <= targetDate && w.end_date >= targetDate);
+    const weekId = currentWeek?.id ?? periodWeeks[0]?.id ?? "";
+
+    setSelectedPeriodId(periodId);
+    setSelectedWeekId(weekId);
+
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete("date");
+      return next;
+    }, { replace: true });
+  }, [searchParams, periods, allWeeks, setSearchParams]);
+
   // Auto-select period AND week together once both datasets are available
   useEffect(() => {
     if (!periods?.length || !allWeeks?.length || selectedPeriodId) return;
     const today = format(new Date(), "yyyy-MM-dd");
 
-    // Find current period
     const currentPeriod = periods.find(p => p.start_date <= today && p.end_date >= today);
     const periodId = currentPeriod?.id ?? periods[0].id;
 
-    // Find current week within that period
     const periodWeeks = allWeeks.filter(w => w.period_id === periodId);
     const currentWeek = periodWeeks.find(w => w.start_date <= today && w.end_date >= today);
     const weekId = currentWeek?.id ?? periodWeeks[0]?.id ?? "";
