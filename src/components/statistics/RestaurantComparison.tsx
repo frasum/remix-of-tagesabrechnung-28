@@ -74,9 +74,9 @@ function MetricCard({ label, valA, valB, nameA, nameB, invert }: MetricDef & { n
         </div>
 
         {tie ? (
-          <span className="text-[10px] text-muted-foreground font-medium pb-1">=</span>
+          <span className="text-2xl font-black text-muted-foreground/50 tracking-widest pb-0.5 uppercase select-none">=</span>
         ) : (
-          <span className="text-[10px] text-muted-foreground font-medium pb-1">vs</span>
+          <span className="text-2xl font-black text-muted-foreground/50 tracking-widest pb-0.5 uppercase select-none">VS</span>
         )}
 
         <div className="text-right space-y-0.5">
