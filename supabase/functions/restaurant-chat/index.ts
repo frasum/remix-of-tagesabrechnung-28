@@ -557,6 +557,56 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Detailed absence records with exact dates (for "from when to when" questions)
+    const absenceRecords: { name: string; restaurant: string; date: string; type: string }[] = [];
+    ztShifts.forEach((z: any) => {
+      if (!z.absence_type) return;
+      const staffName = staffById[z.employee_id]?.name || "?";
+      const rids = staffToRestaurants[z.employee_id] || [];
+      for (const rid of rids) {
+        absenceRecords.push({
+          name: staffName,
+          restaurant: restaurantMap[rid] || "?",
+          date: z.shift_date,
+          type: z.absence_type,
+        });
+      }
+    });
+
+    if (absenceRecords.length > 0) {
+      // Group consecutive absences into date ranges
+      absenceRecords.sort((a, b) => `${a.name}|${a.restaurant}|${a.type}|${a.date}`.localeCompare(`${b.name}|${b.restaurant}|${b.type}|${b.date}`));
+
+      type AbsenceRange = { name: string; restaurant: string; type: string; from: string; to: string };
+      const ranges: AbsenceRange[] = [];
+      let current: AbsenceRange | null = null;
+
+      for (const rec of absenceRecords) {
+        if (current && current.name === rec.name && current.restaurant === rec.restaurant && current.type === rec.type) {
+          // Check if consecutive (next day)
+          const prevDate = new Date(current.to);
+          prevDate.setDate(prevDate.getDate() + 1);
+          const prevStr = prevDate.toISOString().split("T")[0];
+          if (rec.date === prevStr) {
+            current.to = rec.date;
+            continue;
+          }
+        }
+        if (current) ranges.push(current);
+        current = { name: rec.name, restaurant: rec.restaurant, type: rec.type, from: rec.date, to: rec.date };
+      }
+      if (current) ranges.push(current);
+
+      contextParts.push("\n=== FEHLZEITEN-ZEITRÄUME (exakte Datumsbereiche) ===");
+      contextParts.push("Mitarbeiter | Restaurant | Typ | Von | Bis | Tage");
+      for (const r of ranges) {
+        const fromDate = new Date(r.from);
+        const toDate = new Date(r.to);
+        const days = Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        contextParts.push(`${r.name} | ${r.restaurant} | ${r.type} | ${r.from} | ${r.to} | ${days}`);
+      }
+    }
+
     // Build session info map with date + restaurant
     const sessionInfoMap: Record<string, { date: string; restaurant: string }> = {};
     sessions.forEach((s: any) => {
