@@ -151,6 +151,7 @@ export default function ZtProvision() {
         .from("zt_shifts")
         .select("employee_id, shift_date, total_hours")
         .in("employee_id", staffIds)
+        .eq("department", "Service")
         .gte("shift_date", selectedPeriod.start_date)
         .lte("shift_date", selectedPeriod.end_date);
       if (error) throw error;
