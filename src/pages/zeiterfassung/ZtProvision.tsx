@@ -223,6 +223,11 @@ export default function ZtProvision() {
       </div>
 
       {/* Summary cards */}
+      {selectedPeriod && (
+        <p className="text-sm text-muted-foreground">
+          Zeitraum: {new Date(selectedPeriod.start_date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" })} – {new Date(selectedPeriod.end_date).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" })}
+        </p>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Ø Umsatz / Tag / MA</p>
