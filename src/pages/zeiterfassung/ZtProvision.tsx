@@ -526,7 +526,7 @@ export default function ZtProvision() {
                      <TooltipProvider>
                        <Tooltip>
                          <TooltipTrigger asChild>
-                           <span className="cursor-help underline decoration-dotted underline-offset-4">Ø €/h (alle)</span>
+                           <span className="cursor-help underline decoration-dotted underline-offset-4">Ø €/h gesamtes Team</span>
                          </TooltipTrigger>
                          <TooltipContent side="top">Umsatz pro Stunde · inkl. Service, Küche & GL</TooltipContent>
                        </Tooltip>
