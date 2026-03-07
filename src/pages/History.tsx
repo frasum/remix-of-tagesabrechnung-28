@@ -237,13 +237,13 @@ export default function History() {
                     <TableBody>
                       {sessions.map((session) =>
                     <TableRow key={session.id}>
-                          <TableCell className="font-medium">
-                            {format(new Date(session.session_date), "EEEE, d. MMM yyyy", { locale: de })}
+                          <TableCell className="font-medium py-2">
+                            {format(new Date(session.session_date), "EEEE, d. MMM", { locale: de })}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="text-right tabular-nums py-2">
                             {formatCurrency(session.pos_total || 0)}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="text-right tabular-nums py-2">
                             {(() => {
                           const kreditkarten = (session.terminal_1_total || 0) + (session.terminal_2_total || 0);
                           const posTotal = session.pos_total || 0;
@@ -273,7 +273,7 @@ export default function History() {
 
                         })()}
                           </TableCell>
-                          <TableCell className={`text-right tabular-nums font-medium ${(cashByDate.get(session.session_date) ?? 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          <TableCell className={`text-right tabular-nums font-medium py-2 ${(cashByDate.get(session.session_date) ?? 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
                             {formatCurrency(cashByDate.get(session.session_date) ?? 0)}
                           </TableCell>
                           <TableCell>
