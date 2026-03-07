@@ -1,28 +1,24 @@
 
 
-# Tagesdetails-Tabelle verbessern
+## Tooltips für erweiterten SFN-Modus anpassen
 
-## Aktuelle Probleme
-- Spaltenheader "Ø €/h Service/Küche & GL" ist sehr lang und unproportional
-- Tabelle wirkt weit auseinandergezogen
-- Keine visuelle Einheit zwischen "Ø / MA" und "Ø €/h"
+Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
 
-## Vorgeschlagene Verbesserungen
+### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
 
-### 1. Kürzerer Header mit Tooltip
-Header ändern zu **"Ø €/h (alle)"** — beim Hover erscheint ein Tooltip mit "Umsatz pro Stunde · Service, Küche & GL".
+- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
+- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
+- Im Extended-Modus erklären die Tooltips die additive Logik:
 
-### 2. Einheit direkt an den Werten
-Statt "Stunden (h)" und "Umsatz (€)" im Header die Einheiten an die Werte hängen (z.B. `31,00 h` und `5.710,00 €`), Header dann nur "Stunden" und "Umsatz". Alternativ: beibehalten wie es ist — hier ist es Geschmackssache.
+| Spalte | Simple | Extended |
+|--------|--------|----------|
+| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
+| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
+| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
+| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
+| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
 
-### 3. €/h-Werte mit Einheit und Farbe
-Die Ø €/h Werte mit `€` Suffix anzeigen (z.B. `58,56 €`) und optional farblich abstufen (z.B. grün > 50 €/h, normal darunter).
+### Aufrufer anpassen
 
-## Änderung
-
-### `src/pages/zeiterfassung/ZtProvision.tsx`
-- **Header**: `Ø €/h Service/Küche & GL` → `Ø €/h (alle)` mit `<Tooltip>` der "Umsatz pro Stunde · inkl. Service, Küche & GL" anzeigt
-- **Zellen**: `€` Suffix an den Ø €/h Werten ergänzen für Konsistenz
-
-Nur eine Datei, minimale Änderung.
+`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
 
