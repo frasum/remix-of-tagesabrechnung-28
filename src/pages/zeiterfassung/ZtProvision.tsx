@@ -1,9 +1,11 @@
 import { useMemo, useCallback, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useZt } from "@/contexts/ZtContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
+import { useAuth } from "@/contexts/AuthContext";
+import { hasPermission } from "@/types/permissions";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
@@ -34,6 +36,8 @@ export default function ZtProvision() {
   const { restaurantId, restaurantSlug } = useRestaurant();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = hasPermission(user?.permissionLevel || 'staff', 'admin');
 
   const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
 
@@ -356,20 +360,26 @@ export default function ZtProvision() {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [filteredWaiterData, isGlByName, ztHoursByStaffDate, staffNameToId]);
 
-  // Commission calculation
+  // Commission calculation — day-by-day evaluation
   const result = useMemo(() => {
     const staffCount = aggregated.length;
     const totalRevenue = aggregated.reduce((s, w) => s + w.revenue, 0);
     const totalHours = aggregated.reduce((s, w) => s + w.hours, 0);
     const avgRevenue = staffDays > 0 ? totalRevenue / staffDays : 0;
-    const thresholdMet = avgRevenue >= minRevenue && staffDays > 0;
 
+    // Per-day: only days where avg revenue per staff >= threshold contribute
     let pool = 0;
-    if (thresholdMet) {
-      const excess = totalRevenue - (minRevenue * staffDays);
-      pool = Math.max(0, excess * (commissionPct / 100));
+    let qualifyingDays = 0;
+    for (const day of dailyBreakdown) {
+      const dayAvg = day.staffCount > 0 ? day.revenue / day.staffCount : 0;
+      if (dayAvg >= minRevenue) {
+        const excess = day.revenue - (minRevenue * day.staffCount);
+        pool += Math.max(0, excess * (commissionPct / 100));
+        qualifyingDays++;
+      }
     }
 
+    const thresholdMet = pool > 0;
     const hourlyRate = totalHours > 0 ? pool / totalHours : 0;
     const withCommission = aggregated.map(w => ({
       ...w,
@@ -378,11 +388,16 @@ export default function ZtProvision() {
 
     const totalCommission = withCommission.reduce((s, w) => s + w.commission, 0);
 
-    return { staffCount, totalRevenue, totalHours, avgRevenue, thresholdMet, pool, withCommission, totalCommission, sessionCount, staffDays };
-  }, [aggregated, minRevenue, commissionPct, sessionCount, staffDays]);
+    return { staffCount, totalRevenue, totalHours, avgRevenue, thresholdMet, pool, withCommission, totalCommission, sessionCount, staffDays, qualifyingDays };
+  }, [aggregated, minRevenue, commissionPct, sessionCount, staffDays, dailyBreakdown]);
 
   const fmt = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit" });
+
+  // Route protection: admin only
+  if (!isAdmin) {
+    return <Navigate to={`/${restaurantSlug}/zeiterfassung`} replace />;
+  }
 
   return (
     <div className="space-y-6">
@@ -429,6 +444,7 @@ export default function ZtProvision() {
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Provisions-Topf</p>
           <p className="text-lg font-semibold tabular-nums">{fmt(result.pool)} €</p>
+          <p className="text-xs text-muted-foreground mt-1">{result.qualifyingDays} von {sessionCount} Tagen qualifiziert</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Σ Provisionen</p>
@@ -484,7 +500,7 @@ export default function ZtProvision() {
                         {fmt(day.hours)}
                       </TableCell>
                       <TableCell className="text-right tabular-nums">{fmt(day.revenue)}</TableCell>
-                      <TableCell className={`text-right tabular-nums ${belowThreshold ? "text-destructive" : ""}`}>
+                      <TableCell className={`text-right tabular-nums font-medium ${belowThreshold ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
                         {fmt(avgPerStaff)}
                       </TableCell>
                     </TableRow>
