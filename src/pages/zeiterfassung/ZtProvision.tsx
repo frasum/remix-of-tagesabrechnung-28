@@ -26,20 +26,43 @@ export default function ZtProvision() {
   const [minRevenue, setMinRevenue] = useState(1200);
 
   // Load saved threshold from settings
+  const { data: savedThreshold } = useQuery({
+    queryKey: ["settings", "commission_min_revenue", restaurantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "commission_min_revenue")
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle();
+      return (data?.value as any)?.amount ?? 1200;
+    },
+    enabled: !!restaurantId,
+  });
+
   useEffect(() => {
-    const saved = settings?.find(s => s.key === "commission_min_revenue");
-    if (saved?.value && typeof saved.value === "object" && "amount" in (saved.value as any)) {
-      setMinRevenue((saved.value as any).amount);
-    }
-  }, [settings]);
+    if (savedThreshold != null) setMinRevenue(savedThreshold);
+  }, [savedThreshold]);
 
   const handleMinRevenueChange = useCallback((val: number) => {
     setMinRevenue(val);
   }, []);
 
-  const handleMinRevenueBlur = useCallback(() => {
-    updateSetting("commission_min_revenue", { amount: minRevenue });
-  }, [minRevenue, updateSetting]);
+  const handleMinRevenueBlur = useCallback(async () => {
+    const { data: existing } = await supabase
+      .from("settings")
+      .select("id")
+      .eq("key", "commission_min_revenue")
+      .eq("restaurant_id", restaurantId)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from("settings").update({ value: { amount: minRevenue } }).eq("id", existing.id);
+    } else {
+      await supabase.from("settings").insert({ key: "commission_min_revenue", value: { amount: minRevenue }, restaurant_id: restaurantId });
+    }
+    queryClient.invalidateQueries({ queryKey: ["settings", "commission_min_revenue", restaurantId] });
+  }, [minRevenue, restaurantId, queryClient]);
 
   // Fetch waiter shifts for the selected period date range
   const { data: waiterData, isLoading } = useQuery({
