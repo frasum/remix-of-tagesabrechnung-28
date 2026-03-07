@@ -152,7 +152,7 @@ export default function ZtProvision() {
       {/* Threshold input */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-foreground">Mindest-Durchschnittsumsatz / Tag</label>
+          <label className="text-sm font-medium text-foreground">Mindest-Durchschnittsumsatz / Tag / MA</label>
           <div className="w-48">
             <CurrencyInput
               value={minRevenue}
