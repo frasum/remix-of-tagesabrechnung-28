@@ -368,6 +368,30 @@ export default function Statistics() {
             {/* Restaurant Compare Dashboard (compare mode) */}
             {statsMode === 'compare' && dataA && dataB && restA && restB && (
               <>
+                <div className="flex items-center justify-between">
+                  <div />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => exportComparisonPdf({
+                      nameA: restA.name,
+                      nameB: restB.name,
+                      summaryA: dataA.summary,
+                      summaryB: dataB.summary,
+                      dailyStatsA: dataA.dailyStats,
+                      dailyStatsB: dataB.dailyStats,
+                      waiterTipStatsA: dataA.waiterTipStats,
+                      waiterTipStatsB: dataB.waiterTipStats,
+                      kitchenTipStatsA: dataA.kitchenTipStats,
+                      kitchenTipStatsB: dataB.kitchenTipStats,
+                      dateRange: dataA.dateRange,
+                    })}
+                  >
+                    <FileDown className="w-4 h-4" />
+                    PDF exportieren
+                  </Button>
+                </div>
                 <RestaurantCompareCards
                   nameA={restA.name}
                   nameB={restB.name}
