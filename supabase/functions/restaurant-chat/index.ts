@@ -737,6 +737,40 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Weather data context
+    if (weatherData?.daily?.time) {
+      const wd = weatherData.daily;
+      contextParts.push("\n=== WETTERDATEN MÜNCHEN (letzte 90 Tage + 3 Tage Vorhersage) ===");
+      contextParts.push("Datum | Max°C | Min°C | Niederschlag-mm | Wetter");
+      for (let i = 0; i < wd.time.length; i++) {
+        contextParts.push(
+          `${wd.time[i]} | ${wd.temperature_2m_max[i]} | ${wd.temperature_2m_min[i]} | ${wd.precipitation_sum[i]} | ${weatherCodeLabel(wd.weathercode[i])}`
+        );
+      }
+
+      // Weather-revenue correlation (last 30 days)
+      const weatherByDate: Record<string, { maxTemp: number; precip: number; label: string }> = {};
+      for (let i = 0; i < wd.time.length; i++) {
+        weatherByDate[wd.time[i]] = {
+          maxTemp: wd.temperature_2m_max[i],
+          precip: wd.precipitation_sum[i],
+          label: weatherCodeLabel(wd.weathercode[i]),
+        };
+      }
+
+      contextParts.push("\n=== WETTER-UMSATZ-KORRELATION (letzte 30 Tage) ===");
+      contextParts.push("Datum | Restaurant | Max°C | Niederschlag | Wetter | Umsatz | Gäste");
+      const recentForCorrelation = sessions.filter((s: any) => s.session_date >= since30Str);
+      recentForCorrelation.sort((a: any, b: any) => a.session_date.localeCompare(b.session_date));
+      for (const s of recentForCorrelation) {
+        const w = weatherByDate[s.session_date];
+        if (!w) continue;
+        contextParts.push(
+          `${s.session_date} | ${restaurantMap[s.restaurant_id] || "?"} | ${w.maxTemp}°C | ${w.precip}mm | ${w.label} | ${s.pos_total || 0}€ | ${s.guest_count || 0}`
+        );
+      }
+    }
+
     // Anomalien
     if (anomalies.length > 0) {
       contextParts.push("\n=== AKTUELLE ANOMALIEN UND AUFFÄLLIGKEITEN ===");
