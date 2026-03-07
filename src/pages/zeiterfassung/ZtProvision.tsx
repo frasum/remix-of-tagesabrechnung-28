@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useZt } from "@/contexts/ZtContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
-import { Badge } from "@/components/ui/badge";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Loader2, ChevronDown } from "lucide-react";
@@ -266,15 +266,6 @@ export default function ZtProvision() {
               suffix="%"
             />
           </div>
-        </div>
-        <div className="pt-5">
-          {result.sessionCount > 0 ? (
-            <Badge variant={result.thresholdMet ? "default" : "destructive"} className="text-sm px-3 py-1">
-              {result.thresholdMet ? "✓ Erreicht" : "✗ Nicht erreicht"}
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="text-sm px-3 py-1">Keine Daten</Badge>
-          )}
         </div>
       </div>
 
