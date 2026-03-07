@@ -229,8 +229,8 @@ export default function ZtProvision() {
           <p className="text-lg font-semibold tabular-nums">{fmt(result.avgRevenue)} €</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Staff-Tage</p>
-          <p className="text-lg font-semibold tabular-nums">{result.staffDays}</p>
+          <p className="text-xs text-muted-foreground">Abrechnungstage</p>
+          <p className="text-lg font-semibold tabular-nums">{result.sessionCount}</p>
         </div>
         <div className="rounded-lg border border-border bg-card p-4">
           <p className="text-xs text-muted-foreground">Provisions-Topf</p>
