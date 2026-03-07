@@ -557,6 +557,56 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Detailed absence records with exact dates (for "from when to when" questions)
+    const absenceRecords: { name: string; restaurant: string; date: string; type: string }[] = [];
+    ztShifts.forEach((z: any) => {
+      if (!z.absence_type) return;
+      const staffName = staffById[z.employee_id]?.name || "?";
+      const rids = staffToRestaurants[z.employee_id] || [];
+      for (const rid of rids) {
+        absenceRecords.push({
+          name: staffName,
+          restaurant: restaurantMap[rid] || "?",
+          date: z.shift_date,
+          type: z.absence_type,
+        });
+      }
+    });
+
+    if (absenceRecords.length > 0) {
+      // Group consecutive absences into date ranges
+      absenceRecords.sort((a, b) => `${a.name}|${a.restaurant}|${a.type}|${a.date}`.localeCompare(`${b.name}|${b.restaurant}|${b.type}|${b.date}`));
+
+      type AbsenceRange = { name: string; restaurant: string; type: string; from: string; to: string };
+      const ranges: AbsenceRange[] = [];
+      let current: AbsenceRange | null = null;
+
+      for (const rec of absenceRecords) {
+        if (current && current.name === rec.name && current.restaurant === rec.restaurant && current.type === rec.type) {
+          // Check if consecutive (next day)
+          const prevDate = new Date(current.to);
+          prevDate.setDate(prevDate.getDate() + 1);
+          const prevStr = prevDate.toISOString().split("T")[0];
+          if (rec.date === prevStr) {
+            current.to = rec.date;
+            continue;
+          }
+        }
+        if (current) ranges.push(current);
+        current = { name: rec.name, restaurant: rec.restaurant, type: rec.type, from: rec.date, to: rec.date };
+      }
+      if (current) ranges.push(current);
+
+      contextParts.push("\n=== FEHLZEITEN-ZEITRÄUME (exakte Datumsbereiche) ===");
+      contextParts.push("Mitarbeiter | Restaurant | Typ | Von | Bis | Tage");
+      for (const r of ranges) {
+        const fromDate = new Date(r.from);
+        const toDate = new Date(r.to);
+        const days = Math.round((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+        contextParts.push(`${r.name} | ${r.restaurant} | ${r.type} | ${r.from} | ${r.to} | ${days}`);
+      }
+    }
+
     // Build session info map with date + restaurant
     const sessionInfoMap: Record<string, { date: string; restaurant: string }> = {};
     sessions.forEach((s: any) => {
@@ -631,6 +681,7 @@ Wichtige Regeln:
 - Die MONATLICHE ZUSAMMENFASSUNG, das KELLNER-TRINKGELD RANKING und die KÜCHEN-STUNDEN enthalten voraggregierte, korrekte Summen. Verwende IMMER diese Summen wenn nach Monats-Totalen, Rankings oder Stunden-Summen gefragt wird, anstatt selbst aus den Rohdaten zu rechnen.
 - Die MONATLICHE PROVISIONSBERECHNUNG enthält voraggregierte Provisionsdaten. Verwende diese für alle Provisionsfragen. Provisionen basieren auf einem Schwellenwert-System: nur Tage, an denen der Durchschnittsumsatz pro Service-Mitarbeiter den Schwellenwert erreicht, tragen zum Provisions-Pool bei. Der Pool wird proportional zu den Arbeitsstunden (aus der Zeiterfassung) verteilt. Die PROVISIONS-VERTEILUNG zeigt die Aufteilung pro Mitarbeiter.
 - Die MONATLICHEN ARBEITSZEITEN enthalten die vollständigen Zeiterfassungsdaten pro Mitarbeiter: Gesamtstunden, Abendstunden (20-24 Uhr, 25% SFN-Zuschlag), Nachtstunden (0-4/24-0 Uhr, 25% Zuschlag), Tiefnachtstunden (0-4 Uhr, 40% Zuschlag), Sonn-/Feiertagsstunden. Fehlzeiten werden nach Typ (Urlaub, Krank, Frei, etc.) als Anzahl Tage angegeben.
+- Die FEHLZEITEN-ZEITRÄUME zeigen exakte Von-Bis-Datumsbereiche für jede Abwesenheit. Verwende diese Tabelle wenn nach konkreten Urlaubszeiträumen oder Abwesenheitsdaten gefragt wird. WICHTIG: Diese Daten umfassen nur die letzten 90 Tage. Wenn eine Abwesenheit am frühesten verfügbaren Datum beginnt, könnte sie schon früher begonnen haben — weise in dem Fall darauf hin.
 - Die MITARBEITER-Stammdaten enthalten Informationen zu Rolle, Beschäftigungsart (Minijob), Eintritts-/Austrittsdatum, sowie den Urlaubsanspruch und die genommenen Urlaubs-/Krankheitstage.
 - Formatiere Geldbeträge immer als Euro (z.B. 1.234,56 €)
 - Nutze Markdown-Tabellen wenn es sinnvoll ist
