@@ -143,11 +143,39 @@ export default function ZtProvision() {
     },
   });
 
-  // Set of staff IDs with GL roles
+  // Set of staff IDs with GL roles + name-based lookup for secondary waiters
   const glStaffIds = useMemo(() => {
     if (!staffRoles) return new Set<string>();
     return new Set(staffRoles.filter(s => GL_ROLES.has(s.role)).map(s => s.id));
   }, [staffRoles]);
+
+  // Map staff names to IDs for GL checking of secondary waiters
+  const { data: allStaffNames } = useQuery({
+    queryKey: ["staff-names-for-provision"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("staff")
+        .select("id, name, nickname")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const staffNameToId = useMemo(() => {
+    if (!allStaffNames) return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const s of allStaffNames) {
+      map.set(s.name.toLowerCase(), s.id);
+      if (s.nickname) map.set(s.nickname.toLowerCase(), s.id);
+    }
+    return map;
+  }, [allStaffNames]);
+
+  const isGlByName = useCallback((name: string) => {
+    const id = staffNameToId.get(name.toLowerCase());
+    return id ? glStaffIds.has(id) : false;
+  }, [staffNameToId, glStaffIds]);
 
   // Filter out GL staff from waiter data
   const filteredWaiterData = useMemo(() => {
