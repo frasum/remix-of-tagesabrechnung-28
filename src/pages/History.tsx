@@ -248,7 +248,7 @@ export default function History() {
                           const kreditkarten = (session.terminal_1_total || 0) + (session.terminal_2_total || 0);
                           const posTotal = session.pos_total || 0;
                           const pct = posTotal > 0 ? (kreditkarten / posTotal * 100).toFixed(1) : '0.0';
-                          return <>{formatCurrency(kreditkarten)} <span className="text-muted-foreground text-xs">({pct}%)</span></>;
+                          return <div><div>{formatCurrency(kreditkarten)}</div><div className="text-muted-foreground text-xs">({pct}%)</div></div>;
                         })()}
                           </TableCell>
                           <TableCell className="text-right tabular-nums py-2">
@@ -256,7 +256,7 @@ export default function History() {
                           const takeaway = (session.takeaway_total || 0) + (session.ordersmart_revenue || 0) + (session.wolt_revenue || 0);
                           const posTotal = session.pos_total || 0;
                           const pct = posTotal > 0 ? (takeaway / posTotal * 100).toFixed(1) : '0.0';
-                          return <>{formatCurrency(takeaway)} <span className="text-muted-foreground text-xs">({pct}%)</span></>;
+                          return <div><div>{formatCurrency(takeaway)}</div><div className="text-muted-foreground text-xs">({pct}%)</div></div>;
                         })()}
                           </TableCell>
                           <TableCell className="text-right tabular-nums py-2">
