@@ -301,6 +301,21 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all");
   const { sfnMode, setSfnMode } = useSfnMode();
 
+  // Commission data for Buchhaltung tab
+  const firstRestaurantId = data.matchingPeriods[0]?.restaurant_id;
+  const { data: commissionSetting } = useQuery({
+    queryKey: ["settings", "commission_add_to_gross", firstRestaurantId],
+    queryFn: async () => {
+      if (!firstRestaurantId) return false;
+      const { data: d } = await supabase.from("settings").select("value").eq("key", "commission_add_to_gross").eq("restaurant_id", firstRestaurantId).maybeSingle();
+      return (d?.value as any)?.enabled ?? false;
+    },
+    enabled: !!firstRestaurantId,
+  });
+  const showCommission = commissionSetting === true;
+
+  const { commissionMap, totalCommission: commTotalUnused } = useCommissionData(firstRestaurantId, data.period.start_date, data.period.end_date);
+
   const { period, weeks, shifts, employees, payrollNotes, advances, holidays, weekNumberToAllIds, weekToRestaurant, matchingPeriods } = data;
   const holidayMap = new Map(holidays.map(h => [h.holiday_date, h.name]));
   const holidayRates = useMemo(() => {
