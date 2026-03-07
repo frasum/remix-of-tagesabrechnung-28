@@ -119,7 +119,7 @@ export function exportBuchhaltungExcel(
       : emp.name;
     const nameStr = emp.perso_nr && emp.perso_nr > 0 ? `${nameBase} ${emp.perso_nr}` : nameBase;
 
-    const commission = commissionMap?.get(emp.id) ?? 0;
+    const commission = emp.department === "Service" ? (commissionMap?.get(emp.id) ?? 0) : 0;
     wsData.push([nameStr, t.gesamt || "", t.schichten || "", ...sfnCells(t), t.urlaubTage || "", t.krankTage || "", ...(hasCommission ? [commission > 0 ? commission.toFixed(2) : ""] : []), note?.vorschuss || "", besText]);
   }
 

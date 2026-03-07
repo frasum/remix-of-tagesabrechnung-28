@@ -135,7 +135,7 @@ export function exportBuchhaltungPdf(
       : emp.name;
     const nameStr = emp.perso_nr && emp.perso_nr > 0 ? `${nameBase} ${emp.perso_nr}` : nameBase;
 
-    const commission = commissionMap?.get(emp.id) ?? 0;
+    const commission = emp.department === "Service" ? (commissionMap?.get(emp.id) ?? 0) : 0;
 
     rows.push([
       nameStr,

@@ -235,7 +235,7 @@ export default function ZtBuchhaltung() {
                       sfnMode={sfnMode}
                       showSfn={showSfn}
                       showCommission={showCommission}
-                      commission={commissionMap.get(emp.id) ?? 0}
+                      commission={emp.department === "Service" ? (commissionMap.get(emp.id) ?? 0) : 0}
                       onUpsertNote={(params) => upsertNote.mutate(params)}
                     />
                   </React.Fragment>
