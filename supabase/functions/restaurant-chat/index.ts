@@ -66,8 +66,27 @@ Deno.serve(async (req) => {
     since30.setDate(since30.getDate() - 30);
     const since30Str = since30.toISOString().split("T")[0];
 
-    // Load ALL sessions + staff + restaurants + settings + staff_restaurants in parallel
-    const [sessionsRes, staffRes, restaurantsRes, settingsRes, staffRestaurantsRes] = await Promise.all([
+    // Weather code to label mapping
+    const weatherCodeLabel = (code: number): string => {
+      if (code === 0) return "Sonnig";
+      if (code <= 3) return "Bewölkt";
+      if (code <= 48) return "Nebel";
+      if (code <= 57) return "Nieselregen";
+      if (code <= 65) return "Regen";
+      if (code <= 67) return "Gefrierender Regen";
+      if (code <= 77) return "Schnee";
+      if (code <= 82) return "Regenschauer";
+      if (code <= 86) return "Schneeschauer";
+      if (code <= 99) return "Gewitter";
+      return "?";
+    };
+
+    // Load ALL sessions + staff + restaurants + settings + staff_restaurants + weather in parallel
+    const weatherPromise = fetch(
+      "https://api.open-meteo.com/v1/forecast?latitude=48.14&longitude=11.58&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=Europe/Berlin&past_days=90&forecast_days=3"
+    ).then(r => r.json()).catch(() => null);
+
+    const [sessionsRes, staffRes, restaurantsRes, settingsRes, staffRestaurantsRes, weatherData] = await Promise.all([
       supabase
         .from("sessions")
         .select("id, session_date, restaurant_id, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, guest_count, vouchers_sold, vouchers_redeemed, finedine_vouchers, einladung, sonstige_einnahme, notes, created_by_name")
@@ -91,6 +110,7 @@ Deno.serve(async (req) => {
         .from("staff_restaurants")
         .select("staff_id, restaurant_id, zt_department")
         .in("restaurant_id", restaurant_ids),
+      weatherPromise,
     ]);
 
     const sessions = sessionsRes.data || [];
@@ -717,6 +737,40 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Weather data context
+    if (weatherData?.daily?.time) {
+      const wd = weatherData.daily;
+      contextParts.push("\n=== WETTERDATEN MÜNCHEN (letzte 90 Tage + 3 Tage Vorhersage) ===");
+      contextParts.push("Datum | Max°C | Min°C | Niederschlag-mm | Wetter");
+      for (let i = 0; i < wd.time.length; i++) {
+        contextParts.push(
+          `${wd.time[i]} | ${wd.temperature_2m_max[i]} | ${wd.temperature_2m_min[i]} | ${wd.precipitation_sum[i]} | ${weatherCodeLabel(wd.weathercode[i])}`
+        );
+      }
+
+      // Weather-revenue correlation (last 30 days)
+      const weatherByDate: Record<string, { maxTemp: number; precip: number; label: string }> = {};
+      for (let i = 0; i < wd.time.length; i++) {
+        weatherByDate[wd.time[i]] = {
+          maxTemp: wd.temperature_2m_max[i],
+          precip: wd.precipitation_sum[i],
+          label: weatherCodeLabel(wd.weathercode[i]),
+        };
+      }
+
+      contextParts.push("\n=== WETTER-UMSATZ-KORRELATION (letzte 30 Tage) ===");
+      contextParts.push("Datum | Restaurant | Max°C | Niederschlag | Wetter | Umsatz | Gäste");
+      const recentForCorrelation = sessions.filter((s: any) => s.session_date >= since30Str);
+      recentForCorrelation.sort((a: any, b: any) => a.session_date.localeCompare(b.session_date));
+      for (const s of recentForCorrelation) {
+        const w = weatherByDate[s.session_date];
+        if (!w) continue;
+        contextParts.push(
+          `${s.session_date} | ${restaurantMap[s.restaurant_id] || "?"} | ${w.maxTemp}°C | ${w.precip}mm | ${w.label} | ${s.pos_total || 0}€ | ${s.guest_count || 0}`
+        );
+      }
+    }
+
     // Anomalien
     if (anomalies.length > 0) {
       contextParts.push("\n=== AKTUELLE ANOMALIEN UND AUFFÄLLIGKEITEN ===");
@@ -855,7 +909,7 @@ Wichtige Regeln:
 - Die KELLNER-PERFORMANCE zeigt Umsatz pro Stunde, Umsatz pro Schicht und Schichtanzahl pro Kellner pro Monat. Verwende diese für Fragen nach Mitarbeiter-Effizienz, wer am meisten Umsatz pro Stunde macht, Performance-Vergleiche zwischen Kellnern.
 - Der RESTAURANT-VERGLEICH zeigt die Restaurants nebeneinander mit Umsatz, Gästen, Ø Umsatz/Gast, Karten-Anteil, Küchen-TG und Ausgaben. Verwende diese Tabelle für direkte Benchmarking-Fragen (z.B. "Vergleiche Spicery und YUM").
 - Die ANOMALIEN UND AUFFÄLLIGKEITEN enthalten automatisch erkannte Abweichungen der letzten 7 Tage. Erwähne relevante Anomalien proaktiv bei allgemeinen Fragen wie "Wie läuft's?" oder "Gibt es etwas Auffälliges?". Warte nicht darauf dass der Nutzer explizit danach fragt.
-- Bei Wetter-Fragen: Erkläre, dass keine Wetterdaten verfügbar sind. Biete stattdessen saisonale Muster, Wochentags-Vergleiche und Gästezahlen-Schwankungen als Proxy-Indikatoren an.
+- Die WETTERDATEN zeigen Temperatur und Niederschlag für München (Standort beider Restaurants). Nutze die WETTER-UMSATZ-KORRELATION um Zusammenhänge zwischen Wetter und Umsatz/Gästezahlen zu analysieren. Besonders relevant für Terrassen-Tage (warm + trocken). Wenn keine Wetterdaten geladen werden konnten, weise darauf hin.
 - Bei Fragen nach Jahresvergleichen, Trends oder längeren Zeiträumen: Nutze die monatlichen Zusammenfassungen — diese enthalten alle verfügbaren historischen Monate.
 - Die Rohdaten (Sessions, Schichten, Ausgaben, Vorschüsse) sind nur für die letzten 30 Tage verfügbar. Für ältere Zeiträume nutze die monatlichen Aggregationen.
 - Alle Fragen beziehen sich ausschließlich auf dieses Restaurant-Kassensystem ("Tagesabrechnung") und die darin verfügbaren Daten. Wenn jemand eine Frage stellt, die nichts mit dem System, den Restaurants oder den Betriebsdaten zu tun hat, weise freundlich darauf hin, dass du nur Fragen zu diesem System beantworten kannst.
