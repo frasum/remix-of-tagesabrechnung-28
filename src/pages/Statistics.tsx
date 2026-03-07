@@ -672,8 +672,8 @@ export default function Statistics() {
 
             {/* Staff Tip Charts */}
             <div className="grid lg:grid-cols-2 gap-6">
-              <WaiterTipChart data={waiterTipStats} restaurantNames={isMultiMode ? restaurantNameMap : undefined} />
-              <KitchenTipChart data={kitchenTipStats} restaurantNames={isMultiMode ? restaurantNameMap : undefined} />
+              <WaiterTipChart data={waiterTipStats} restaurantNames={restaurantNameMap} />
+              <KitchenTipChart data={kitchenTipStats} restaurantNames={restaurantNameMap} />
             </div>
 
             {/* Monthly Tip Breakdown */}
