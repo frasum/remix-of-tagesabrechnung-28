@@ -125,12 +125,12 @@ export default function ZtProvision() {
     const staffCount = aggregated.length;
     const totalRevenue = aggregated.reduce((s, w) => s + w.revenue, 0);
     const totalHours = aggregated.reduce((s, w) => s + w.hours, 0);
-    const avgRevenue = staffCount > 0 ? totalRevenue / sessionCount : 0;
-    const thresholdMet = avgRevenue >= minRevenue && sessionCount > 0;
+    const avgRevenue = staffDays > 0 ? totalRevenue / staffDays : 0;
+    const thresholdMet = avgRevenue >= minRevenue && staffDays > 0;
 
     let pool = 0;
     if (thresholdMet) {
-      const excess = totalRevenue - (minRevenue * sessionCount);
+      const excess = totalRevenue - (minRevenue * staffDays);
       pool = Math.max(0, excess * 0.05);
     }
 
@@ -142,8 +142,8 @@ export default function ZtProvision() {
 
     const totalCommission = withCommission.reduce((s, w) => s + w.commission, 0);
 
-    return { staffCount, totalRevenue, totalHours, avgRevenue, thresholdMet, pool, withCommission, totalCommission, sessionCount };
-  }, [aggregated, minRevenue, sessionCount]);
+    return { staffCount, totalRevenue, totalHours, avgRevenue, thresholdMet, pool, withCommission, totalCommission, sessionCount, staffDays };
+  }, [aggregated, minRevenue, sessionCount, staffDays]);
 
   const fmt = (n: number) => n.toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
