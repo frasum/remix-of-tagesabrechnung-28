@@ -92,13 +92,13 @@ function MetricCard({ label, valA, valB, nameA, nameB, invert }: MetricDef & { n
 }
 
 export function RestaurantComparison({ restaurants }: RestaurantComparisonProps) {
-  if (restaurants.length < 2) return null;
-
-  const [a, b] = restaurants;
-  const nameA = a.name;
-  const nameB = b.name;
+  const a = restaurants[0];
+  const b = restaurants[1];
 
   const metrics = useMemo<MetricDef[]>(() => {
+    if (!a || !b) return [];
+    const sa = a.summary;
+    const sb = b.summary;
     const sa = a.summary;
     const sb = b.summary;
     const dA = sa.daysWithData || 1;
