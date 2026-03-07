@@ -7,6 +7,7 @@ import { CurrencyInput } from "@/components/shared/CurrencyInput";
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Loader2, ChevronDown } from "lucide-react";
 
 const GL_ROLES = new Set(["gl", "waiter_gl", "kitchen_gl", "all"]);
@@ -22,6 +23,7 @@ type WaiterAggregate = {
 type DayBreakdown = {
   date: string;
   staffCount: number;
+  staffNames: string[];
   hours: number;
   revenue: number;
 };
@@ -237,32 +239,41 @@ export default function ZtProvision() {
   // Daily breakdown (using filtered data), including secondary waiters in staff count
   const dailyBreakdown = useMemo<DayBreakdown[]>(() => {
     if (!filteredWaiterData.length) return [];
-    const dayMap = new Map<string, { staffSet: Set<string>; hours: number; revenue: number }>();
+    const dayMap = new Map<string, { staffSet: Set<string>; nameSet: Set<string>; hours: number; revenue: number }>();
     for (const ws of filteredWaiterData) {
       const session = ws.sessions as any;
       const date = session?.session_date;
       if (!date) continue;
       const key = ws.staff_id || ws.waiter_name;
-      if (!dayMap.has(date)) dayMap.set(date, { staffSet: new Set(), hours: 0, revenue: 0 });
+      if (!dayMap.has(date)) dayMap.set(date, { staffSet: new Set(), nameSet: new Set(), hours: 0, revenue: 0 });
       const day = dayMap.get(date)!;
-      day.staffSet.add(key);
+      if (!day.staffSet.has(key)) {
+        day.staffSet.add(key);
+        day.nameSet.add(ws.waiter_name);
+      }
       day.hours += Number(ws.hours_worked) || 0;
       day.revenue += Number(ws.pos_sales) || 0;
-      // Count second_waiter_name
       if (ws.second_waiter_name && !isGlByName(ws.second_waiter_name)) {
-        day.staffSet.add(`second:${ws.second_waiter_name}`);
+        const sKey = `second:${ws.second_waiter_name}`;
+        if (!day.staffSet.has(sKey)) {
+          day.staffSet.add(sKey);
+          day.nameSet.add(ws.second_waiter_name);
+        }
       }
-      // Count additional_waiters
       if (ws.additional_waiters?.length) {
         for (const aw of ws.additional_waiters) {
           if (aw && !isGlByName(aw)) {
-            day.staffSet.add(`add:${aw}`);
+            const aKey = `add:${aw}`;
+            if (!day.staffSet.has(aKey)) {
+              day.staffSet.add(aKey);
+              day.nameSet.add(aw);
+            }
           }
         }
       }
     }
     return Array.from(dayMap.entries())
-      .map(([date, d]) => ({ date, staffCount: d.staffSet.size, hours: d.hours, revenue: d.revenue }))
+      .map(([date, d]) => ({ date, staffCount: d.staffSet.size, staffNames: Array.from(d.nameSet).sort(), hours: d.hours, revenue: d.revenue }))
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [filteredWaiterData, isGlByName]);
 
@@ -348,7 +359,7 @@ export default function ZtProvision() {
 
       {/* Daily breakdown */}
       {dailyBreakdown.length > 0 && (
-        <Collapsible>
+        <Collapsible defaultOpen>
           <CollapsibleTrigger className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors group">
             <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" />
             Tagesdetails ({dailyBreakdown.length} Tage)
@@ -371,7 +382,22 @@ export default function ZtProvision() {
                   return (
                     <TableRow key={day.date}>
                       <TableCell className="font-medium">{fmtDate(day.date)}</TableCell>
-                      <TableCell className="text-right tabular-nums">{day.staffCount}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help underline decoration-dotted underline-offset-4">{day.staffCount}</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <ul className="space-y-0.5 text-xs">
+                                {day.staffNames.map((name) => (
+                                  <li key={name}>• {name}</li>
+                                ))}
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{fmt(day.hours)}</TableCell>
                       <TableCell className="text-right tabular-nums">{fmt(day.revenue)}</TableCell>
                       <TableCell className={`text-right tabular-nums ${belowThreshold ? "text-destructive" : ""}`}>
