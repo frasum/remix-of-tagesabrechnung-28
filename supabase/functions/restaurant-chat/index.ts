@@ -458,6 +458,113 @@ Deno.serve(async (req) => {
       }
     });
 
+    // ==========================================
+    // WAITER PERFORMANCE AGGREGATION (pos_sales + shifts per waiter per month)
+    // ==========================================
+    const waiterPerfAgg: Record<string, Record<string, { revenue: number; shifts: number; hours: number }>> = {};
+    waiterShifts.forEach((ws: any) => {
+      const info = sessionMonthRestaurant[ws.session_id];
+      if (!info) return;
+      const key = `${info.month}|${info.restaurant}`;
+      if (!waiterPerfAgg[key]) waiterPerfAgg[key] = {};
+      if (!waiterPerfAgg[key][ws.waiter_name]) waiterPerfAgg[key][ws.waiter_name] = { revenue: 0, shifts: 0, hours: 0 };
+      waiterPerfAgg[key][ws.waiter_name].revenue += Number(ws.pos_sales) || 0;
+      waiterPerfAgg[key][ws.waiter_name].shifts += 1;
+      waiterPerfAgg[key][ws.waiter_name].hours += Number(ws.hours_worked) || 0;
+    });
+
+    // ==========================================
+    // ANOMALY DETECTION (last 7 days vs previous 7 days)
+    // ==========================================
+    const today = new Date();
+    const since7 = new Date(today); since7.setDate(since7.getDate() - 7);
+    const since14 = new Date(today); since14.setDate(since14.getDate() - 14);
+    const since7Str = since7.toISOString().split("T")[0];
+    const since14Str = since14.toISOString().split("T")[0];
+    const todayStr = today.toISOString().split("T")[0];
+
+    const anomalies: string[] = [];
+
+    // Per-restaurant anomaly detection
+    for (const rid of restaurant_ids) {
+      const rName = restaurantMap[rid] || "?";
+      const last7Sessions = sessions.filter((s: any) => s.restaurant_id === rid && s.session_date >= since7Str && s.session_date <= todayStr);
+      const prev7Sessions = sessions.filter((s: any) => s.restaurant_id === rid && s.session_date >= since14Str && s.session_date < since7Str);
+
+      // 1. Revenue comparison
+      const last7Revenue = last7Sessions.reduce((s: number, ss: any) => s + (ss.pos_total || 0), 0);
+      const prev7Revenue = prev7Sessions.reduce((s: number, ss: any) => s + (ss.pos_total || 0), 0);
+      if (prev7Revenue > 0) {
+        const revChange = ((last7Revenue - prev7Revenue) / prev7Revenue) * 100;
+        if (Math.abs(revChange) >= 15) {
+          const dir = revChange > 0 ? "über" : "unter";
+          anomalies.push(`⚠ Umsatz letzte 7 Tage (${rName}): ${last7Revenue.toFixed(0)}€ — ${Math.abs(revChange).toFixed(0)}% ${dir} Vorwoche (${prev7Revenue.toFixed(0)}€)`);
+        }
+      }
+
+      // 2. Guest count trend
+      const last7Guests = last7Sessions.reduce((s: number, ss: any) => s + (ss.guest_count || 0), 0);
+      const prev7Guests = prev7Sessions.reduce((s: number, ss: any) => s + (ss.guest_count || 0), 0);
+      if (prev7Guests > 0) {
+        const guestChange = ((last7Guests - prev7Guests) / prev7Guests) * 100;
+        if (Math.abs(guestChange) >= 10) {
+          const dir = guestChange > 0 ? "+" : "";
+          anomalies.push(`ℹ Gästezahl ${rName}: ${dir}${guestChange.toFixed(0)}% gegenüber Vorwoche (${last7Guests} vs. ${prev7Guests})`);
+        }
+      }
+
+      // 3. Missing days (last 7 days without sessions)
+      const last7Dates = new Set(last7Sessions.map((s: any) => s.session_date));
+      const missingDays: string[] = [];
+      for (let d = new Date(since7); d <= today; d.setDate(d.getDate() + 1)) {
+        const ds = d.toISOString().split("T")[0];
+        if (!last7Dates.has(ds) && ds <= todayStr) missingDays.push(ds);
+      }
+      if (missingDays.length > 0 && missingDays.length <= 3) {
+        anomalies.push(`ℹ Fehlende Abrechnungen (${rName}): ${missingDays.join(", ")}`);
+      }
+    }
+
+    // 4. Waiter performance deviations (last 7 days)
+    const last7SessionIds = new Set(sessions.filter((s: any) => s.session_date >= since7Str && s.session_date <= todayStr).map((s: any) => s.id));
+    const waiterPerf7: Record<string, { revenue: number; hours: number }> = {};
+    waiterShifts.forEach((ws: any) => {
+      if (!last7SessionIds.has(ws.session_id)) return;
+      if (!waiterPerf7[ws.waiter_name]) waiterPerf7[ws.waiter_name] = { revenue: 0, hours: 0 };
+      waiterPerf7[ws.waiter_name].revenue += Number(ws.pos_sales) || 0;
+      waiterPerf7[ws.waiter_name].hours += Number(ws.hours_worked) || 0;
+    });
+
+    const perfEntries = Object.entries(waiterPerf7).filter(([, v]) => v.hours > 0);
+    if (perfEntries.length >= 2) {
+      const teamAvgPerHour = perfEntries.reduce((s, [, v]) => s + v.revenue, 0) / perfEntries.reduce((s, [, v]) => s + v.hours, 0);
+      for (const [name, v] of perfEntries) {
+        const perHour = v.revenue / v.hours;
+        const deviation = ((perHour - teamAvgPerHour) / teamAvgPerHour) * 100;
+        if (deviation <= -30) {
+          anomalies.push(`⚠ Kellner ${name}: Ø ${perHour.toFixed(0)}€/h — ${Math.abs(deviation).toFixed(0)}% unter Team-Ø (${teamAvgPerHour.toFixed(0)}€/h) in den letzten 7 Tagen`);
+        }
+      }
+    }
+
+    // 5. Unusually high negative differences (> 2× std dev)
+    const recentDiffs: { name: string; diff: number }[] = [];
+    waiterShifts.forEach((ws: any) => {
+      if (!last7SessionIds.has(ws.session_id)) return;
+      if (ws.differenz != null) recentDiffs.push({ name: ws.waiter_name, diff: Number(ws.differenz) });
+    });
+    if (recentDiffs.length >= 3) {
+      const mean = recentDiffs.reduce((s, d) => s + d.diff, 0) / recentDiffs.length;
+      const stdDev = Math.sqrt(recentDiffs.reduce((s, d) => s + Math.pow(d.diff - mean, 2), 0) / recentDiffs.length);
+      if (stdDev > 0) {
+        for (const d of recentDiffs) {
+          if (d.diff < mean - 2 * stdDev) {
+            anomalies.push(`⚠ ${d.name}: Differenz ${d.diff.toFixed(2)}€ — ungewöhnlich niedrig (Ø ${mean.toFixed(2)}€ ± ${stdDev.toFixed(2)}€)`);
+          }
+        }
+      }
+    }
+
     // Build context string
     const contextParts: string[] = [];
 
@@ -551,6 +658,69 @@ Deno.serve(async (req) => {
           `${month} | ${restaurant} | ${name} | ${d.dept} | ${d.total.toFixed(1)}h | ${d.evening.toFixed(1)}h | ${d.night.toFixed(1)}h | ${d.nightDeep.toFixed(1)}h | ${d.sundayHoliday.toFixed(1)}h | ${absStr}`
         );
       }
+    }
+
+    // Zahlungsarten pro Monat
+    contextParts.push("\n=== ZAHLUNGSARTEN PRO MONAT (Bar vs. Karte) ===");
+    contextParts.push("Monat | Restaurant | Gesamt-Umsatz | Kreditkarten | Bar | Karten-Anteil-%");
+    for (const key of sortedKeys) {
+      const [month, restaurant] = key.split("|");
+      const a = monthlyAgg[key];
+      const bar = a.pos_total - a.kreditkarten;
+      const pct = a.pos_total > 0 ? ((a.kreditkarten / a.pos_total) * 100).toFixed(1) : "0";
+      contextParts.push(`${month} | ${restaurant} | ${a.pos_total}€ | ${a.kreditkarten}€ | ${bar.toFixed(0)}€ | ${pct}%`);
+    }
+
+    // Kellner-Performance pro Monat
+    contextParts.push("\n=== KELLNER-PERFORMANCE PRO MONAT (Umsatz/Stunde) ===");
+    contextParts.push("Monat | Restaurant | Kellner | Umsatz | Stunden | €/Stunde | Ø Umsatz/Schicht | Schichten");
+    for (const key of sortedKeys) {
+      const [month, restaurant] = key.split("|");
+      const perf = waiterPerfAgg[key] || {};
+      const sorted = Object.entries(perf).sort((a, b) => b[1].revenue - a[1].revenue);
+      for (const [name, p] of sorted) {
+        const perHour = p.hours > 0 ? (p.revenue / p.hours).toFixed(0) : "-";
+        const perShift = p.shifts > 0 ? (p.revenue / p.shifts).toFixed(0) : "-";
+        contextParts.push(`${month} | ${restaurant} | ${name} | ${p.revenue.toFixed(0)}€ | ${p.hours.toFixed(1)}h | ${perHour}€ | ${perShift}€ | ${p.shifts}`);
+      }
+    }
+
+    // Restaurant-Vergleich pro Monat (only if multiple restaurants)
+    const restaurantNames = Object.values(restaurantMap);
+    if (restaurantNames.length >= 2) {
+      contextParts.push("\n=== RESTAURANT-VERGLEICH PRO MONAT ===");
+      contextParts.push("Monat | Kennzahl | " + restaurantNames.join(" | ") + " | Differenz");
+      const months = [...new Set(sortedKeys.map(k => k.split("|")[0]))].sort();
+      for (const month of months) {
+        const vals: Record<string, Record<string, number>> = {};
+        for (const rName of restaurantNames) {
+          const k = `${month}|${rName}`;
+          const a = monthlyAgg[k] || { pos_total: 0, kreditkarten: 0, gaeste: 0, sessions_count: 0 };
+          const ea = monthlyExpAdv[k] || { ausgaben: 0 };
+          const kt = kitchenTipAgg[k] || 0;
+          vals[rName] = {
+            Umsatz: a.pos_total,
+            Gäste: a.gaeste,
+            "Ø Umsatz/Gast": a.gaeste > 0 ? Math.round(a.pos_total / a.gaeste) : 0,
+            "Karten-%": a.pos_total > 0 ? Math.round((a.kreditkarten / a.pos_total) * 100) : 0,
+            "Küchen-TG": kt,
+            Ausgaben: ea.ausgaben,
+          };
+        }
+        const metrics = ["Umsatz", "Gäste", "Ø Umsatz/Gast", "Karten-%", "Küchen-TG", "Ausgaben"];
+        for (const m of metrics) {
+          const values = restaurantNames.map(r => vals[r]?.[m] || 0);
+          const diff = values.length >= 2 ? values[0] - values[1] : 0;
+          const suffix = m === "Karten-%" ? "%" : "€";
+          contextParts.push(`${month} | ${m} | ${values.map(v => `${v}${suffix}`).join(" | ")} | ${diff > 0 ? "+" : ""}${diff}${suffix}`);
+        }
+      }
+    }
+
+    // Anomalien
+    if (anomalies.length > 0) {
+      contextParts.push("\n=== AKTUELLE ANOMALIEN UND AUFFÄLLIGKEITEN ===");
+      anomalies.forEach(a => contextParts.push(a));
     }
 
     // Detailed absence records with exact dates (for "from when to when" questions)
@@ -681,6 +851,11 @@ Wichtige Regeln:
 - Die MONATLICHEN ARBEITSZEITEN enthalten die vollständigen Zeiterfassungsdaten pro Mitarbeiter über alle verfügbaren Monate: Gesamtstunden, Abendstunden (20-24 Uhr, 25% SFN-Zuschlag), Nachtstunden (0-4/24-0 Uhr, 25% Zuschlag), Tiefnachtstunden (0-4 Uhr, 40% Zuschlag), Sonn-/Feiertagsstunden. Fehlzeiten werden nach Typ (Urlaub, Krank, Frei, etc.) als Anzahl Tage angegeben.
 - Die FEHLZEITEN-ZEITRÄUME zeigen exakte Von-Bis-Datumsbereiche für jede Abwesenheit über alle verfügbaren Daten. Verwende diese Tabelle wenn nach konkreten Urlaubszeiträumen oder Abwesenheitsdaten gefragt wird.
 - Die MITARBEITER-Stammdaten enthalten Informationen zu Rolle, Beschäftigungsart (Minijob), Eintritts-/Austrittsdatum, sowie den Urlaubsanspruch und die genommenen Urlaubs-/Krankheitstage.
+- Die ZAHLUNGSARTEN zeigen den monatlichen Bar- vs. Karten-Anteil pro Restaurant. Verwende diese Tabelle für Fragen nach Zahlungsarten, Bargeld-Anteil, Kreditkarten-Quote.
+- Die KELLNER-PERFORMANCE zeigt Umsatz pro Stunde, Umsatz pro Schicht und Schichtanzahl pro Kellner pro Monat. Verwende diese für Fragen nach Mitarbeiter-Effizienz, wer am meisten Umsatz pro Stunde macht, Performance-Vergleiche zwischen Kellnern.
+- Der RESTAURANT-VERGLEICH zeigt die Restaurants nebeneinander mit Umsatz, Gästen, Ø Umsatz/Gast, Karten-Anteil, Küchen-TG und Ausgaben. Verwende diese Tabelle für direkte Benchmarking-Fragen (z.B. "Vergleiche Spicery und YUM").
+- Die ANOMALIEN UND AUFFÄLLIGKEITEN enthalten automatisch erkannte Abweichungen der letzten 7 Tage. Erwähne relevante Anomalien proaktiv bei allgemeinen Fragen wie "Wie läuft's?" oder "Gibt es etwas Auffälliges?". Warte nicht darauf dass der Nutzer explizit danach fragt.
+- Bei Wetter-Fragen: Erkläre, dass keine Wetterdaten verfügbar sind. Biete stattdessen saisonale Muster, Wochentags-Vergleiche und Gästezahlen-Schwankungen als Proxy-Indikatoren an.
 - Bei Fragen nach Jahresvergleichen, Trends oder längeren Zeiträumen: Nutze die monatlichen Zusammenfassungen — diese enthalten alle verfügbaren historischen Monate.
 - Die Rohdaten (Sessions, Schichten, Ausgaben, Vorschüsse) sind nur für die letzten 30 Tage verfügbar. Für ältere Zeiträume nutze die monatlichen Aggregationen.
 - Alle Fragen beziehen sich ausschließlich auf dieses Restaurant-Kassensystem ("Tagesabrechnung") und die darin verfügbaren Daten. Wenn jemand eine Frage stellt, die nichts mit dem System, den Restaurants oder den Betriebsdaten zu tun hat, weise freundlich darauf hin, dass du nur Fragen zu diesem System beantworten kannst.
