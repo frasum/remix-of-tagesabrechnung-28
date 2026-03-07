@@ -43,6 +43,8 @@ import { RestaurantComparison } from '@/components/statistics/RestaurantComparis
 import { RestaurantCompareCards } from '@/components/statistics/RestaurantCompareCards';
 import { RestaurantOverlayChart } from '@/components/statistics/RestaurantOverlayChart';
 import { DateRangePicker } from '@/components/statistics/DateRangePicker';
+import { exportComparisonPdf } from '@/lib/exportComparisonPdf';
+import { Button } from '@/components/ui/button';
 import { MonthlyTipBreakdown } from '@/components/statistics/MonthlyTipBreakdown';
 import { useLabels } from '@/hooks/useLabels';
 import { useRestaurant, useRestaurants } from '@/hooks/useRestaurant';
