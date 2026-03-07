@@ -221,8 +221,8 @@ export default function History() {
                 </p> :
 
               <>
-              <div className="overflow-x-auto">
-                  <Table className="table-fixed w-full">
+              <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+                  <Table className="table-fixed min-w-[870px] w-full">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[160px]">Datum</TableHead>
