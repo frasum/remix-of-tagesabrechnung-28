@@ -225,25 +225,25 @@ export default function History() {
                   <Table className="table-fixed w-full">
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-[180px]">Datum</TableHead>
-                        <TableHead className="w-[130px] text-right">POS Total</TableHead>
+                        <TableHead className="w-[160px]">Datum</TableHead>
+                        <TableHead className="w-[120px] text-right">POS Total</TableHead>
                         <TableHead className="w-[150px] text-right">Kreditkarten (%)</TableHead>
                         <TableHead className="w-[150px] text-right">Take Away (%)</TableHead>
                         <TableHead className="w-[130px] text-right">Gäste / Ø Verzehr</TableHead>
-                        <TableHead className="w-[120px] text-right">Tages-Bargeld</TableHead>
+                        <TableHead className="w-[110px] text-right">Tages-Bargeld</TableHead>
                         <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {sessions.map((session) =>
                     <TableRow key={session.id}>
-                          <TableCell className="font-medium">
-                            {format(new Date(session.session_date), "EEEE, d. MMM yyyy", { locale: de })}
+                          <TableCell className="font-medium py-2">
+                            {format(new Date(session.session_date), "EEEE, d. MMM", { locale: de })}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="text-right tabular-nums py-2">
                             {formatCurrency(session.pos_total || 0)}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="text-right tabular-nums py-2">
                             {(() => {
                           const kreditkarten = (session.terminal_1_total || 0) + (session.terminal_2_total || 0);
                           const posTotal = session.pos_total || 0;
@@ -251,7 +251,7 @@ export default function History() {
                           return <>{formatCurrency(kreditkarten)} <span className="text-muted-foreground text-xs">({pct}%)</span></>;
                         })()}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="text-right tabular-nums py-2">
                             {(() => {
                           const takeaway = (session.takeaway_total || 0) + (session.ordersmart_revenue || 0) + (session.wolt_revenue || 0);
                           const posTotal = session.pos_total || 0;
@@ -259,7 +259,7 @@ export default function History() {
                           return <>{formatCurrency(takeaway)} <span className="text-muted-foreground text-xs">({pct}%)</span></>;
                         })()}
                           </TableCell>
-                          <TableCell className="text-right tabular-nums">
+                          <TableCell className="text-right tabular-nums py-2">
                             {(() => {
                           const guestCount = session.guest_count || 0;
                           if (guestCount === 0) return <span className="text-muted-foreground">–</span>;
@@ -273,7 +273,7 @@ export default function History() {
 
                         })()}
                           </TableCell>
-                          <TableCell className={`text-right tabular-nums font-medium ${(cashByDate.get(session.session_date) ?? 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          <TableCell className={`text-right tabular-nums font-medium py-2 ${(cashByDate.get(session.session_date) ?? 0) >= 0 ? 'text-success' : 'text-destructive'}`}>
                             {formatCurrency(cashByDate.get(session.session_date) ?? 0)}
                           </TableCell>
                           <TableCell>
