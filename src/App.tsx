@@ -36,6 +36,7 @@ const ZtZusammenfassung = lazy(() => import("./pages/zeiterfassung/ZtZusammenfas
 const ZtBuchhaltung = lazy(() => import("./pages/zeiterfassung/ZtBuchhaltung"));
 const ZtPerioden = lazy(() => import("./pages/zeiterfassung/ZtPerioden"));
 const ZtBruttoNetto = lazy(() => import("./pages/zeiterfassung/ZtBruttoNetto"));
+const ZtProvision = lazy(() => import("./pages/zeiterfassung/ZtProvision"));
 const RestaurantChat = lazy(() => import("./pages/RestaurantChat"));
 const SharedZtView = lazy(() => import("./pages/shared/SharedZtView"));
 const PayrollPortal = lazy(() => import("./pages/shared/PayrollPortal"));
