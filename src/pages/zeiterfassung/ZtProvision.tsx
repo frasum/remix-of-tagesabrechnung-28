@@ -322,6 +322,8 @@ export default function ZtProvision() {
           day.staffSet.add(sKey);
           day.nameSet.add(ws.second_waiter_name);
         }
+        const sid = staffNameToId.get(ws.second_waiter_name.toLowerCase());
+        if (sid) day.staffIdsOnDate.add(sid);
       }
       if (ws.additional_waiters?.length) {
         for (const aw of ws.additional_waiters) {
@@ -331,6 +333,8 @@ export default function ZtProvision() {
               day.staffSet.add(aKey);
               day.nameSet.add(aw);
             }
+            const awSid = staffNameToId.get(aw.toLowerCase());
+            if (awSid) day.staffIdsOnDate.add(awSid);
           }
         }
       }
@@ -347,7 +351,7 @@ export default function ZtProvision() {
         return { date, staffCount: d.staffSet.size, staffNames: Array.from(d.nameSet).sort(), hours: hasZt ? ztTotal : d.waiterHours, revenue: d.revenue };
       })
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [filteredWaiterData, isGlByName, ztHoursByStaffDate]);
+  }, [filteredWaiterData, isGlByName, ztHoursByStaffDate, staffNameToId]);
 
   // Commission calculation
   const result = useMemo(() => {
