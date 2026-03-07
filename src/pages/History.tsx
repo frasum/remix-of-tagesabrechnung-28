@@ -293,6 +293,7 @@ export default function History() {
                     </TableBody>
                   </Table>
                 </div>
+                </div>
                 {totalPages > 1 && (
                   <Pagination className="mt-4">
                     <PaginationContent>
