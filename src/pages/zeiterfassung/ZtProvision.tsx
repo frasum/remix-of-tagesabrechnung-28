@@ -170,7 +170,7 @@ export default function ZtProvision() {
     let pool = 0;
     if (thresholdMet) {
       const excess = totalRevenue - (minRevenue * staffDays);
-      pool = Math.max(0, excess * 0.05);
+      pool = Math.max(0, excess * (commissionPct / 100));
     }
 
     const hourlyRate = totalHours > 0 ? pool / totalHours : 0;
