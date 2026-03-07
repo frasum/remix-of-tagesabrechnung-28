@@ -1,24 +1,27 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+# Tooltip für Service-MA in der Tagesaufschlüsselung
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+## Änderung
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+Die `DayBreakdown`-Datenstruktur wird um eine Liste der Mitarbeiternamen erweitert. In der Tagesdetails-Tabelle wird die Service-MA-Zahl mit einem Tooltip versehen, der die Namen aller an diesem Tag eingesetzten Servicekräfte auflistet.
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+## Technische Umsetzung (`ZtProvision.tsx`)
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+1. **DayBreakdown-Typ erweitern**: Neues Feld `staffNames: string[]` hinzufügen
+2. **dailyBreakdown-Memo anpassen**: Die `staffSet` enthält bereits die Keys — zusätzlich eine `nameSet` mit lesbaren Namen (ohne Prefixe wie `second:` / `add:`) pflegen
+3. **Tooltip rendern**: In der TableCell für Service-MA einen `Tooltip` aus `@/components/ui/tooltip` verwenden, der die Namensliste anzeigt
 
-### Aufrufer anpassen
+```text
+┌──────────┬────────────┐
+│ Service-MA │    5       │  ← Hover zeigt:
+│            │            │     • Jasmin
+│            │            │     • Europe
+│            │            │     • Andi
+│            │            │     • Tu
+│            │            │     • Minh
+└──────────┴────────────┘
+```
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+Nur eine Datei betroffen: `src/pages/zeiterfassung/ZtProvision.tsx`
 
