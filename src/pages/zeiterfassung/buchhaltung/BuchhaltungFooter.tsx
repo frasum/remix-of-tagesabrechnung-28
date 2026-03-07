@@ -7,9 +7,11 @@ interface BuchhaltungFooterProps {
   grandTotals: EmployeeTotals;
   sfnMode?: SfnMode;
   showSfn?: boolean;
+  showCommission?: boolean;
+  totalCommission?: number;
 }
 
-export default function BuchhaltungFooter({ grandTotals, sfnMode = "simple", showSfn = true }: BuchhaltungFooterProps) {
+export default function BuchhaltungFooter({ grandTotals, sfnMode = "simple", showSfn = true, showCommission = false, totalCommission = 0 }: BuchhaltungFooterProps) {
   const isExtended = sfnMode === "extended";
 
   return (
@@ -32,6 +34,11 @@ export default function BuchhaltungFooter({ grandTotals, sfnMode = "simple", sho
           {grandTotals.urlaubTage > 0 ? grandTotals.urlaubTage.toFixed(2).replace('.', ',') : "–"}
         </td>
         <td className="text-center px-1 py-2.5 tabular-nums text-destructive">{displayNum(grandTotals.krankTage)}</td>
+        {showCommission && (
+          <td className="text-center px-1 py-2.5 tabular-nums font-bold text-amber-600 border-l border-border/40">
+            {totalCommission > 0 ? totalCommission.toFixed(2).replace(".", ",") + " €" : "–"}
+          </td>
+        )}
         <td className="border-l border-border/40"></td>
         <td></td>
       </tr>

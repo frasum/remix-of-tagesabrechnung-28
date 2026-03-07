@@ -56,7 +56,8 @@ export function exportBuchhaltungExcel(
   shifts: Shift[],
   payrollNotes: PayrollNote[],
   sfnMode: SfnMode = "simple",
-  holidayRates?: Map<string, number>
+  holidayRates?: Map<string, number>,
+  commissionMap?: Map<string, number>
 ) {
   const additive = sfnMode === "extended";
 
@@ -81,6 +82,7 @@ export function exportBuchhaltungExcel(
     };
   };
 
+  const hasCommission = !!commissionMap;
   const sfnHeaders = additive ? ["20-24 Std.", "24-x Std.", "So Std.", "Fei 125%", "Fei 150%"] : ["20-24 Std.", "24-x Std.", "So/Fei Std."];
   function sfnCells(t: ReturnType<typeof getData>): (string | number)[] {
     if (additive) return [t.evening || "", t.night || "", t.sonntagStunden || "", t.feiertag125 || "", t.feiertag150 || ""];
@@ -90,7 +92,7 @@ export function exportBuchhaltungExcel(
   const wsData: (string | number)[][] = [];
   wsData.push([`Buchhaltung – ${periodLabel}`]);
   wsData.push([]);
-  wsData.push(["Mitarbeiter", "Gesamt Std.", "Schichten", ...sfnHeaders, "U (angr.)", "K", "Vorschuss", "Besonderheiten"]);
+  wsData.push(["Mitarbeiter", "Gesamt Std.", "Schichten", ...sfnHeaders, "U (angr.)", "K", ...(hasCommission ? ["Provision"] : []), "Vorschuss", "Besonderheiten"]);
 
   let lastDept = "";
   for (const emp of sorted) {
@@ -117,7 +119,8 @@ export function exportBuchhaltungExcel(
       : emp.name;
     const nameStr = emp.perso_nr && emp.perso_nr > 0 ? `${nameBase} ${emp.perso_nr}` : nameBase;
 
-    wsData.push([nameStr, t.gesamt || "", t.schichten || "", ...sfnCells(t), t.urlaubTage || "", t.krankTage || "", note?.vorschuss || "", besText]);
+    const commission = commissionMap?.get(emp.id) ?? 0;
+    wsData.push([nameStr, t.gesamt || "", t.schichten || "", ...sfnCells(t), t.urlaubTage || "", t.krankTage || "", ...(hasCommission ? [commission > 0 ? commission.toFixed(2) : ""] : []), note?.vorschuss || "", besText]);
   }
 
   const wb = XLSX.utils.book_new();
@@ -125,7 +128,9 @@ export function exportBuchhaltungExcel(
   ws["!cols"] = [
     { wch: 35 }, { wch: 12 }, { wch: 10 },
     ...sfnHeaders.map(() => ({ wch: 12 })),
-    { wch: 10 }, { wch: 6 }, { wch: 12 }, { wch: 30 },
+    { wch: 10 }, { wch: 6 },
+    ...(hasCommission ? [{ wch: 12 }] : []),
+    { wch: 12 }, { wch: 30 },
   ];
 
   XLSX.utils.book_append_sheet(wb, ws, "Buchhaltung");

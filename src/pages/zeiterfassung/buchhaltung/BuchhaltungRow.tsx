@@ -18,10 +18,12 @@ interface BuchhaltungRowProps {
   isLocked?: boolean;
   sfnMode?: SfnMode;
   showSfn?: boolean;
+  showCommission?: boolean;
+  commission?: number;
   onUpsertNote: (params: { employee_id: string; field: string; value: any }) => void;
 }
 
-export default function BuchhaltungRow({ emp, totals, note, shifts, advances, isEven, isLocked, sfnMode = "simple", showSfn = true, onUpsertNote }: BuchhaltungRowProps) {
+export default function BuchhaltungRow({ emp, totals, note, shifts, advances, isEven, isLocked, sfnMode = "simple", showSfn = true, showCommission = false, commission = 0, onUpsertNote }: BuchhaltungRowProps) {
   const rowBg = isEven ? "bg-muted/30" : "";
   const isExtended = sfnMode === "extended";
 
@@ -69,6 +71,11 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, advances, is
           <SickDaysCell empShifts={shifts} krankTage={totals.krankTage} />
         ) : "–"}
       </td>
+      {showCommission && (
+        <td className="text-center px-1 py-1.5 tabular-nums font-medium text-amber-600 border-l border-border/40">
+          {commission > 0 ? commission.toFixed(2).replace(".", ",") + " €" : "–"}
+        </td>
+      )}
       <td className="p-1 border-l border-border/40">
         <Input
           type="text"

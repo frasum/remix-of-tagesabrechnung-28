@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import SfnTooltipHeader from "@/components/zeiterfassung/SfnTooltipHeader";
+import { supabase } from "@/integrations/supabase/client";
+import { useCommissionData } from "@/hooks/useCommissionData";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
@@ -301,6 +303,21 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all");
   const { sfnMode, setSfnMode } = useSfnMode();
 
+  // Commission data for Buchhaltung tab
+  const firstRestaurantId = data.matchingPeriods[0]?.restaurant_id;
+  const { data: commissionSetting } = useQuery({
+    queryKey: ["settings", "commission_add_to_gross", firstRestaurantId],
+    queryFn: async () => {
+      if (!firstRestaurantId) return false;
+      const { data: d } = await supabase.from("settings").select("value").eq("key", "commission_add_to_gross").eq("restaurant_id", firstRestaurantId).maybeSingle();
+      return (d?.value as any)?.enabled ?? false;
+    },
+    enabled: !!firstRestaurantId,
+  });
+  const showCommission = commissionSetting === true;
+
+  const { commissionMap, totalCommission: commTotalUnused } = useCommissionData(firstRestaurantId, data.period.start_date, data.period.end_date);
+
   const { period, weeks, shifts, employees, payrollNotes, advances, holidays, weekNumberToAllIds, weekToRestaurant, matchingPeriods } = data;
   const holidayMap = new Map(holidays.map(h => [h.holiday_date, h.name]));
   const holidayRates = useMemo(() => {
@@ -494,6 +511,8 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             onUpsertNote={(p) => upsertNote.mutate(p)}
             sfnMode={sfnMode}
             holidayRates={holidayRates}
+            showCommission={showCommission}
+            commissionMap={showCommission ? commissionMap : undefined}
           />
         </TabsContent>
       </Tabs>
@@ -993,7 +1012,7 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
 
 // =================== Buchhaltung Tab ===================
 
-function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple", holidayRates }: {
+function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple", holidayRates, showCommission = false, commissionMap }: {
   shifts: Shift[];
   employees: any[];
   payrollNotes: PayrollNote[];
@@ -1003,6 +1022,8 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   onUpsertNote: (p: { employee_id: string; field: string; value: any }) => void;
   sfnMode?: SfnMode;
   holidayRates?: Map<string, number>;
+  showCommission?: boolean;
+  commissionMap?: Map<string, number>;
 }) {
   const additive = sfnMode === "extended";
   const isExtended = sfnMode === "extended";
@@ -1023,6 +1044,13 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
     return t;
   }, [employees, shifts, additive]);
 
+  const totalCommission = useMemo(() => {
+    if (!commissionMap) return 0;
+    let sum = 0;
+    employees.forEach(emp => { sum += commissionMap.get(emp.id) ?? 0; });
+    return sum;
+  }, [employees, commissionMap]);
+
   let zebraIdx = 0;
   let lastDept: string | null = null;
 
@@ -1031,13 +1059,13 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
       <div className="flex items-center justify-between">
         <Badge variant="outline" className="text-xs">Modus: {sfnMode === "extended" ? "§3b EStG (erweitert)" : "Einfach"}</Badge>
         <div className="flex gap-1">
-          <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungPdf(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates); toast.success("PDF erstellt"); }}>
+          <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungPdf(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates, showCommission ? commissionMap : undefined); toast.success("PDF erstellt"); }}>
             <FileDown className="mr-1 h-4 w-4" /> PDF
           </Button>
-          <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates); toast.success("Excel erstellt"); }}>
+          <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungExcel(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates, showCommission ? commissionMap : undefined); toast.success("Excel erstellt"); }}>
             <FileSpreadsheet className="mr-1 h-4 w-4" /> Excel
           </Button>
-          <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates); toast.success("CSV erstellt"); }}>
+          <Button variant="outline" size="sm" disabled={!employees.length} onClick={() => { exportBuchhaltungCsv(periodLabel, employees, shifts, payrollNotes, sfnMode, holidayRates, showCommission ? commissionMap : undefined); toast.success("CSV erstellt"); }}>
             <FileDown className="mr-1 h-4 w-4" /> CSV
           </Button>
         </div>
@@ -1046,7 +1074,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm table-fixed">
-            <BuchhaltungTableHead sfnMode={sfnMode} />
+            <BuchhaltungTableHead sfnMode={sfnMode} showCommission={showCommission} />
             <tbody>
               {employees.map(emp => {
                 const showDeptHeader = emp.department !== lastDept;
@@ -1061,7 +1089,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
 
                 return (
                   <React.Fragment key={`${emp.id}-${emp.department}`}>
-                    {showDeptHeader && <BuchhaltungDeptHeader department={emp.department} sfnMode={sfnMode} />}
+                    {showDeptHeader && <BuchhaltungDeptHeader department={emp.department} sfnMode={sfnMode} showCommission={showCommission} />}
                     <BuchhaltungRow
                       emp={emp}
                       totals={totals}
@@ -1071,13 +1099,15 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                       isEven={isEven}
                       isLocked={isLocked}
                       sfnMode={sfnMode}
+                      showCommission={showCommission}
+                      commission={commissionMap?.get(emp.id) ?? 0}
                       onUpsertNote={onUpsertNote}
                     />
                   </React.Fragment>
                 );
               })}
             </tbody>
-            {employees.length > 0 && <BuchhaltungFooter grandTotals={grandTotals} sfnMode={sfnMode} />}
+            {employees.length > 0 && <BuchhaltungFooter grandTotals={grandTotals} sfnMode={sfnMode} showCommission={showCommission} totalCommission={totalCommission} />}
           </table>
         </div>
       </Card>

@@ -57,7 +57,8 @@ export function exportBuchhaltungPdf(
   shifts: Shift[],
   payrollNotes: PayrollNote[],
   sfnMode: SfnMode = "simple",
-  holidayRates?: Map<string, number>
+  holidayRates?: Map<string, number>,
+  commissionMap?: Map<string, number>
 ) {
   const additive = sfnMode === "extended";
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
@@ -108,7 +109,8 @@ export function exportBuchhaltungPdf(
   doc.setFontSize(16);
   doc.text(`Buchhaltung – ${periodLabel}`, 14, 15);
 
-  const totalColCount = 4 + sfnColCount + 3;
+  const hasCommission = !!commissionMap;
+  const totalColCount = 4 + sfnColCount + 3 + (hasCommission ? 1 : 0);
   const rows: any[][] = [];
   let lastDept = "";
 
@@ -133,6 +135,8 @@ export function exportBuchhaltungPdf(
       : emp.name;
     const nameStr = emp.perso_nr && emp.perso_nr > 0 ? `${nameBase} ${emp.perso_nr}` : nameBase;
 
+    const commission = commissionMap?.get(emp.id) ?? 0;
+
     rows.push([
       nameStr,
       formatHours(t.gesamt),
@@ -140,12 +144,13 @@ export function exportBuchhaltungPdf(
       ...sfnCells(t),
       t.urlaubTage > 0 ? t.urlaubTage.toFixed(2).replace('.', ',') : "",
       t.krankTage > 0 ? String(t.krankTage) : "",
+      ...(hasCommission ? [commission > 0 ? commission.toFixed(2).replace('.', ',') + " €" : ""] : []),
       note?.vorschuss ? String(note.vorschuss) : "",
       besText,
     ]);
   }
 
-  const allHeaders = ["Mitarbeiter", "Gesamt Std.", "Schichten", ...sfnHeaders, "U (angr.)", "K", "Vorschuss", "Besonderheiten"];
+  const allHeaders = ["Mitarbeiter", "Gesamt Std.", "Schichten", ...sfnHeaders, "U (angr.)", "K", ...(hasCommission ? ["Provision"] : []), "Vorschuss", "Besonderheiten"];
 
   const columnStyles: Record<number, any> = { 0: { cellWidth: 60 } };
   columnStyles[1] = { halign: "center", cellWidth: 18 };
@@ -153,11 +158,16 @@ export function exportBuchhaltungPdf(
   for (let i = 0; i < sfnColCount; i++) {
     columnStyles[3 + i] = { halign: "center", cellWidth: 14 };
   }
-  const afterSfn = 3 + sfnColCount;
+  let afterSfn = 3 + sfnColCount;
   columnStyles[afterSfn] = { halign: "center", cellWidth: 14 };
   columnStyles[afterSfn + 1] = { halign: "center", cellWidth: 10 };
-  columnStyles[afterSfn + 2] = { halign: "center", cellWidth: 16 };
-  columnStyles[afterSfn + 3] = { cellWidth: additive ? 56 : 84 };
+  let nextCol = afterSfn + 2;
+  if (hasCommission) {
+    columnStyles[nextCol] = { halign: "center", cellWidth: 16 };
+    nextCol++;
+  }
+  columnStyles[nextCol] = { halign: "center", cellWidth: 16 };
+  columnStyles[nextCol + 1] = { cellWidth: hasCommission ? (additive ? 40 : 68) : (additive ? 56 : 84) };
 
   autoTable(doc, {
     startY: 20,
