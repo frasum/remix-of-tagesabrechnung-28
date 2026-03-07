@@ -69,15 +69,14 @@ Deno.serve(async (req) => {
     since30.setDate(since30.getDate() - 30);
     const since30Str = since30.toISOString().split("T")[0];
 
-    // Load sessions (90 days) + staff + restaurants + settings + staff_restaurants in parallel
+    // Load ALL sessions + staff + restaurants + settings + staff_restaurants in parallel
     const [sessionsRes, staffRes, restaurantsRes, settingsRes, staffRestaurantsRes] = await Promise.all([
       supabase
         .from("sessions")
         .select("id, session_date, restaurant_id, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, guest_count, vouchers_sold, vouchers_redeemed, finedine_vouchers, einladung, sonstige_einnahme, notes, created_by_name")
         .in("restaurant_id", restaurant_ids)
-        .gte("session_date", since90Str)
         .order("session_date", { ascending: false })
-        .limit(5000),
+        .limit(10000),
       supabase
         .from("staff")
         .select("id, name, nickname, role, is_active, participates_in_pool, perso_nr, is_minijob, employment_start, employment_end, vacation_days_contractual, vacation_days_previous, vacation_days_current, vacation_days_taken, sick_days_total")
@@ -130,7 +129,7 @@ Deno.serve(async (req) => {
       ztShifts = await batchIn(supabase, "zt_shifts",
         "employee_id, shift_date, total_hours, evening_hours, night_hours, night_deep_hours, sunday_holiday_hours, is_holiday, department, absence_type",
         "employee_id", allStaffIds);
-      ztShifts = ztShifts.filter((z: any) => z.shift_date >= since90Str);
+      // No date filter — load all zt_shifts for full historical aggregations
     }
 
     // Separate service staff IDs for commission calculation
@@ -471,7 +470,7 @@ Deno.serve(async (req) => {
     });
 
     // Monthly summary BEFORE raw data
-    contextParts.push("\n=== MONATLICHE ZUSAMMENFASSUNG (voraggregiert, korrekte Summen) ===");
+    contextParts.push("\n=== MONATLICHE ZUSAMMENFASSUNG (voraggregiert, alle verfügbaren Monate) ===");
     contextParts.push("Monat | Restaurant | Tage | Umsatz | Kreditkarten | OrderSmart | Wolt | Gutschein-VK | Gutschein-Einl | FineDine | Einladung | SoEinnahme | Gäste | Ausgaben | Vorschüsse | Küchen-TG-Gesamt");
     const sortedKeys = Object.keys(monthlyAgg).sort();
     for (const key of sortedKeys) {
@@ -485,7 +484,7 @@ Deno.serve(async (req) => {
     }
 
     // Waiter tip ranking per month per restaurant
-    contextParts.push("\n=== MONATLICHES KELLNER-TRINKGELD RANKING (voraggregiert) ===");
+    contextParts.push("\n=== MONATLICHES KELLNER-TRINKGELD RANKING (alle verfügbaren Monate) ===");
     contextParts.push("Monat | Restaurant | Kellner | Trinkgeld (Pool-Anteil) | Stunden");
     for (const key of sortedKeys) {
       const [month, restaurant] = key.split("|");
@@ -498,7 +497,7 @@ Deno.serve(async (req) => {
     }
 
     // Kitchen hours per month per restaurant
-    contextParts.push("\n=== MONATLICHE KÜCHEN-STUNDEN (voraggregiert) ===");
+    contextParts.push("\n=== MONATLICHE KÜCHEN-STUNDEN (alle verfügbaren Monate) ===");
     contextParts.push("Monat | Restaurant | Mitarbeiter | Stunden");
     for (const key of sortedKeys) {
       const [month, restaurant] = key.split("|");
@@ -510,7 +509,7 @@ Deno.serve(async (req) => {
     }
 
     // Commission sections
-    contextParts.push("\n=== MONATLICHE PROVISIONSBERECHNUNG (voraggregiert) ===");
+    contextParts.push("\n=== MONATLICHE PROVISIONSBERECHNUNG (alle verfügbaren Monate) ===");
     contextParts.push("Monat | Restaurant | Schwellenwert | Prozent | Qual. Tage | Gesamt-Tage | Pool | Ges. Stunden | €/Stunde");
     const commKeys = Object.keys(commissionByMonthRestaurant).sort();
     for (const key of commKeys) {
@@ -523,7 +522,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    contextParts.push("\n=== PROVISIONS-VERTEILUNG PRO MITARBEITER (voraggregiert) ===");
+    contextParts.push("\n=== PROVISIONS-VERTEILUNG PRO MITARBEITER (alle verfügbaren Monate) ===");
     contextParts.push("Monat | Restaurant | Mitarbeiter | Stunden | Provision");
     for (const key of commKeys) {
       const [month, restaurant] = key.split("|");
@@ -540,7 +539,7 @@ Deno.serve(async (req) => {
     }
 
     // Workforce hours & absences sections
-    contextParts.push("\n=== MONATLICHE ARBEITSZEITEN PRO MITARBEITER (voraggregiert, aus Zeiterfassung) ===");
+    contextParts.push("\n=== MONATLICHE ARBEITSZEITEN PRO MITARBEITER (alle verfügbaren Monate, aus Zeiterfassung) ===");
     contextParts.push("Monat | Restaurant | Mitarbeiter | Abteilung | Gesamt-Std | Abend-Std | Nacht-Std | Tiefnacht-Std | So/Feiert-Std | Fehlzeiten");
     const wfKeys = Object.keys(workforceAgg).sort();
     for (const key of wfKeys) {
@@ -673,23 +672,20 @@ Deno.serve(async (req) => {
     const dataContext = contextParts.join("\n");
 
     const systemPrompt = `Du bist ein hilfreicher Assistent für ein Restaurant-Kassensystem. Du antwortest auf Deutsch.
-Du hast Zugriff auf die folgenden echten Daten der letzten 90 Tage:
+Du hast Zugriff auf die folgenden echten Daten:
+- **Aggregierte Monatsdaten**: Der gesamte verfügbare Zeitraum (alle historischen Monate)
+- **Rohdaten**: Nur die letzten 30 Tage (Sessions, Schichten, Ausgaben, Vorschüsse)
 
 ${dataContext}
 
 Wichtige Regeln:
-- Die MONATLICHE ZUSAMMENFASSUNG, das KELLNER-TRINKGELD RANKING und die KÜCHEN-STUNDEN enthalten voraggregierte, korrekte Summen. Verwende IMMER diese Summen wenn nach Monats-Totalen, Rankings oder Stunden-Summen gefragt wird, anstatt selbst aus den Rohdaten zu rechnen.
-- Die MONATLICHE PROVISIONSBERECHNUNG enthält voraggregierte Provisionsdaten. Verwende diese für alle Provisionsfragen. Provisionen basieren auf einem Schwellenwert-System: nur Tage, an denen der Durchschnittsumsatz pro Service-Mitarbeiter den Schwellenwert erreicht, tragen zum Provisions-Pool bei. Der Pool wird proportional zu den Arbeitsstunden (aus der Zeiterfassung) verteilt. Die PROVISIONS-VERTEILUNG zeigt die Aufteilung pro Mitarbeiter.
-- Die MONATLICHEN ARBEITSZEITEN enthalten die vollständigen Zeiterfassungsdaten pro Mitarbeiter: Gesamtstunden, Abendstunden (20-24 Uhr, 25% SFN-Zuschlag), Nachtstunden (0-4/24-0 Uhr, 25% Zuschlag), Tiefnachtstunden (0-4 Uhr, 40% Zuschlag), Sonn-/Feiertagsstunden. Fehlzeiten werden nach Typ (Urlaub, Krank, Frei, etc.) als Anzahl Tage angegeben.
-- Die FEHLZEITEN-ZEITRÄUME zeigen exakte Von-Bis-Datumsbereiche für jede Abwesenheit. Verwende diese Tabelle wenn nach konkreten Urlaubszeiträumen oder Abwesenheitsdaten gefragt wird. WICHTIG: Diese Daten umfassen nur die letzten 90 Tage. Wenn eine Abwesenheit am frühesten verfügbaren Datum beginnt, könnte sie schon früher begonnen haben — weise in dem Fall darauf hin.
+- Die MONATLICHE ZUSAMMENFASSUNG, das KELLNER-TRINKGELD RANKING und die KÜCHEN-STUNDEN enthalten voraggregierte, korrekte Summen über den gesamten verfügbaren Zeitraum. Verwende IMMER diese Summen wenn nach Monats-Totalen, Rankings, Stunden-Summen, Jahresvergleichen oder Langzeittrends gefragt wird, anstatt selbst aus den Rohdaten zu rechnen.
+- Die MONATLICHE PROVISIONSBERECHNUNG enthält voraggregierte Provisionsdaten über alle verfügbaren Monate. Verwende diese für alle Provisionsfragen. Provisionen basieren auf einem Schwellenwert-System: nur Tage, an denen der Durchschnittsumsatz pro Service-Mitarbeiter den Schwellenwert erreicht, tragen zum Provisions-Pool bei. Der Pool wird proportional zu den Arbeitsstunden (aus der Zeiterfassung) verteilt. Die PROVISIONS-VERTEILUNG zeigt die Aufteilung pro Mitarbeiter.
+- Die MONATLICHEN ARBEITSZEITEN enthalten die vollständigen Zeiterfassungsdaten pro Mitarbeiter über alle verfügbaren Monate: Gesamtstunden, Abendstunden (20-24 Uhr, 25% SFN-Zuschlag), Nachtstunden (0-4/24-0 Uhr, 25% Zuschlag), Tiefnachtstunden (0-4 Uhr, 40% Zuschlag), Sonn-/Feiertagsstunden. Fehlzeiten werden nach Typ (Urlaub, Krank, Frei, etc.) als Anzahl Tage angegeben.
+- Die FEHLZEITEN-ZEITRÄUME zeigen exakte Von-Bis-Datumsbereiche für jede Abwesenheit über alle verfügbaren Daten. Verwende diese Tabelle wenn nach konkreten Urlaubszeiträumen oder Abwesenheitsdaten gefragt wird.
 - Die MITARBEITER-Stammdaten enthalten Informationen zu Rolle, Beschäftigungsart (Minijob), Eintritts-/Austrittsdatum, sowie den Urlaubsanspruch und die genommenen Urlaubs-/Krankheitstage.
-- Formatiere Geldbeträge immer als Euro (z.B. 1.234,56 €)
-- Nutze Markdown-Tabellen wenn es sinnvoll ist
-- Antworte präzise und basierend auf den Daten
-- Wenn Daten nicht vorhanden sind, sage das klar
-- Wenn mehrere Restaurants vorhanden sind, gliedere deine Antwort immer nach Restaurant
-- "Kellner-TG (Pool-Anteil)" ist das Trinkgeld das der Kellner behält (sein Anteil am Trinkgeld-Pool). "Küchen-TG" ist der separate Anteil der an die Küche abgeführt wird. Wenn nach "Trinkgeld" eines Kellners gefragt wird, verwende den "Kellner-TG (Pool-Anteil)".
-- Die Rohdaten (Sessions, Schichten, Ausgaben, Vorschüsse) sind nur für die letzten 30 Tage verfügbar. Für ältere Zeiträume nutze die voraggregierten Monatssummen.
+- Bei Fragen nach Jahresvergleichen, Trends oder längeren Zeiträumen: Nutze die monatlichen Zusammenfassungen — diese enthalten alle verfügbaren historischen Monate.
+- Die Rohdaten (Sessions, Schichten, Ausgaben, Vorschüsse) sind nur für die letzten 30 Tage verfügbar. Für ältere Zeiträume nutze die monatlichen Aggregationen.
 - Alle Fragen beziehen sich ausschließlich auf dieses Restaurant-Kassensystem ("Tagesabrechnung") und die darin verfügbaren Daten. Wenn jemand eine Frage stellt, die nichts mit dem System, den Restaurants oder den Betriebsdaten zu tun hat, weise freundlich darauf hin, dass du nur Fragen zu diesem System beantworten kannst.
 - Du kennst die Funktionen des Systems: Tagesabrechnung (Kassenschluss), Kellner-Abrechnung, Küchentrinkgeld-Aufteilung, Kassenstand, Ausgaben & Vorschüsse, Mitarbeiterverwaltung, Statistiken, Zeiterfassung mit Schichtplanung und Provisionsberechnung.
 - Heute ist ${new Date().toISOString().split("T")[0]}`;
