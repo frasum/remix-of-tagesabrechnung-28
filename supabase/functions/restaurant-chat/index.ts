@@ -60,10 +60,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Calculate date ranges
-    const since90 = new Date();
-    since90.setDate(since90.getDate() - 90);
-    const since90Str = since90.toISOString().split("T")[0];
+    // Calculate date range for raw data (30 days)
 
     const since30 = new Date();
     since30.setDate(since30.getDate() - 30);
