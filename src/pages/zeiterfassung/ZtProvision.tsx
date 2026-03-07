@@ -267,15 +267,6 @@ export default function ZtProvision() {
             />
           </div>
         </div>
-        <div className="pt-5">
-          {result.sessionCount > 0 ? (
-            <Badge variant={result.thresholdMet ? "default" : "destructive"} className="text-sm px-3 py-1">
-              {result.thresholdMet ? "✓ Erreicht" : "✗ Nicht erreicht"}
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="text-sm px-3 py-1">Keine Daten</Badge>
-          )}
-        </div>
       </div>
 
       {/* Summary cards */}
