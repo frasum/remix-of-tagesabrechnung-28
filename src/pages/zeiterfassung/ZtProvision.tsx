@@ -32,6 +32,7 @@ type DayBreakdown = {
   staffNames: string[];
   hours: number;
   revenue: number;
+  allDeptHours: number;
 };
 
 export default function ZtProvision() {
@@ -170,6 +171,44 @@ export default function ZtProvision() {
     },
     enabled: !!selectedPeriod && !!restaurantId,
   });
+
+  // Fetch ALL zt_shifts (all departments) for hourly revenue calc
+  const { data: allDeptShiftsData } = useQuery({
+    queryKey: ["provision-all-dept-shifts", selectedPeriodId, restaurantId],
+    queryFn: async () => {
+      if (!selectedPeriod) return [];
+      // Get all staff for this restaurant
+      const { data: allStaff, error: srErr } = await supabase
+        .from("staff_restaurants")
+        .select("staff_id")
+        .eq("restaurant_id", restaurantId)
+        .not("zt_department", "is", null);
+      if (srErr) throw srErr;
+      const staffIds = allStaff?.map(s => s.staff_id) ?? [];
+      if (!staffIds.length) return [];
+
+      const { data, error } = await supabase
+        .from("zt_shifts")
+        .select("shift_date, total_hours")
+        .in("employee_id", staffIds)
+        .gte("shift_date", selectedPeriod.start_date)
+        .lte("shift_date", selectedPeriod.end_date);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedPeriod && !!restaurantId,
+  });
+
+  // Build allDeptHours by date
+  const allDeptHoursByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!allDeptShiftsData?.length) return map;
+    for (const s of allDeptShiftsData) {
+      const h = Number(s.total_hours) || 0;
+      map.set(s.shift_date, (map.get(s.shift_date) ?? 0) + h);
+    }
+    return map;
+  }, [allDeptShiftsData]);
 
   // Fetch staff roles to exclude GL
   const { data: staffRoles } = useQuery({
