@@ -1,24 +1,30 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+# Analyse: Service-MA Spalte vs. Tooltip für 26.02
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+## Ergebnis
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+Die **Zahl** und der **Tooltip** sind **konsistent** — beide erfassen sekundäre Kellner korrekt:
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+Für den 26.02 gibt es 6 primäre `waiter_shifts`-Einträge (Andi, Ann, Coco, Europe, Jasmin, Lam). Lam hat die Rolle `waiter_gl` und wird als GL gefiltert. Tu und Pon sind als sekundäre/zusätzliche Kellner eingetragen. Somit zeigen sowohl die Zahl als auch der Tooltip **7 Mitarbeiter** (Andi, Ann, Coco, Europe, Jasmin, Tu, Pon).
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+## Noch offenes Problem: Tagesstunden
 
-### Aufrufer anpassen
+Die Stunden der sekundären Kellner (Tu, Pon) fehlen in der Tagesansicht, weil deren `staff_id` nicht in `staffIdsOnDate` aufgenommen wird (Zeilen 319–335). Der bereits besprochene Plan, `staffIdsOnDate` um sekundäre Kellner-IDs zu erweitern, behebt dies.
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+### Änderung in `ZtProvision.tsx`
+
+Im `dailyBreakdown`-Memo bei den sekundären/zusätzlichen Kellnern deren `staff_id` (via `staffNameToId`) zu `staffIdsOnDate` hinzufügen:
+
+```typescript
+// Bei second_waiter_name (nach Zeile 322):
+const sid = staffNameToId.get(ws.second_waiter_name.toLowerCase());
+if (sid) day.staffIdsOnDate.add(sid);
+
+// Bei additional_waiters (nach Zeile 331):
+const awSid = staffNameToId.get(aw.toLowerCase());
+if (awSid) day.staffIdsOnDate.add(awSid);
+```
+
+Damit werden die `zt_shifts`-Stunden aller Service-Mitarbeiter (primär + sekundär) korrekt in die Tagessumme einbezogen.
 
