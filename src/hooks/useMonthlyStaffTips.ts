@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { getAllTeamMembers, countPoolShares } from '@/lib/waiterTeamUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { startOfMonth, endOfMonth, format, subMonths } from 'date-fns';
 import { de } from 'date-fns/locale';
