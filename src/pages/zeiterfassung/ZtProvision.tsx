@@ -24,6 +24,7 @@ export default function ZtProvision() {
   const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
 
   const [minRevenue, setMinRevenue] = useState(1200);
+  const [commissionPct, setCommissionPct] = useState(5);
 
   // Load saved threshold from settings
   const { data: savedThreshold } = useQuery({
@@ -40,9 +41,27 @@ export default function ZtProvision() {
     enabled: !!restaurantId,
   });
 
+  const { data: savedPct } = useQuery({
+    queryKey: ["settings", "commission_pct", restaurantId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "commission_pct")
+        .eq("restaurant_id", restaurantId)
+        .maybeSingle();
+      return (data?.value as any)?.pct ?? 5;
+    },
+    enabled: !!restaurantId,
+  });
+
   useEffect(() => {
     if (savedThreshold != null) setMinRevenue(savedThreshold);
   }, [savedThreshold]);
+
+  useEffect(() => {
+    if (savedPct != null) setCommissionPct(savedPct);
+  }, [savedPct]);
 
   const handleMinRevenueChange = useCallback((val: number) => {
     setMinRevenue(val);
