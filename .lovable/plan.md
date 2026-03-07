@@ -1,27 +1,24 @@
 
 
-## Plan: Restaurant-Vergleich optisch aufwerten
+## Tooltips für erweiterten SFN-Modus anpassen
 
-Das Problem: Die Progress-Balken sehen alle gleich aus (gleiche dunkelblaue Farbe), die Werte werden am Rand abgeschnitten, und das Layout ist visuell monoton.
+Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
 
-### Redesign der `RestaurantComparison.tsx`
+### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
 
-Statt generischer Progress-Bars wird jede Metrik-Zeile als **kompakte Vergleichskarte** dargestellt:
+- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
+- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
+- Im Extended-Modus erklären die Tooltips die additive Logik:
 
-1. **Dual-Bar mit unterschiedlichen Farben**: Restaurant A bekommt `hsl(var(--chart-1))` (blau), Restaurant B bekommt `hsl(var(--chart-2))` (orange/gruen) -- custom `div`-Balken statt der Radix Progress-Komponente, damit Farben pro Restaurant steuerbar sind.
+| Spalte | Simple | Extended |
+|--------|--------|----------|
+| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
+| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
+| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
+| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
+| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
 
-2. **Besseres Layout pro Metrik-Zeile**:
-   - Label + Differenz-Badge oben
-   - Darunter je Restaurant: Name links, farbiger Balken in der Mitte, Wert rechts
-   - Der fuehrende Wert bekommt einen leichten farbigen Hintergrund-Akzent
+### Aufrufer anpassen
 
-3. **Grid-Layout statt Liste**: Die 8 Metriken in einem `grid sm:grid-cols-2` anordnen, sodass je 2 Metriken nebeneinander stehen. Jede Metrik wird eine eigene kleine Karte mit Border und Padding.
-
-4. **Tage-Vergleich**: Wird als eigene kleine Karte im Grid dargestellt.
-
-### Technische Umsetzung
-
-- **Datei**: `src/components/statistics/RestaurantComparison.tsx` -- komplett umschreiben
-- Progress-Komponente wird nicht mehr verwendet; stattdessen einfache `div`-Balken mit `style={{ width: proportion% }}` und individuellen Farben
-- Keine neuen Dateien oder Dependencies noetig
+`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
 
