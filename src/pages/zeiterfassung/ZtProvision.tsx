@@ -132,6 +132,33 @@ export default function ZtProvision() {
     enabled: !!selectedPeriod && !!restaurantId,
   });
 
+  // Fetch zt_shifts hours for the period (Service department only)
+  const { data: ztShiftsData } = useQuery({
+    queryKey: ["provision-zt-shifts", selectedPeriodId, restaurantId],
+    queryFn: async () => {
+      if (!selectedPeriod) return [];
+      // Get Service staff for this restaurant
+      const { data: serviceStaff, error: srErr } = await supabase
+        .from("staff_restaurants")
+        .select("staff_id")
+        .eq("restaurant_id", restaurantId)
+        .eq("zt_department", "Service");
+      if (srErr) throw srErr;
+      const staffIds = serviceStaff?.map(s => s.staff_id) ?? [];
+      if (!staffIds.length) return [];
+
+      const { data, error } = await supabase
+        .from("zt_shifts")
+        .select("employee_id, shift_date, total_hours")
+        .in("employee_id", staffIds)
+        .gte("shift_date", selectedPeriod.start_date)
+        .lte("shift_date", selectedPeriod.end_date);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!selectedPeriod && !!restaurantId,
+  });
+
   // Fetch staff roles to exclude GL
   const { data: staffRoles } = useQuery({
     queryKey: ["staff-roles-for-provision"],
