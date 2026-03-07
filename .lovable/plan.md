@@ -1,24 +1,14 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+# Plan: Provisionsverteilung nach Stunden klarer darstellen
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+Die aktuelle Logik ist korrekt — der Schwellwert wird pro Tag/MA geprüft und die Verteilung erfolgt nach geleisteten Stunden. Das muss nur besser sichtbar werden.
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+## Änderungen in `ZtProvision.tsx`
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+1. **Summary-Karte "Abrechnungstage"** → durch **"Σ Stunden"** ersetzen, die die Gesamtstunden aller Mitarbeiter zeigt (`result.totalHours`)
+2. **Neue Zeile/Info** unter den Karten oder als Subtext: kurzer Hinweis wie _"Verteilung nach geleisteten Stunden"_
+3. **Provisions-Spalte in der Tabelle** bleibt — dort sieht man bereits, dass MA mit mehr Stunden mehr Provision bekommen
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
-
-### Aufrufer anpassen
-
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+Nur UI-Anpassung, keine Logik- oder DB-Änderung.
 
