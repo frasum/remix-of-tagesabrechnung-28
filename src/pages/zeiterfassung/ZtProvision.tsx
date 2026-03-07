@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useZt } from "@/contexts/ZtContext";
 import { useRestaurant } from "@/hooks/useRestaurant";
 import { CurrencyInput } from "@/components/shared/CurrencyInput";
-import { Badge } from "@/components/ui/badge";
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Loader2, ChevronDown } from "lucide-react";
