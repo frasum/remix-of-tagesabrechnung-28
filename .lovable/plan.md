@@ -1,24 +1,31 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## Warnung bei Tagesdurchschnitt über 50 €
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+### Kontext
+In `ExcelLayout.tsx` (Zeile 180) wird der Durchschnittsverzehr berechnet: `(pos_total - takeaway_total) / guestCount`. Wenn dieser Wert 50 € überschreitet, soll ein Bestätigungsdialog erscheinen.
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+### Umsetzung
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+**Datei: `src/components/daily-summary/layouts/ExcelLayout.tsx`**
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+1. State für den Warndialog hinzufügen (`showAvgWarning`, `pendingGuestCount`)
+2. Die `onGuestCountChange`-Logik erweitern: Bevor der Wert übernommen wird, den Durchschnitt prüfen. Falls > 50 €, den Dialog öffnen und den Wert erst nach Bestätigung durchreichen.
+3. Einen `AlertDialog` mit Warnung einbauen:
+   - Titel: "Hoher Durchschnittsverzehr"
+   - Text: "Der Durchschnitt pro Gast beträgt X €. Ist das korrekt?"
+   - Buttons: "Abbrechen" (setzt auf vorherigen Wert zurück) / "Bestätigen" (übernimmt den Wert)
 
-### Aufrufer anpassen
+### Ablauf
+```text
+Gästeanzahl eingeben
+  → Durchschnitt berechnen
+  → > 50 € ?
+     ├─ Nein → Wert normal speichern
+     └─ Ja  → AlertDialog anzeigen
+              ├─ Bestätigen → Wert speichern
+              └─ Abbrechen  → alten Wert beibehalten
+```
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+Keine weiteren Dateien betroffen, da die Berechnung und Eingabe vollständig in `ExcelLayout.tsx` stattfinden.
 
