@@ -1,24 +1,38 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+# Wetterdaten-Integration für den Restaurant-Chat
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+## Vorhaben
+Die Open-Meteo API (kostenlos, kein API-Key nötig) wird in die Edge Function integriert, um Wetterdaten für München abzurufen. Die KI kann dann Umsatz-Wetter-Korrelationen analysieren — besonders relevant für Terrassen-Geschäft.
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+## Umsetzung in `supabase/functions/restaurant-chat/index.ts`
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+### 1. Wetterdaten abrufen
+Parallel zu den bestehenden DB-Queries einen `fetch` an Open-Meteo hinzufügen:
+- URL: `https://api.open-meteo.com/v1/forecast?latitude=48.14&longitude=11.58&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=Europe/Berlin&past_days=90&forecast_days=3`
+- Liefert: Temperatur (Max/Min), Niederschlag, Wetter-Code für die letzten 90 Tage + 3 Tage Vorhersage
+- Fehler werden abgefangen — bei API-Ausfall wird der Chat ohne Wetterdaten fortgesetzt
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+### 2. Neuer Kontext-Abschnitt
+```
+=== WETTERDATEN MÜNCHEN (letzte 90 Tage + Vorhersage) ===
+Datum | Max°C | Min°C | Niederschlag-mm | Wetter
+2026-03-07 | 15.7 | 4.2 | 0.0 | Sonnig
+...
+```
+Wetter-Codes werden in lesbare Labels übersetzt (Sonnig, Bewölkt, Regen, Schnee, etc.).
 
-### Aufrufer anpassen
+### 3. Tages-Korrelationstabelle
+Automatische Zusammenführung von Wetter + Umsatz/Gäste pro Tag (letzte 30 Tage):
+```
+=== WETTER-UMSATZ-KORRELATION (letzte 30 Tage) ===
+Datum | Restaurant | Max°C | Niederschlag | Wetter | Umsatz | Gäste
+```
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+### 4. System-Prompt aktualisieren
+- Die Zeile „Bei Wetter-Fragen: Erkläre, dass keine Wetterdaten verfügbar sind..." wird ersetzt durch:
+  - „Die WETTERDATEN zeigen Temperatur und Niederschlag für München. Nutze die WETTER-UMSATZ-KORRELATION um Zusammenhänge zwischen Wetter und Umsatz/Gästezahlen zu analysieren. Besonders relevant für Terrassen-Tage (warm + trocken)."
+
+### Kein API-Key nötig
+Open-Meteo ist komplett kostenlos und öffentlich zugänglich — keine Secrets erforderlich.
 
