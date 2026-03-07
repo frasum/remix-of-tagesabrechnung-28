@@ -58,20 +58,18 @@ const CustomTooltip = ({ active, payload }: any) => {
 export function WaiterTipChart({ data, restaurantNames }: WaiterTipChartProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const hasGroups = useMemo(() => data.some(d => d.restaurantId), [data]);
   const grouped = useMemo(() => {
-    if (!hasGroups || !restaurantNames) return null;
+    if (!restaurantNames) return null;
     const groups: Record<string, WaiterTipStats[]> = {};
     for (const entry of data) {
       const key = entry.restaurantId || '_';
       if (!groups[key]) groups[key] = [];
       groups[key].push(entry);
     }
-    // Sort groups by total tip descending
     return Object.entries(groups)
       .map(([id, items]) => ({ id, name: restaurantNames[id] || id, items: items.sort((a, b) => b.totalTip - a.totalTip) }))
       .sort((a, b) => b.items.reduce((s, i) => s + i.totalTip, 0) - a.items.reduce((s, i) => s + i.totalTip, 0));
-  }, [data, hasGroups, restaurantNames]);
+  }, [data, restaurantNames]);
   
   if (data.length === 0) {
     return (
@@ -182,27 +180,6 @@ export function WaiterTipChart({ data, restaurantNames }: WaiterTipChartProps) {
                     </div>
                   </div>
                 ))}
-              </div>
-            ) : restaurantNames ? (
-              <div className="space-y-4">
-                {(() => {
-                  const groups: Record<string, WaiterTipStats[]> = {};
-                  for (const entry of data) {
-                    const key = entry.restaurantId || '_unknown';
-                    if (!groups[key]) groups[key] = [];
-                    groups[key].push(entry);
-                  }
-                  return Object.entries(groups)
-                    .sort(([, a], [, b]) => b.reduce((s, i) => s + i.totalTip, 0) - a.reduce((s, i) => s + i.totalTip, 0))
-                    .map(([id, items]) => (
-                      <div key={id}>
-                        <h4 className="text-sm font-semibold text-muted-foreground mb-2 px-2">{restaurantNames[id] || id}</h4>
-                        <div className="rounded-lg border overflow-hidden">
-                          {renderTable(items.sort((a, b) => b.totalTip - a.totalTip))}
-                        </div>
-                      </div>
-                    ));
-                })()}
               </div>
             ) : (
               <div className="rounded-lg border overflow-hidden">
