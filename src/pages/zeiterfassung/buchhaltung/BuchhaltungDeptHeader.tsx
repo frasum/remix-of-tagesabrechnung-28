@@ -6,11 +6,12 @@ interface BuchhaltungDeptHeaderProps {
   department: string;
   sfnMode?: SfnMode;
   showSfn?: boolean;
+  showCommission?: boolean;
 }
 
-export default function BuchhaltungDeptHeader({ department, sfnMode = "simple", showSfn = true }: BuchhaltungDeptHeaderProps) {
+export default function BuchhaltungDeptHeader({ department, sfnMode = "simple", showSfn = true, showCommission = false }: BuchhaltungDeptHeaderProps) {
   const sfnCols = showSfn ? (sfnMode === "extended" ? 4 : 3) : 0;
-  const colCount = 7 + sfnCols; // Mitarbeiter + Gesamt + Schichten + U + K + Vorschuss + Besonderheiten + SFN cols
+  const colCount = 7 + sfnCols + (showCommission ? 1 : 0);
   return (
     <tr>
       <td

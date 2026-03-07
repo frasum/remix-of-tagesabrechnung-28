@@ -4,9 +4,10 @@ import type { SfnMode } from "@/hooks/useSfnMode";
 interface Props {
   sfnMode?: SfnMode;
   showSfn?: boolean;
+  showCommission?: boolean;
 }
 
-export default function BuchhaltungTableHead({ sfnMode = "simple", showSfn = true }: Props) {
+export default function BuchhaltungTableHead({ sfnMode = "simple", showSfn = true, showCommission = false }: Props) {
   const isExtended = sfnMode === "extended";
 
   return (
@@ -27,6 +28,7 @@ export default function BuchhaltungTableHead({ sfnMode = "simple", showSfn = tru
         ))}
         <col className="w-[45px]" />
         <col className="w-[40px]" />
+        {showCommission && <col className="w-[75px]" />}
         <col className="w-[85px]" />
         <col className="min-w-[180px]" />
       </colgroup>
@@ -47,6 +49,7 @@ export default function BuchhaltungTableHead({ sfnMode = "simple", showSfn = tru
           ))}
           <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground border-l border-border">U</th>
           <th className="text-center px-2 py-2.5 font-semibold text-xs uppercase text-muted-foreground">K</th>
+          {showCommission && <th className="text-center px-2 py-2.5 font-semibold text-xs text-muted-foreground border-l border-border">Prov.</th>}
           <th className="text-center px-2 py-2.5 font-semibold text-xs text-muted-foreground border-l border-border">Vorschuss</th>
           <th className="text-left px-2 py-2.5 font-semibold text-xs text-muted-foreground">Besonderheiten</th>
         </tr>
