@@ -514,15 +514,24 @@ export default function ZtProvision() {
             Tagesdetails ({dailyBreakdown.length} Tage)
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-3">
-            <Table>
+            <Table className="table-fixed w-full">
+              <colgroup>
+                <col className="w-[18%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[14%]" />
+                <col className="w-[12%]" />
+              </colgroup>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Datum</TableHead>
-                  <TableHead className="text-right">Anzahl der Servicekräfte</TableHead>
-                  <TableHead className="text-right">Service Gesamt Stunden</TableHead>
-                  <TableHead className="text-right">Tagesumsatz</TableHead>
-                  <TableHead className="text-right">Ø pro Servicekraft</TableHead>
-                   <TableHead className="text-right">
+                  <TableHead className="py-4">Datum</TableHead>
+                  <TableHead className="text-right py-4">Anzahl der Servicekräfte</TableHead>
+                  <TableHead className="text-right py-4">Service Gesamt Stunden</TableHead>
+                  <TableHead className="text-right py-4">Tagesumsatz</TableHead>
+                  <TableHead className="text-right py-4">Ø pro Servicekraft</TableHead>
+                   <TableHead className="text-right py-4">
                      <TooltipProvider>
                        <Tooltip>
                          <TooltipTrigger asChild>
@@ -532,7 +541,7 @@ export default function ZtProvision() {
                        </Tooltip>
                      </TooltipProvider>
                    </TableHead>
-                  <TableHead className="text-right">Provision</TableHead>
+                  <TableHead className="text-right py-4">Provision</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -543,8 +552,8 @@ export default function ZtProvision() {
                   const dayCommission = avgPerStaff >= minRevenue ? Math.max(0, (day.revenue - minRevenue * day.staffCount) * (commissionPct / 100)) : 0;
                   return (
                     <TableRow key={day.date}>
-                      <TableCell className="font-medium">{fmtDate(day.date)}</TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className="font-medium py-4">{fmtDate(day.date)}</TableCell>
+                      <TableCell className="text-right tabular-nums py-4">
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -561,13 +570,13 @@ export default function ZtProvision() {
                         </TooltipProvider>
                       </TableCell>
                       <TableCell
-                        className="text-right tabular-nums cursor-pointer hover:text-primary hover:underline underline-offset-4 transition-colors"
+                        className="text-right tabular-nums py-4 cursor-pointer hover:text-primary hover:underline underline-offset-4 transition-colors"
                         onClick={() => navigate(`/${restaurantSlug}/zeiterfassung?date=${day.date}`)}
                       >
                         {fmt(day.hours)}
                       </TableCell>
                       <TableCell
-                        className="text-right tabular-nums cursor-pointer hover:text-primary hover:underline underline-offset-4 transition-colors"
+                        className="text-right tabular-nums py-4 cursor-pointer hover:text-primary hover:underline underline-offset-4 transition-colors"
                         onClick={() => {
                           setSelectedDate(new Date(day.date + "T00:00:00"));
                           navigate(`/${restaurantSlug}`);
@@ -575,13 +584,13 @@ export default function ZtProvision() {
                       >
                         {fmt(day.revenue)}
                       </TableCell>
-                      <TableCell className={`text-right tabular-nums font-medium ${belowThreshold ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
+                      <TableCell className={`text-right tabular-nums py-4 font-medium ${belowThreshold ? "text-destructive" : "text-green-600 dark:text-green-400"}`}>
                         {fmt(avgPerStaff)}
                       </TableCell>
-                       <TableCell className="text-right tabular-nums">
+                       <TableCell className="text-right tabular-nums py-4">
                          {day.allDeptHours > 0 ? `${fmt(hourlyRevenue)} €` : "–"}
                        </TableCell>
-                      <TableCell className={`text-right tabular-nums font-medium ${dayCommission > 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
+                      <TableCell className={`text-right tabular-nums py-4 font-medium ${dayCommission > 0 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`}>
                         {fmt(dayCommission)}
                       </TableCell>
                     </TableRow>
@@ -589,7 +598,7 @@ export default function ZtProvision() {
                 })}
               </TableBody>
               <TableFooter>
-                <TableRow>
+                <TableRow className="border-t-2">
                   <TableCell className="font-semibold">Gesamt</TableCell>
                   <TableCell className="text-right tabular-nums font-semibold">
                     {dailyBreakdown.reduce((s, d) => s + d.staffCount, 0)}

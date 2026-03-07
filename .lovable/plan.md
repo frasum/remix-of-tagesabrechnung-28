@@ -1,27 +1,24 @@
 
 
-## Plan: Darstellung der Tagesdetails-Tabelle verbessern
+## Tooltips für erweiterten SFN-Modus anpassen
 
-Basierend auf dem Screenshot soll die Tabelle visuell aufgewertet werden. Die aktuelle Darstellung nutzt die Standard-`Table`-Komponente mit kompaktem Padding. Der Screenshot zeigt eine luftigere Tabelle mit besserer Lesbarkeit.
+Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
 
-### Änderungen in `src/pages/zeiterfassung/ZtProvision.tsx`
+### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
 
-1. **Größeres Zeilenpadding** — `TableCell` und `TableHead` erhalten mehr vertikalen Abstand (`py-4` statt Standard `p-4`), damit die Zeilen luftiger wirken wie im Screenshot.
+- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
+- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
+- Im Extended-Modus erklären die Tooltips die additive Logik:
 
-2. **Tausender-Trennung bei Umsatz** — Die Werte wie `5710,00` werden bereits korrekt mit `toLocaleString("de-DE")` formatiert. Prüfen, ob alle Spalten konsistent formatiert sind.
+| Spalte | Simple | Extended |
+|--------|--------|----------|
+| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
+| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
+| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
+| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
+| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
 
-3. **Datum linksbündig fett** — Ist bereits so. ✓
+### Aufrufer anpassen
 
-4. **"Ø €/h Umsatz gesamtes Team" mit € Suffix** — Bereits vorhanden. ✓
-
-5. **Provision 0,00 in grauer Farbe, positive in grün** — Bereits implementiert. ✓
-
-6. **Footer-Zeile visuell stärker abgesetzt** — Dickeren oberen Rand (`border-t-2`) für die Gesamt-Zeile.
-
-7. **Spaltenbreiten optimieren** — Mit `colgroup` oder `min-w`-Klassen die Spalten gleichmäßiger verteilen, damit die Tabelle die volle Breite nutzt wie im Screenshot.
-
-8. **Tabelle `table-fixed` Layout** — Damit Spaltenbreiten gleichmäßig verteilt werden.
-
-### Betroffene Datei
-- `src/pages/zeiterfassung/ZtProvision.tsx` (Tagesdetails-Tabelle, Zeilen 517–618)
+`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
 
