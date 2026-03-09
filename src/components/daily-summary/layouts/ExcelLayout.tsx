@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { User, PenLine } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -117,6 +117,10 @@ export function ExcelLayout({
   const [pendingGuestCount, setPendingGuestCount] = useState(0);
   const [pendingAverage, setPendingAverage] = useState(0);
   const [localGuestInput, setLocalGuestInput] = useState(guestCount > 0 ? String(guestCount) : '');
+
+  useEffect(() => {
+    setLocalGuestInput(guestCount > 0 ? String(guestCount) : '');
+  }, [guestCount]);
 
   const handleGuestCountChange = (newCount: number) => {
     if (newCount > 0) {
