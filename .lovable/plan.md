@@ -1,24 +1,28 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## Vorschuss-Quittungsseiten im PDF-Export
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+### Was wird gebaut
+Nach der Hauptseite der Tagesabrechnung wird für jeden Vorschuss eine eigene Seite generiert — eine Quittung, die der Mitarbeiter unterschreiben kann.
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+### Layout jeder Quittungsseite
+- Restaurant-Name + Datum (Header)
+- "Vorschussquittung" als Titel
+- Mitarbeitername und Betrag (groß, prominent)
+- Textblock: "Hiermit bestätige ich, den oben genannten Vorschuss erhalten zu haben."
+- Unterschriftszeile mit Linie und "Datum, Unterschrift"
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+### Technische Änderung
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+**Datei: `src/utils/pdfExport.ts`** — in `generateDailySummaryPDF`, nach dem Footer-Loop (Zeile ~418), vor der Blob-Erstellung:
 
-### Aufrufer anpassen
+Für jeden Eintrag in `data.advances`:
+1. `doc.addPage()`
+2. Zentrierter Header mit Restaurant + Datum
+3. Titel "Vorschussquittung"
+4. Name und Betrag in großer Schrift
+5. Bestätigungstext
+6. Unterschriftslinie unten
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+Die Seitenzahlen im Footer-Loop müssen danach nochmal aktualisiert werden (der Loop läuft über `doc.getNumberOfPages()`), daher wird der Footer-Loop nach dem Hinzufügen der Quittungsseiten ausgeführt.
 
