@@ -248,8 +248,8 @@ export default function ZtPerioden() {
               size="sm"
               variant="outline"
               onClick={() => {
-                const url = `${window.location.origin}/lohnbuero`;
-                navigator.clipboard.writeText(url);
+                const publishedUrl = "https://tagesabrechnung.lovable.app/lohnbuero";
+                navigator.clipboard.writeText(publishedUrl);
                 toast.success("Portal-URL kopiert!");
               }}
             >
