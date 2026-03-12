@@ -138,6 +138,7 @@ Deno.serve(async (req) => {
       if (matchedId) {
         // Update existing
         payload.name = displayName;
+        payload.nickname = displayName;
         if (persoNr) payload.perso_nr = persoNr;
         const { error } = await supabase
           .from("staff")
@@ -153,6 +154,7 @@ Deno.serve(async (req) => {
         // Create new
         const { error } = await supabase.from("staff").insert({
           name: displayName,
+          nickname: displayName,
           perso_nr: persoNr || null,
           role: "waiter",
           ...payload,
