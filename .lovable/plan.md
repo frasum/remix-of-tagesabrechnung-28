@@ -1,24 +1,23 @@
 
 
-## Tooltips für erweiterten SFN-Modus anpassen
+## Problem
 
-Aktuell zeigen die Tooltips nur den Zuschlagsprozentsatz. Im erweiterten (§3b) Modus sollen sie zusätzlich erklären, dass die Zuschläge additiv berechnet werden.
+Der Mitarbeitername in der Zeiterfassung stimmt nicht, obwohl er in der Mitarbeiterkartei (Spitzname-Feld) geändert wurde.
 
-### Änderung in `src/components/zeiterfassung/SfnTooltipHeader.tsx`
+**Ursache**: Die Zeiterfassung zeigt `nickname` (ein separates DB-Feld) mit höchster Priorität an. Das Spitzname-Feld im StaffDialog schreibt aber in `staff.name`. Wenn `nickname` gesetzt ist (z.B. durch thaitime-Import), überschreibt es den geänderten `name`-Wert in der Anzeige.
 
-- Neues optionales Prop `sfnMode?: SfnMode` hinzufügen
-- Zwei Tooltip-Text-Sets: eins für "simple", eins für "extended"
-- Im Extended-Modus erklären die Tooltips die additive Logik:
+Beispiel: `nickname = "net"`, `name = "gunc"` → ZT zeigt "net" statt "gunc".
 
-| Spalte | Simple | Extended |
-|--------|--------|----------|
-| 20–24 | 25 % Nachtzuschlag | 25 % Nachtzuschlag (20:00–00:00) — additiv zu So/Fei-Zuschlägen |
-| 24–x | 40 % Nachtzuschlag | 40 % Nachtzuschlag (00:00–04:00) — additiv zu So/Fei-Zuschlägen |
-| So/Fei | 50 % Sonn- und Feiertagszuschlag | *(nicht im Extended-Modus)* |
-| So | *(nicht im Simple-Modus)* | 50 % Sonntagszuschlag (§3b EStG) |
-| Fei | *(nicht im Simple-Modus)* | 125 % Feiertag / 150 % besondere Feiertage (1. Mai, 25./26.12.) |
+## Lösung
 
-### Aufrufer anpassen
+Beim Speichern eines Mitarbeiters `nickname` automatisch auf den gleichen Wert wie `name` (Spitzname) setzen. So wird der im Dialog eingegebene Spitzname sofort auch in der Zeiterfassung sichtbar.
 
-`BuchhaltungTableHead.tsx`, `ZtWochenplan.tsx`, `ZtZusammenfassung.tsx` — das `sfnMode`-Prop an `SfnTooltipHeader` durchreichen, wo es bereits verfügbar ist.
+### Änderungen
+
+**`src/hooks/useStaff.ts`** – In `useCreateStaff` und `useUpdateStaff`:
+- Beim Insert/Update `nickname` auf den Wert von `name` setzen (damit beide Felder synchron bleiben).
+
+Das betrifft zwei Stellen:
+1. `useCreateStaff` → `staffData` um `nickname: staffData.name` ergänzen
+2. `useUpdateStaff` → `staffData` um `nickname: staffData.name` ergänzen (falls `name` mitgeschickt wird)
 
