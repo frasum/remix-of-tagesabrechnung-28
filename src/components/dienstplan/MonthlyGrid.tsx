@@ -99,6 +99,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
               const dateMonth = parseInt(date.split('-')[1], 10);
               const isPrevMonth = dateMonth !== month + 1;
               const isFirstOfMonth = day === 1;
+              const dayShiftCount = shifts.filter(s => s.shift_date === date).length;
               return (
                 <th
                   key={date}
@@ -108,6 +109,9 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                 >
                   <div>{weekday}</div>
                   <div className="font-bold">{day}</div>
+                  {dayShiftCount > 0 && (
+                    <div className="text-[9px] text-muted-foreground font-normal">{dayShiftCount}</div>
+                  )}
                 </th>
               );
             })}
