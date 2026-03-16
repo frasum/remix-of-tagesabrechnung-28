@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Users, Plus, ChefHat, UtensilsCrossed, Search, Trophy, ChevronDown, UserPlus, List, LayoutGrid } from 'lucide-react';
-import { toast } from 'sonner';
+import { Users, ChefHat, UtensilsCrossed, Search, Trophy, ChevronDown, UserPlus } from 'lucide-react';
 import { GlobalLayout } from '@/components/layout/GlobalLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableHead, TableBody, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { StaffTableRow } from '@/components/staff/StaffTableRow';
 import { StaffDialog } from '@/components/staff/StaffDialogNative';
 import { TipRanking } from '@/components/waiter/TipRanking';
 import { StaffMatrixView } from '@/components/staff/StaffMatrixView';
