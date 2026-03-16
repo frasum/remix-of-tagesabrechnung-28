@@ -81,6 +81,11 @@ function RestaurantRoutes() {
             <Route path="brutto-netto" element={<ZtBruttoNetto />} />
             <Route path="provision" element={<ZtProvision />} />
           </Route>
+          <Route path="dienstplan" element={<ProtectedRoute requiredLevel="manager"><DienstplanLayout /></ProtectedRoute>}>
+            <Route index element={<DienstplanKueche />} />
+            <Route path="kueche" element={<DienstplanKueche />} />
+            <Route path="service" element={<DienstplanService />} />
+          </Route>
           <Route path="chat" element={<ProtectedRoute requiredLevel="admin"><RestaurantChat /></ProtectedRoute>} />
         </Routes>
       </DateProvider>
