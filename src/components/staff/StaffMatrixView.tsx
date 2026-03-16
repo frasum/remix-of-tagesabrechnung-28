@@ -145,7 +145,6 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
               const staffSkills = employeeSkillMap.get(s.id) ?? new Set();
               const staffDepts = allDeptsPerStaff.get(s.id) ?? new Set();
               const permLevel = (s.permission_level || 'staff') as PermissionLevel;
-              const permLevel = (s.permission_level || 'staff') as PermissionLevel;
 
               return (
                 <TableRow key={s.id} className={cn("group", !s.is_active && 'opacity-50')}>
