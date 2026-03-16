@@ -30,6 +30,7 @@ const filterTabs: { value: FilterTab; label: string; icon: typeof Users }[] = [
 export default function StaffManagement() {
   const [filter, setFilter] = useState<FilterTab>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [deleteStaff, setDeleteStaff] = useState<Staff | null>(null);
