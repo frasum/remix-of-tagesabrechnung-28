@@ -69,6 +69,19 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
     return map;
   }, [employeeSkills]);
 
+  // Flat set of all departments per staff (across all restaurants)
+  const allDeptsPerStaff = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const [staffId, rMap] of deptMapByStaff) {
+      const allDepts = new Set<string>();
+      for (const depts of rMap.values()) {
+        for (const d of depts) allDepts.add(d);
+      }
+      map.set(staffId, allDepts);
+    }
+    return map;
+  }, [deptMapByStaff]);
+
   const handleDeptToggle = async (staffId: string, restaurantId: string, dept: string, isAssigned: boolean) => {
     try {
       if (isAssigned) {
