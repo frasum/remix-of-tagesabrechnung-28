@@ -92,6 +92,27 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
         if (sr) {
           await supabase.from('staff_restaurants').delete().eq('id', sr.id);
         }
+
+        // Check if this was the last assignment for this dept across all restaurants
+        const remainingForDept = staffMember?.staff_restaurants?.filter(
+          x => x.zt_department === dept && x.id !== sr?.id
+        );
+        if (!remainingForDept?.length) {
+          // Auto-remove skills whose category matches the removed dept
+          const deptToCategory: Record<string, string> = { 'Küche': 'kitchen', 'Service': 'service', 'GL': 'gl' };
+          const cat = deptToCategory[dept];
+          if (cat) {
+            const staffSkillIds = employeeSkillMap.get(staffId) ?? new Set();
+            const skillsToRemove = skills.filter(sk => sk.category === cat && staffSkillIds.has(sk.id));
+            for (const sk of skillsToRemove) {
+              await supabase.from('employee_skills').delete().eq('staff_id', staffId).eq('skill_id', sk.id);
+            }
+            if (skillsToRemove.length) {
+              queryClient.invalidateQueries({ queryKey: ['employee_skills'] });
+              toast.info(`${skillsToRemove.map(s => s.name).join(', ')} automatisch entfernt`);
+            }
+          }
+        }
       } else {
         await supabase
           .from('staff_restaurants')
@@ -216,15 +237,14 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  disabled={isDisabled && !has}
+                                  disabled={isDisabled}
                                   onClick={() => {
-                                    if (isDisabled && !has) return;
+                                    if (isDisabled) return;
                                     toggleSkill.mutate({ staffId: s.id, skillId: skill.id, hasSkill: has });
                                   }}
                                   className={cn(
                                     'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold transition-all border',
-                                    isDisabled && !has && 'cursor-not-allowed opacity-20',
-                                    isDisabled && has && 'cursor-pointer ring-1 ring-destructive/50',
+                                    isDisabled && 'cursor-not-allowed opacity-20',
                                     !isDisabled && has
                                       ? 'text-white border-transparent cursor-pointer'
                                       : !isDisabled && !has
@@ -238,13 +258,11 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
                               </TooltipTrigger>
                               <TooltipContent>
                                 <p className="text-xs">
-                                  {isDisabled && !has
+                                  {isDisabled
                                     ? `Erst Abteilung „${requiredDept}" zuweisen`
-                                    : isDisabled && has
-                                      ? `Abteilung „${requiredDept}" fehlt – Skill entfernen?`
-                                      : has
-                                        ? `${skill.name} entfernen`
-                                        : `${skill.name} zuweisen`}
+                                    : has
+                                      ? `${skill.name} entfernen`
+                                      : `${skill.name} zuweisen`}
                                 </p>
                               </TooltipContent>
                             </Tooltip>
