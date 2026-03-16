@@ -1,0 +1,1 @@
+CREATE INDEX idx_shift_assignments_restaurant_dept_date ON public.shift_assignments (restaurant_id, department, shift_date);
