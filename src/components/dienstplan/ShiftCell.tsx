@@ -17,6 +17,7 @@ interface ShiftCellProps {
   employeeSkillIds: string[];
   onAbsence?: () => void;
   isFocused?: boolean;
+  isToday?: boolean;
 }
 
 export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
