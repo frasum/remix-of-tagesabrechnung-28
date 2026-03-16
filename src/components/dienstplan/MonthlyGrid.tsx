@@ -145,6 +145,11 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                       restaurantId={restaurantId}
                       skills={skills}
                       employeeSkillIds={empSkillIds}
+                      onAbsence={() => setAbsenceTarget({
+                        staffId: emp.id,
+                        staffName: emp.name,
+                        absence: absence || undefined,
+                      })}
                     />
                   );
                 })}
@@ -159,6 +164,16 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
           )}
         </tbody>
       </table>
+
+      {absenceTarget && (
+        <AbsenceDialog
+          open={!!absenceTarget}
+          onOpenChange={(open) => { if (!open) setAbsenceTarget(null); }}
+          staffId={absenceTarget.staffId}
+          staffName={absenceTarget.staffName}
+          absence={absenceTarget.absence}
+        />
+      )}
     </div>
   );
 }
