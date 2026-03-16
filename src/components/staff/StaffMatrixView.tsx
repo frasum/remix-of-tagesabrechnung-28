@@ -325,5 +325,24 @@ export function StaffMatrixView({ staff, restaurants, onEdit, onDelete }: StaffM
         </TooltipProvider>
       </div>
     </Card>
+
+    <AlertDialog open={!!pendingSkillRemoval} onOpenChange={() => setPendingSkillRemoval(null)}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Skills ebenfalls entfernen?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {pendingSkillRemoval?.staffName} hat keine Abteilungszuweisung mehr für diese Kategorie. 
+            Sollen die zugehörigen Skills ({pendingSkillRemoval?.skillNames.join(', ')}) ebenfalls entfernt werden?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Beibehalten</AlertDialogCancel>
+          <AlertDialogAction onClick={handleConfirmSkillRemoval}>
+            Skills entfernen
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
