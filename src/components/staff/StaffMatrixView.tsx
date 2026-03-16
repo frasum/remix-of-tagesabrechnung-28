@@ -42,7 +42,7 @@ const categoryToDept: Record<string, string> = {
   gl: 'GL',
 };
 
-export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewProps) {
+export function StaffMatrixView({ staff, restaurants, onEdit, onDelete }: StaffMatrixViewProps) {
   const queryClient = useQueryClient();
   const { data: skills = [] } = useSkills();
   const staffIds = useMemo(() => staff.map(s => s.id), [staff]);
