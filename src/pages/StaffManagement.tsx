@@ -260,8 +260,14 @@ export default function StaffManagement() {
           </Card>
         )}
 
-        {/* Staff Table */}
-        {filteredStaff.length === 0 ? (
+        {/* Staff Table / Matrix */}
+        {viewMode === 'matrix' ? (
+          <StaffMatrixView
+            staff={filteredStaff}
+            restaurants={restaurants}
+            onEdit={handleEdit}
+          />
+        ) : filteredStaff.length === 0 ? (
           <Card className="border-dashed border-2">
             <CardContent className="py-16 text-center">
               <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
