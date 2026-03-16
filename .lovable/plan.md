@@ -1,20 +1,19 @@
 
+## Dienstplan – 2 Pläne pro Standort (Küche + Service/GL)
 
-## Problem: Doppelte Namen im Trinkgeld-Ranking
+### Status: ✅ Implementiert
 
-Das Ranking gruppiert Kellner nach dem rohen `waiter_name`-String. Unterschiedliche Schreibweisen desselben Namens (z.B. "Pongsri" vs "PONGSRI", oder Leerzeichen-Unterschiede) erzeugen separate Einträge.
+### Was wurde gebaut
 
-Der `useMonthlyStaffTips`-Hook hat dieses Problem bereits gelöst — dort wird primär nach `staff_id` gruppiert, mit Fallback auf normalisierte Namen und einer `canonicalNames`-Map.
+- **Datenbank**: 4 neue Tabellen (`skills`, `employee_skills`, `shift_assignments`, `absences`) + `contracted_hours_per_month` auf `staff`
+- **7 Seed-Skills**: VS, PASS, SPÜLEN, CO (Küche), SERVICE, BAR (Service), GL
+- **Routing**: `/:restaurant/dienstplan/kueche` und `/:restaurant/dienstplan/service`
+- **Sidebar**: "Dienstplan" unter Tagesgeschäft
+- **Grid-UI**: Monatsansicht mit Skill-farbcodierten Zellen, Inline-Edit via Popover, Skill-Besetzungszeile (Küche)
+- **Hooks**: `useSkills`, `useDienstplan` für CRUD
 
-## Lösung
+### Nächste Schritte
 
-**Datei: `src/hooks/useWaiterRanking.ts`**
-
-1. **Staff-Tabelle laden** — `staff.id`, `staff.name` abfragen, um eine `canonicalNames`-Map (lowercase → Anzeigename) und `nameToStaffId`-Map zu bauen.
-
-2. **Gruppierung ändern** — Statt `shift.waiter_name` als Key wird `shift.staff_id` verwendet (falls vorhanden), mit Fallback auf den normalisierten Namen (`toLowerCase().trim()`).
-
-3. **Deduplizierung** — Beim Aufbau der `waiterData`-Map den stabilen Key (staff_id oder normalisierter Name) nutzen. Am Ende den kanonischen Anzeigenamen aus der Staff-Tabelle verwenden.
-
-Dies entspricht exakt dem bewährten Muster aus `useMonthlyStaffTips`.
-
+- Employee-Skills zuweisen (UI in Mitarbeiterverwaltung)
+- AbsenceDialog für mehrtägige Abwesenheiten
+- Dienstplan-Filter nach Skill
