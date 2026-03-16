@@ -1,19 +1,32 @@
 
-## Dienstplan – 2 Pläne pro Standort (Küche + Service/GL)
 
-### Status: ✅ Implementiert
+## Scrollbar dauerhaft sichtbar machen
 
-### Was wurde gebaut
+Eine CSS-Klasse auf den `overflow-x-auto`-Container in `MonthlyGrid.tsx` anwenden, die die Scrollbar immer anzeigt.
 
-- **Datenbank**: 4 neue Tabellen (`skills`, `employee_skills`, `shift_assignments`, `absences`) + `contracted_hours_per_month` auf `staff`
-- **7 Seed-Skills**: VS, PASS, SPÜLEN, CO (Küche), SERVICE, BAR (Service), GL
-- **Routing**: `/:restaurant/dienstplan/kueche` und `/:restaurant/dienstplan/service`
-- **Sidebar**: "Dienstplan" unter Tagesgeschäft
-- **Grid-UI**: Monatsansicht mit Skill-farbcodierten Zellen, Inline-Edit via Popover, Skill-Besetzungszeile (Küche)
-- **Hooks**: `useSkills`, `useDienstplan` für CRUD
+### Änderung
 
-### Nächste Schritte
+**`src/index.css`** — Neue Utility-Klasse hinzufügen:
+```css
+.scrollbar-always-visible {
+  overflow-x: scroll !important;
+}
+.scrollbar-always-visible::-webkit-scrollbar {
+  height: 8px;
+  display: block;
+}
+.scrollbar-always-visible::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+.scrollbar-always-visible::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+.scrollbar-always-visible::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+```
 
-- Employee-Skills zuweisen (UI in Mitarbeiterverwaltung)
-- AbsenceDialog für mehrtägige Abwesenheiten
-- Dienstplan-Filter nach Skill
+**`src/components/dienstplan/MonthlyGrid.tsx`** — Die Klasse `scrollbar-always-visible` zum äußeren Container hinzufügen (ersetzt `overflow-x-auto`).
+
