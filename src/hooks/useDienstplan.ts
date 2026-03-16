@@ -152,3 +152,20 @@ export function useDeleteAbsence() {
     },
   });
 }
+
+export function useBatchInsertShifts() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (shifts: Omit<ShiftAssignment, 'id'>[]) => {
+      if (shifts.length === 0) return;
+      const { error } = await supabase
+        .from('shift_assignments')
+        .insert(shifts);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shift_assignments'] });
+    },
+  });
+}

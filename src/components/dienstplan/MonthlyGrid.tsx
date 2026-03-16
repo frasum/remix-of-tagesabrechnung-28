@@ -1,18 +1,17 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef, useCallback } from 'react';
 import { useShiftAssignments, useAbsences } from '@/hooks/useDienstplan';
 import { useSkills, useEmployeeSkills } from '@/hooks/useSkills';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useRestaurantEmployees } from '@/hooks/useRestaurantEmployees';
 import { ShiftCell } from './ShiftCell';
 import { getPeriodRange } from '@/lib/periodUtils';
-
 import { SkillCoverageRow } from './SkillCoverageRow';
 import { AbsenceDialog } from './AbsenceDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface MonthlyGridProps {
   department: 'kitchen' | 'service';
-  month: number; // 0-indexed
+  month: number;
   year: number;
 }
 
@@ -37,7 +36,6 @@ function formatDayHeader(dateStr: string) {
   const isSunday = d.getDay() === 0;
   return { day, weekday, isSunday };
 }
-
 
 export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
   const { restaurantId } = useRestaurant();
@@ -68,6 +66,72 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
 
   const [absenceTarget, setAbsenceTarget] = useState<{ staffId: string; staffName: string; absence?: any } | null>(null);
 
+  // Keyboard navigation
+  const [focusedCell, setFocusedCell] = useState<[number, number] | null>(null);
+  const cellRefs = useRef<Map<string, HTMLTableCellElement>>(new Map());
+
+  const setCellRef = useCallback((rowIdx: number, colIdx: number, el: HTMLTableCellElement | null) => {
+    const key = `${rowIdx}-${colIdx}`;
+    if (el) {
+      cellRefs.current.set(key, el);
+    } else {
+      cellRefs.current.delete(key);
+    }
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!focusedCell) {
+      if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        setFocusedCell([0, 0]);
+        e.preventDefault();
+      }
+      return;
+    }
+
+    const [row, col] = focusedCell;
+    const maxRow = filteredEmployees.length - 1;
+    const maxCol = dates.length - 1;
+    let newRow = row;
+    let newCol = col;
+
+    switch (e.key) {
+      case 'ArrowUp':
+        newRow = Math.max(0, row - 1);
+        e.preventDefault();
+        break;
+      case 'ArrowDown':
+        newRow = Math.min(maxRow, row + 1);
+        e.preventDefault();
+        break;
+      case 'ArrowLeft':
+        newCol = Math.max(0, col - 1);
+        e.preventDefault();
+        break;
+      case 'ArrowRight':
+        newCol = Math.min(maxCol, col + 1);
+        e.preventDefault();
+        break;
+      case 'Enter':
+      case ' ': {
+        e.preventDefault();
+        const cellEl = cellRefs.current.get(`${row}-${col}`);
+        const btn = cellEl?.querySelector('button');
+        btn?.click();
+        return;
+      }
+      case 'Escape':
+        setFocusedCell(null);
+        e.preventDefault();
+        return;
+      default:
+        return;
+    }
+
+    setFocusedCell([newRow, newCol]);
+    const nextEl = cellRefs.current.get(`${newRow}-${newCol}`);
+    nextEl?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [focusedCell, filteredEmployees.length, dates.length]);
+
   const getAbsenceForDay = (staffId: string, date: string) => {
     return absences.find(a =>
       a.staff_id === staffId && a.start_date <= date && a.end_date >= date
@@ -88,7 +152,12 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
 
   return (
     <div className="overflow-x-auto border rounded-lg min-w-0 max-w-full">
-      <table className="text-sm w-full border-collapse">
+      <table
+        className="text-sm w-full border-collapse"
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        onFocus={() => { if (!focusedCell) setFocusedCell([0, 0]); }}
+      >
         <thead>
           <tr className="bg-muted/50">
             <th className="p-2 text-left text-xs font-semibold sticky left-0 bg-muted/50 z-10 min-w-[160px]">
@@ -119,7 +188,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
           </tr>
         </thead>
         <tbody>
-          {filteredEmployees.map(emp => {
+          {filteredEmployees.map((emp, empIdx) => {
             const empSkillIds = allEmployeeSkills
               .filter(es => es.staff_id === emp.id)
               .map(es => es.skill_id);
@@ -131,13 +200,15 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                 <td className="p-2 sticky left-0 bg-background z-10 border border-border/50">
                   <span className="font-medium text-xs">{emp.name}</span>
                 </td>
-                {dates.map(date => {
+                {dates.map((date, dateIdx) => {
                   const shift = shifts.find(s => s.staff_id === emp.id && s.shift_date === date);
                   const absence = getAbsenceForDay(emp.id, date);
+                  const isFocused = focusedCell?.[0] === empIdx && focusedCell?.[1] === dateIdx;
 
                   return (
                     <ShiftCell
                       key={date}
+                      ref={(el) => setCellRef(empIdx, dateIdx, el)}
                       shift={shift}
                       absenceType={absence?.absence_type}
                       staffId={emp.id}
@@ -146,6 +217,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                       restaurantId={restaurantId}
                       skills={skills}
                       employeeSkillIds={empSkillIds}
+                      isFocused={isFocused}
                       onAbsence={() => setAbsenceTarget({
                         staffId: emp.id,
                         staffName: emp.name,
