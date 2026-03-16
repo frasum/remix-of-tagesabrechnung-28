@@ -1,19 +1,28 @@
 
-## Dienstplan – 2 Pläne pro Standort (Küche + Service/GL)
 
-### Status: ✅ Implementiert
+## Skills nur bei passender Abteilungszuweisung auswählbar machen
 
-### Was wurde gebaut
+### Mapping: Skill-Kategorie → Abteilung
 
-- **Datenbank**: 4 neue Tabellen (`skills`, `employee_skills`, `shift_assignments`, `absences`) + `contracted_hours_per_month` auf `staff`
-- **7 Seed-Skills**: VS, PASS, SPÜLEN, CO (Küche), SERVICE, BAR (Service), GL
-- **Routing**: `/:restaurant/dienstplan/kueche` und `/:restaurant/dienstplan/service`
-- **Sidebar**: "Dienstplan" unter Tagesgeschäft
-- **Grid-UI**: Monatsansicht mit Skill-farbcodierten Zellen, Inline-Edit via Popover, Skill-Besetzungszeile (Küche)
-- **Hooks**: `useSkills`, `useDienstplan` für CRUD
+Die `skills`-Tabelle hat ein `category`-Feld mit den Werten `kitchen`, `service`, `gl`. Diese müssen auf die `zt_department`-Werte gemappt werden:
 
-### Nächste Schritte
+| Skill-Kategorie | Benötigte Abteilung |
+|-----------------|---------------------|
+| `kitchen`       | `Küche`             |
+| `service`       | `Service`           |
+| `gl`            | `GL`                |
 
-- Employee-Skills zuweisen (UI in Mitarbeiterverwaltung)
-- AbsenceDialog für mehrtägige Abwesenheiten
-- Dienstplan-Filter nach Skill
+### Änderungen in `StaffMatrixView.tsx`
+
+1. **Mapping-Objekt** anlegen: `{ kitchen: 'Küche', service: 'Service', gl: 'GL' }`
+
+2. **Alle zugewiesenen Abteilungen** pro Mitarbeiter sammeln (über alle Restaurants hinweg) — aus dem bestehenden `deptMapByStaff` eine flache `Set<department>` pro Staff ableiten.
+
+3. **Skill-Buttons** deaktivieren, wenn der Mitarbeiter nicht in der passenden Abteilung ist:
+   - `disabled` setzen + reduzierte Opacity + Tooltip "Erst Abteilung X zuweisen"
+   - Falls der Skill bereits zugewiesen ist aber die Abteilung entfernt wurde: Skill weiterhin anzeigen, aber visuell als Warnung markieren
+
+### Auswirkung
+
+Nur in der Matrix-Ansicht. Der Dienstplan filtert bereits automatisch nach `employeeSkillIds`, d.h. wenn ein Skill nicht zugewiesen werden kann, taucht er auch im Dienstplan nicht auf.
+
