@@ -43,7 +43,7 @@ export default function StaffManagement() {
   const { data: allStaff = [], isLoading } = useStaff(undefined, { includeLinkedProfiles: true });
   const createMutation = useCreateStaff();
   const updateMutation = useUpdateStaff();
-  const deleteMutation = useDeleteStaff();
+  const deactivateMutation = useDeactivateStaff();
   const { data: rankings = [], isLoading: rankingsLoading } = useWaiterRanking();
 
   const rankingMap = new Map(rankings.map(r => [r.name.toLowerCase(), r]));
