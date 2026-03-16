@@ -87,7 +87,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
   }
 
   return (
-    <div className="overflow-x-auto border rounded-lg">
+    <div className="overflow-x-auto border rounded-lg min-w-0 max-w-full">
       <table className="text-sm w-full border-collapse">
         <thead>
           <tr className="bg-muted/50">
