@@ -17,6 +17,7 @@ interface ShiftEditPopoverProps {
   skills: Skill[];
   employeeSkillIds: string[];
   onClose: () => void;
+  onAbsence?: () => void;
 }
 
 export function ShiftEditPopover({
