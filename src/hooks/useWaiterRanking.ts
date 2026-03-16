@@ -15,73 +15,66 @@ export function useWaiterRanking() {
   return useQuery({
     queryKey: ['waiter-ranking'],
     queryFn: async (): Promise<WaiterRankingItem[]> => {
-      // 1. Load all sessions ordered by date
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('sessions')
-        .select('id, session_date')
-        .order('session_date', { ascending: false });
-      
-      if (sessionsError) throw sessionsError;
-      if (!sessions || sessions.length === 0) return [];
+      // 1. Load staff for canonical names and id mapping
+      const [sessionsResult, shiftsResult, staffResult] = await Promise.all([
+        supabase.from('sessions').select('id, session_date').order('session_date', { ascending: false }),
+        supabase.from('waiter_shifts').select('session_id, waiter_name, staff_id, pos_sales, hilf_mahl, open_invoices, card_total, cash_handed_in, kitchen_tip, participates_in_pool'),
+        supabase.from('staff').select('id, name'),
+      ]);
 
-      // 2. Load all waiter shifts
-      const { data: allShifts, error: shiftsError } = await supabase
-        .from('waiter_shifts')
-        .select('session_id, waiter_name, pos_sales, hilf_mahl, open_invoices, card_total, cash_handed_in, kitchen_tip, participates_in_pool');
-      
-      if (shiftsError) throw shiftsError;
-      if (!allShifts || allShifts.length === 0) return [];
+      if (sessionsResult.error) throw sessionsResult.error;
+      if (shiftsResult.error) throw shiftsResult.error;
 
-      // 3. Group shifts by session for pool calculation
-      const shiftsBySession: Record<string, WaiterShift[]> = {};
-      for (const shift of allShifts) {
-        if (!shiftsBySession[shift.session_id]) {
-          shiftsBySession[shift.session_id] = [];
+      const sessions = sessionsResult.data;
+      const allShifts = shiftsResult.data;
+      if (!sessions?.length || !allShifts?.length) return [];
+
+      // Build canonical name and id maps
+      const nameToStaffId: Record<string, string> = {};
+      const canonicalNames: Record<string, string> = {};
+      if (staffResult.data) {
+        for (const s of staffResult.data) {
+          const normalized = s.name.toLowerCase().trim();
+          nameToStaffId[normalized] = s.id;
+          canonicalNames[normalized] = s.name;
         }
-        shiftsBySession[shift.session_id].push(shift as WaiterShift);
       }
 
-      // 4. Create session order map (most recent first)
+      const waiterKey = (shift: { staff_id?: string | null; waiter_name: string }) =>
+        shift.staff_id || nameToStaffId[shift.waiter_name.toLowerCase().trim()] || shift.waiter_name.toLowerCase().trim();
+
+      // 2. Group shifts by session
+      const shiftsBySession: Record<string, typeof allShifts> = {};
+      for (const shift of allShifts) {
+        if (!shiftsBySession[shift.session_id]) shiftsBySession[shift.session_id] = [];
+        shiftsBySession[shift.session_id].push(shift);
+      }
+
+      // 3. Session order map
       const sessionOrder = new Map<string, number>();
       sessions.forEach((s, idx) => sessionOrder.set(s.id, idx));
 
-      // 5. Calculate tip percent for each waiter in each session
-      type WaiterSessionData = {
-        tipPercent: number;
-        sessionOrder: number;
-      };
-      const waiterData: Record<string, WaiterSessionData[]> = {};
+      // 4. Calculate tip percent per waiter per session
+      type WaiterSessionData = { tipPercent: number; sessionOrder: number };
+      const waiterData: Record<string, { displayName: string; sessions: WaiterSessionData[] }> = {};
 
       for (const sessionId of Object.keys(shiftsBySession)) {
         const sessionShifts = shiftsBySession[sessionId];
-        if (sessionShifts.length === 0) continue;
-
-        // Calculate session pool (same logic as WaiterCashUp)
-        const sessionPool = sessionShifts.reduce((sum, shift) => {
-          const expected = (shift.pos_sales || 0) + (shift.hilf_mahl || 0) - (shift.open_invoices || 0) - (shift.card_total || 0);
-          const contribution = (shift.cash_handed_in || 0) - expected - (shift.kitchen_tip || 0);
-          return sum + contribution;
-        }, 0);
-
-        const sharePerWaiter = sessionPool / sessionShifts.length;
+        if (!sessionShifts.length) continue;
         const order = sessionOrder.get(sessionId) ?? 999;
 
-        // Aggregate per waiter
         for (const shift of sessionShifts) {
-          const name = shift.waiter_name;
+          const key = waiterKey(shift);
           const sales = shift.pos_sales || 0;
-          
-          // Berechne Gesamt-Trinkgeld vor Küchenabzug
-          const expected = (shift.pos_sales || 0) + (shift.hilf_mahl || 0) 
-                           - (shift.open_invoices || 0) - (shift.card_total || 0);
+          const expected = (shift.pos_sales || 0) + (shift.hilf_mahl || 0) - (shift.open_invoices || 0) - (shift.card_total || 0);
           const totalTip = (shift.cash_handed_in || 0) - expected;
-          
           const tipPercent = sales > 0 ? (totalTip / sales) * 100 : 0;
 
-          if (!waiterData[name]) {
-            waiterData[name] = [];
+          if (!waiterData[key]) {
+            const normalized = shift.waiter_name.toLowerCase().trim();
+            waiterData[key] = { displayName: canonicalNames[normalized] || shift.waiter_name, sessions: [] };
           }
-          waiterData[name].push({ tipPercent, sessionOrder: order });
+          waiterData[key].sessions.push({ tipPercent, sessionOrder: order });
         }
       }
 
