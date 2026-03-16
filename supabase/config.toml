@@ -53,3 +53,6 @@ verify_jwt = false
 
 [functions.calculate-payroll]
 verify_jwt = false
+
+[functions.sync-thaitime-staff]
+verify_jwt = false
