@@ -21,6 +21,7 @@ export const NAV_PERMISSIONS: Record<string, PermissionConfig> = {
   'zeiterfassung/zusammenfassung': { label: 'ZE – Zusammenfassung', description: 'Zusammenfassung einsehen', minLevel: 'manager' },
   'zeiterfassung/buchhaltung': { label: 'ZE – Buchhaltung', description: 'Buchhaltungsexport', minLevel: 'manager' },
   'zeiterfassung/perioden': { label: 'ZE – Perioden', description: 'Perioden verwalten', minLevel: 'manager' },
+  'dienstplan': { label: 'Dienstplan', description: 'Dienstplan einsehen/bearbeiten', minLevel: 'manager' },
   'staff': { label: 'Mitarbeiter', description: 'Mitarbeiter verwalten', minLevel: 'admin' },
   'permissions': { label: 'Berechtigungen', description: 'Navigationszugriff verwalten', minLevel: 'admin' },
 };
