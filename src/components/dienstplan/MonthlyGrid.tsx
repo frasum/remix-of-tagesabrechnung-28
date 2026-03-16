@@ -6,6 +6,7 @@ import { useRestaurantEmployees } from '@/hooks/useRestaurantEmployees';
 import { ShiftCell } from './ShiftCell';
 import { SkillBadge } from './SkillBadge';
 import { SkillCoverageRow } from './SkillCoverageRow';
+import { AbsenceDialog } from './AbsenceDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface MonthlyGridProps {
