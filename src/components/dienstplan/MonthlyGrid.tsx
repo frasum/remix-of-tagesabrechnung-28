@@ -33,14 +33,6 @@ function formatDayHeader(dateStr: string) {
   return { day, weekday, isSunday };
 }
 
-function calcHours(startTime: string | null, endTime: string | null): number {
-  if (!startTime || !endTime) return 0;
-  const [sh, sm] = startTime.split(':').map(Number);
-  const [eh, em] = endTime.split(':').map(Number);
-  let hours = eh + em / 60 - (sh + sm / 60);
-  if (hours < 0) hours += 24;
-  return hours;
-}
 
 export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
   const { restaurantId } = useRestaurant();
@@ -106,7 +98,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                 </th>
               );
             })}
-            <th className="p-2 text-center text-xs font-semibold min-w-[60px] border border-border/50">Σ Std</th>
+            <th className="p-2 text-center text-xs font-semibold min-w-[60px] border border-border/50">Σ</th>
           </tr>
         </thead>
         <tbody>
@@ -115,9 +107,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
               .filter(es => es.staff_id === emp.id)
               .map(es => es.skill_id);
 
-            const totalHours = shifts
-              .filter(s => s.staff_id === emp.id)
-              .reduce((sum, s) => sum + calcHours(s.start_time, s.end_time), 0);
+            const shiftCount = shifts.filter(s => s.staff_id === emp.id).length;
 
             return (
               <tr key={emp.id} className="hover:bg-muted/30">
@@ -148,7 +138,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                   );
                 })}
                 <td className="p-2 text-center text-xs font-semibold border border-border/50">
-                  {totalHours.toFixed(1)}h
+                  {shiftCount}
                 </td>
               </tr>
             );

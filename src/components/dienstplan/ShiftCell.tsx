@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ShiftEditPopover } from './ShiftEditPopover';
-import type { ShiftAssignment } from '@/hooks/useDienstplan';
+import { useUpsertShift, useDeleteShift, type ShiftAssignment } from '@/hooks/useDienstplan';
 import type { Skill } from '@/hooks/useSkills';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { X } from 'lucide-react';
 
 interface ShiftCellProps {
   shift?: ShiftAssignment;
@@ -15,11 +16,6 @@ interface ShiftCellProps {
   skills: Skill[];
   employeeSkillIds: string[];
   onAbsence?: () => void;
-}
-
-function formatTime(t: string | null) {
-  if (!t) return '';
-  return t.substring(0, 5);
 }
 
 export function ShiftCell({
@@ -34,11 +30,16 @@ export function ShiftCell({
   onAbsence,
 }: ShiftCellProps) {
   const [open, setOpen] = useState(false);
+  const upsertShift = useUpsertShift();
+  const deleteShift = useDeleteShift();
 
   const assignedSkill = shift?.assigned_skill_id
     ? skills.find(s => s.id === shift.assigned_skill_id)
     : null;
 
+  const availableSkills = skills.filter(s => employeeSkillIds.includes(s.id));
+
+  // Absence cell (no popover needed, click opens absence dialog)
   if (absenceType && !shift) {
     const isVacation = absenceType === 'vacation';
     return (
@@ -54,50 +55,122 @@ export function ShiftCell({
     );
   }
 
+  const handleSkillSelect = (skillId: string | null) => {
+    setOpen(false);
+    upsertShift.mutate(
+      {
+        id: shift?.id,
+        staff_id: staffId,
+        restaurant_id: restaurantId,
+        department,
+        shift_date: date,
+        start_time: null,
+        end_time: null,
+        assigned_skill_id: skillId,
+        notes: shift?.notes || null,
+      },
+      {
+        onError: () => toast.error('Fehler beim Speichern'),
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    if (!shift?.id) return;
+    setOpen(false);
+    deleteShift.mutate(shift.id);
+  };
+
+  // No skills assigned → simple toggle
+  if (availableSkills.length === 0) {
+    return (
+      <td className="p-0 min-w-[52px] border border-border/50">
+        <button
+          className={cn(
+            'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors',
+            shift
+              ? 'bg-primary/10 text-primary font-semibold hover:bg-primary/20'
+              : 'hover:bg-muted/50 text-muted-foreground/40'
+          )}
+          onClick={() => {
+            if (shift) {
+              handleDelete();
+            } else {
+              handleSkillSelect(null);
+            }
+          }}
+        >
+          {shift ? '✓' : '+'}
+        </button>
+      </td>
+    );
+  }
+
   return (
     <td className="p-0 min-w-[52px] border border-border/50">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             className={cn(
-              'w-full h-full min-h-[40px] text-xs flex flex-col items-center justify-center gap-0.5 transition-colors',
-              shift
-                ? 'hover:opacity-80'
-                : 'hover:bg-muted/50 text-muted-foreground'
+              'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors'
             )}
             style={assignedSkill ? { backgroundColor: assignedSkill.color + '20' } : undefined}
           >
-            {shift ? (
-              <>
-                {assignedSkill && (
-                  <span
-                    className="text-[10px] font-bold text-white px-1 rounded"
-                    style={{ backgroundColor: assignedSkill.color }}
-                  >
-                    {assignedSkill.name}
-                  </span>
-                )}
-                <span className="text-[10px] text-muted-foreground">
-                  {formatTime(shift.start_time)}–{formatTime(shift.end_time)}
-                </span>
-              </>
+            {assignedSkill ? (
+              <span
+                className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded"
+                style={{ backgroundColor: assignedSkill.color }}
+              >
+                {assignedSkill.name}
+              </span>
             ) : (
               <span className="text-muted-foreground/40">+</span>
             )}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-64 p-3" align="start">
-          <ShiftEditPopover
-            shift={shift}
-            staffId={staffId}
-            date={date}
-            department={department}
-            restaurantId={restaurantId}
-            skills={skills}
-            employeeSkillIds={employeeSkillIds}
-            onClose={() => setOpen(false)}
-            onAbsence={onAbsence}
-          />
+        <PopoverContent className="w-auto min-w-[120px] p-1.5" align="start">
+          <div className="flex flex-col gap-1">
+            {availableSkills.map(s => (
+              <button
+                key={s.id}
+                onClick={() => handleSkillSelect(s.id)}
+                className={cn(
+                  'flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium transition-colors text-left',
+                  shift?.assigned_skill_id === s.id
+                    ? 'ring-2 ring-offset-1 ring-primary/50'
+                    : 'hover:bg-muted'
+                )}
+                style={
+                  shift?.assigned_skill_id === s.id
+                    ? { backgroundColor: s.color + '20' }
+                    : undefined
+                }
+              >
+                <span
+                  className="w-3 h-3 rounded-full shrink-0"
+                  style={{ backgroundColor: s.color }}
+                />
+                {s.name}
+              </button>
+            ))}
+            {shift && (
+              <button
+                onClick={handleDelete}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <X className="w-3 h-3" />
+                Frei
+              </button>
+            )}
+            {onAbsence && (
+              <button
+                onClick={() => { setOpen(false); onAbsence(); }}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded text-xs text-muted-foreground hover:bg-muted transition-colors border-t border-border/50 mt-0.5 pt-1.5"
+              >
+                Abwesenheit
+              </button>
+            )}
+          </div>
         </PopoverContent>
       </Popover>
     </td>
