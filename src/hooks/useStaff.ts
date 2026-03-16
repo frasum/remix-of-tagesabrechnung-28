@@ -38,6 +38,7 @@ export function hasRole(role: StaffRole, check: 'waiter' | 'kitchen' | 'gl'): bo
 }
 
 export interface StaffRestaurant {
+  id: string;
   restaurant_id: string;
   zt_department: string | null;
   restaurants: {
@@ -145,6 +146,7 @@ export function useStaff(role?: StaffRole, options?: { includeLinkedProfiles?: b
         .select(`
           *,
           staff_restaurants (
+            id,
             restaurant_id,
             zt_department,
             restaurants (
@@ -236,6 +238,7 @@ export function useActiveStaff(role?: StaffRole) {
         .select(`
           *,
           staff_restaurants (
+            id,
             restaurant_id,
             zt_department,
             restaurants (
@@ -291,6 +294,7 @@ export function useActiveStaffByRestaurant(restaurantId: string | null, role?: S
         .select(`
           *,
           staff_restaurants (
+            id,
             restaurant_id,
             zt_department,
             restaurants (

@@ -41,6 +41,19 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
   const toggleSkill = useToggleEmployeeSkill();
   const updateRole = useUpdateUserRole();
 
+  const deptMapByStaff = useMemo(() => {
+    const map = new Map<string, Map<string, Set<string>>>();
+    for (const s of staff) {
+      const rMap = new Map<string, Set<string>>();
+      for (const sr of s.staff_restaurants ?? []) {
+        if (!rMap.has(sr.restaurant_id)) rMap.set(sr.restaurant_id, new Set());
+        if (sr.zt_department) rMap.get(sr.restaurant_id)!.add(sr.zt_department);
+      }
+      map.set(s.id, rMap);
+    }
+    return map;
+  }, [staff]);
+
   const employeeSkillMap = useMemo(() => {
     const map = new Map<string, Set<string>>();
     for (const es of employeeSkills) {
@@ -50,38 +63,24 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
     return map;
   }, [employeeSkills]);
 
-  const handleRestaurantToggle = async (staffMember: Staff, restaurantId: string, isAssigned: boolean) => {
+  const handleDeptToggle = async (staffId: string, restaurantId: string, dept: string, isAssigned: boolean) => {
     try {
       if (isAssigned) {
-        await supabase
-          .from('staff_restaurants')
-          .delete()
-          .eq('staff_id', staffMember.id)
-          .eq('restaurant_id', restaurantId);
+        const staffMember = staff.find(s => s.id === staffId);
+        const sr = staffMember?.staff_restaurants?.find(
+          x => x.restaurant_id === restaurantId && x.zt_department === dept
+        );
+        if (sr) {
+          await supabase.from('staff_restaurants').delete().eq('id', sr.id);
+        }
       } else {
         await supabase
           .from('staff_restaurants')
-          .insert({ staff_id: staffMember.id, restaurant_id: restaurantId });
+          .insert({ staff_id: staffId, restaurant_id: restaurantId, zt_department: dept as 'Service' | 'Küche' | 'GL' });
       }
       queryClient.invalidateQueries({ queryKey: ['staff'] });
     } catch {
-      toast.error('Fehler bei Restaurant-Zuweisung');
-    }
-  };
-
-  const handleDeptChange = async (staffMember: Staff, restaurantId: string, dept: string | null) => {
-    try {
-      const sr = staffMember.staff_restaurants?.find(r => r.restaurant_id === restaurantId);
-      if (sr) {
-        await supabase
-          .from('staff_restaurants')
-          .update({ zt_department: dept as 'Service' | 'Küche' | 'GL' | null })
-          .eq('staff_id', staffMember.id)
-          .eq('restaurant_id', restaurantId);
-        queryClient.invalidateQueries({ queryKey: ['staff'] });
-      }
-    } catch {
-      toast.error('Fehler bei Abteilungsänderung');
+      toast.error('Fehler bei Abteilungszuweisung');
     }
   };
 
@@ -106,7 +105,7 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
           </TableHeader>
           <TableBody>
             {staff.map(s => {
-              const assignedRestaurants = new Set(s.staff_restaurants?.map(sr => sr.restaurant_id) ?? []);
+              const staffDeptMap = deptMapByStaff.get(s.id) ?? new Map();
               const staffSkills = employeeSkillMap.get(s.id) ?? new Set();
               const permLevel = (s.permission_level || 'staff') as PermissionLevel;
 
@@ -145,36 +144,22 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
                     </Select>
                   </TableCell>
 
-                  {/* Restaurants with dept */}
+                  {/* Restaurants with dept checkboxes */}
                   {restaurants.map(r => {
-                    const isAssigned = assignedRestaurants.has(r.id);
-                    const sr = s.staff_restaurants?.find(x => x.restaurant_id === r.id);
-                    const dept = sr?.zt_department ?? null;
-
+                    const depts = staffDeptMap.get(r.id) ?? new Set();
                     return (
                       <TableCell key={r.id} className="text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <Checkbox
-                            checked={isAssigned}
-                            onCheckedChange={() => handleRestaurantToggle(s, r.id, isAssigned)}
-                            className="mx-auto"
-                          />
-                          {isAssigned && (
-                            <Select
-                              value={dept ?? 'none'}
-                              onValueChange={(val) => handleDeptChange(s, r.id, val === 'none' ? null : val)}
-                            >
-                              <SelectTrigger className="h-6 text-[10px] w-[70px] px-1">
-                                <SelectValue placeholder="—" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none" className="text-[11px]">—</SelectItem>
-                                {deptOptions.map(d => (
-                                  <SelectItem key={d} value={d} className="text-[11px]">{d}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
+                        <div className="flex flex-col items-start gap-1">
+                          {deptOptions.map(d => (
+                            <label key={d} className="flex items-center gap-1.5 cursor-pointer text-[11px]">
+                              <Checkbox
+                                checked={depts.has(d)}
+                                onCheckedChange={() => handleDeptToggle(s.id, r.id, d, depts.has(d))}
+                                className="h-3.5 w-3.5"
+                              />
+                              <span>{d}</span>
+                            </label>
+                          ))}
                         </div>
                       </TableCell>
                     );
