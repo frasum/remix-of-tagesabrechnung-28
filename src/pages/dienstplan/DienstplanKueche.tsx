@@ -12,7 +12,7 @@ export default function DienstplanKueche() {
     <div className="space-y-4">
       <DienstplanToolbar month={month} year={year} department="kitchen" onMonthChange={(m, y) => { setMonth(m); setYear(y); }} />
       <MonthlyGrid department="kitchen" month={month} year={year} />
-      <DienstplanLegend category="kitchen" />
+      
     </div>
   );
 }

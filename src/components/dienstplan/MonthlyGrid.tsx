@@ -232,9 +232,6 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
               </tr>
             );
           })}
-          {department === 'kitchen' && (
-            <SkillCoverageRow dates={dates} shifts={shifts} skills={skills} category="kitchen" />
-          )}
         </tbody>
       </table>
 
