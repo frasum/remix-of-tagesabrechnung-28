@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, FormEvent } from 'react';
-import { Store, Link2, Unlink, Smartphone, Loader2, Shield, ChevronDown } from 'lucide-react';
+import { Store, Link2, Unlink, Smartphone, Loader2, Shield, ChevronDown, Utensils } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -15,12 +15,65 @@ import { useUserRole, useUpdateUserRole } from '@/hooks/useUserRole';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PermissionLevel } from '@/types/permissions';
 import { PERMISSION_LEVEL_INFO } from '@/types/permissions';
+import { useSkills, useEmployeeSkills, useToggleEmployeeSkill } from '@/hooks/useSkills';
+import { SkillBadge } from '@/components/dienstplan/SkillBadge';
 interface StaffDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   staff?: Staff | null;
   onSave: (data: StaffInput) => void;
   isLoading?: boolean;
+}
+
+function SkillsSection({ staffId }: { staffId: string }) {
+  const { data: skills = [] } = useSkills();
+  const { data: empSkills = [] } = useEmployeeSkills([staffId]);
+  const toggleSkill = useToggleEmployeeSkill();
+
+  const empSkillIds = empSkills.filter(es => es.staff_id === staffId).map(es => es.skill_id);
+
+  return (
+    <>
+      <Separator />
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-1 group">
+          <Label className="text-base font-semibold cursor-pointer flex items-center gap-2">
+            <Utensils className="w-4 h-4 text-primary" />
+            Skills / Posten
+          </Label>
+          <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-3">
+          <div className="flex flex-wrap gap-2">
+            {skills.map(skill => {
+              const hasSkill = empSkillIds.includes(skill.id);
+              return (
+                <button
+                  key={skill.id}
+                  type="button"
+                  onClick={() => toggleSkill.mutate({ staffId, skillId: skill.id, hasSkill })}
+                  className={`
+                    inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium
+                    border-2 transition-all cursor-pointer
+                    ${hasSkill
+                      ? 'border-transparent text-white shadow-sm'
+                      : 'border-border bg-background text-muted-foreground hover:border-muted-foreground/50'
+                    }
+                  `}
+                  style={hasSkill ? { backgroundColor: skill.color } : undefined}
+                >
+                  {skill.name}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Skills bestimmen, welche Posten im Dienstplan zugewiesen werden können.
+          </p>
+        </CollapsibleContent>
+      </Collapsible>
+    </>
+  );
 }
 
 /**
@@ -389,6 +442,9 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
             </div>
             <Switch id="staff-pool" checked={participatesInPool} onCheckedChange={setParticipatesInPool} />
           </div>
+
+          {/* Skills Section - only for existing staff */}
+          {staff && <SkillsSection staffId={staff.id} />}
 
           {/* Payroll Data Section - collapsible */}
           <Separator />
