@@ -268,19 +268,19 @@ export default function StaffManagement() {
       <AlertDialog open={!!deleteStaff} onOpenChange={() => setDeleteStaff(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Mitarbeiter löschen?</AlertDialogTitle>
+            <AlertDialogTitle>Mitarbeiter deaktivieren?</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchten Sie "{deleteStaff?.name}" wirklich löschen? 
-              Diese Aktion kann nicht rückgängig gemacht werden.
+              „{deleteStaff?.name}" wird deaktiviert und erscheint nicht mehr in der Übersicht. 
+              Alle bisherigen Daten (Schichten, Zeiterfassung etc.) bleiben erhalten.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Abbrechen</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmDelete}
+              onClick={handleConfirmDeactivate}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleteMutation.isPending ? 'Löschen...' : 'Löschen'}
+              {deactivateMutation.isPending ? 'Deaktiviere...' : 'Deaktivieren'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
