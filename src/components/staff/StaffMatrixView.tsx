@@ -33,6 +33,12 @@ const permLabels: Record<PermissionLevel, string> = {
 
 const deptOptions = ['Service', 'Küche', 'GL'] as const;
 
+const categoryToDept: Record<string, string> = {
+  kitchen: 'Küche',
+  service: 'Service',
+  gl: 'GL',
+};
+
 export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewProps) {
   const queryClient = useQueryClient();
   const { data: skills = [] } = useSkills();
@@ -62,6 +68,19 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
     }
     return map;
   }, [employeeSkills]);
+
+  // Flat set of all departments per staff (across all restaurants)
+  const allDeptsPerStaff = useMemo(() => {
+    const map = new Map<string, Set<string>>();
+    for (const [staffId, rMap] of deptMapByStaff) {
+      const allDepts = new Set<string>();
+      for (const depts of rMap.values()) {
+        for (const d of depts) allDepts.add(d);
+      }
+      map.set(staffId, allDepts);
+    }
+    return map;
+  }, [deptMapByStaff]);
 
   const handleDeptToggle = async (staffId: string, restaurantId: string, dept: string, isAssigned: boolean) => {
     try {
@@ -124,6 +143,7 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
             {staff.map(s => {
               const staffDeptMap = deptMapByStaff.get(s.id) ?? new Map();
               const staffSkills = employeeSkillMap.get(s.id) ?? new Set();
+              const staffDepts = allDeptsPerStaff.get(s.id) ?? new Set();
               const permLevel = (s.permission_level || 'staff') as PermissionLevel;
 
               return (
@@ -188,17 +208,28 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
                       <TooltipProvider delayDuration={300}>
                         {skills.map(skill => {
                           const has = staffSkills.has(skill.id);
+                          const requiredDept = categoryToDept[skill.category];
+                          const hasDept = requiredDept ? staffDepts.has(requiredDept) : true;
+                          const isDisabled = !hasDept;
                           return (
                             <Tooltip key={skill.id}>
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  onClick={() => toggleSkill.mutate({ staffId: s.id, skillId: skill.id, hasSkill: has })}
+                                  disabled={isDisabled && !has}
+                                  onClick={() => {
+                                    if (isDisabled && !has) return;
+                                    toggleSkill.mutate({ staffId: s.id, skillId: skill.id, hasSkill: has });
+                                  }}
                                   className={cn(
-                                    'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold transition-all cursor-pointer border',
-                                    has
-                                      ? 'text-white border-transparent'
-                                      : 'bg-transparent border-dashed opacity-30 hover:opacity-60'
+                                    'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold transition-all border',
+                                    isDisabled && !has && 'cursor-not-allowed opacity-20',
+                                    isDisabled && has && 'cursor-pointer ring-1 ring-destructive/50',
+                                    !isDisabled && has
+                                      ? 'text-white border-transparent cursor-pointer'
+                                      : !isDisabled && !has
+                                        ? 'bg-transparent border-dashed opacity-30 hover:opacity-60 cursor-pointer'
+                                        : ''
                                   )}
                                   style={has ? { backgroundColor: skill.color, borderColor: skill.color } : { borderColor: skill.color, color: skill.color }}
                                 >
@@ -206,7 +237,15 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p className="text-xs">{has ? `${skill.name} entfernen` : `${skill.name} zuweisen`}</p>
+                                <p className="text-xs">
+                                  {isDisabled && !has
+                                    ? `Erst Abteilung „${requiredDept}" zuweisen`
+                                    : isDisabled && has
+                                      ? `Abteilung „${requiredDept}" fehlt – Skill entfernen?`
+                                      : has
+                                        ? `${skill.name} entfernen`
+                                        : `${skill.name} zuweisen`}
+                                </p>
                               </TooltipContent>
                             </Tooltip>
                           );
