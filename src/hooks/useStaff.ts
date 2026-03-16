@@ -238,6 +238,7 @@ export function useActiveStaff(role?: StaffRole) {
         .select(`
           *,
           staff_restaurants (
+            id,
             restaurant_id,
             zt_department,
             restaurants (
