@@ -86,6 +86,14 @@ export function StaffMatrixView({ staff, restaurants, onEdit, onDelete }: StaffM
     return map;
   }, [deptMapByStaff]);
 
+  // State for skill removal confirmation
+  const [pendingSkillRemoval, setPendingSkillRemoval] = useState<{
+    staffId: string;
+    staffName: string;
+    skillNames: string[];
+    execute: () => Promise<void>;
+  } | null>(null);
+
   const handleDeptToggle = async (staffId: string, restaurantId: string, dept: string, isAssigned: boolean) => {
     try {
       if (isAssigned) {
@@ -102,18 +110,25 @@ export function StaffMatrixView({ staff, restaurants, onEdit, onDelete }: StaffM
           x => x.zt_department === dept && x.id !== sr?.id
         );
         if (!remainingForDept?.length) {
-          // Auto-remove skills whose category matches the removed dept
           const deptToCategory: Record<string, string> = { 'Küche': 'kitchen', 'Service': 'service', 'GL': 'gl' };
           const cat = deptToCategory[dept];
           if (cat) {
             const staffSkillIds = employeeSkillMap.get(staffId) ?? new Set();
             const skillsToRemove = skills.filter(sk => sk.category === cat && staffSkillIds.has(sk.id));
-            for (const sk of skillsToRemove) {
-              await supabase.from('employee_skills').delete().eq('staff_id', staffId).eq('skill_id', sk.id);
-            }
             if (skillsToRemove.length) {
-              queryClient.invalidateQueries({ queryKey: ['employee_skills'] });
-              toast.info(`${skillsToRemove.map(s => s.name).join(', ')} automatisch entfernt`);
+              // Show confirmation instead of auto-removing
+              setPendingSkillRemoval({
+                staffId,
+                staffName: staffMember?.name ?? '',
+                skillNames: skillsToRemove.map(s => s.name),
+                execute: async () => {
+                  for (const sk of skillsToRemove) {
+                    await supabase.from('employee_skills').delete().eq('staff_id', staffId).eq('skill_id', sk.id);
+                  }
+                  queryClient.invalidateQueries({ queryKey: ['employee_skills'] });
+                  toast.info(`${skillsToRemove.map(s => s.name).join(', ')} entfernt`);
+                },
+              });
             }
           }
         }
@@ -125,6 +140,13 @@ export function StaffMatrixView({ staff, restaurants, onEdit, onDelete }: StaffM
       queryClient.invalidateQueries({ queryKey: ['staff'] });
     } catch {
       toast.error('Fehler bei Abteilungszuweisung');
+    }
+  };
+
+  const handleConfirmSkillRemoval = async () => {
+    if (pendingSkillRemoval) {
+      await pendingSkillRemoval.execute();
+      setPendingSkillRemoval(null);
     }
   };
 
