@@ -143,6 +143,8 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
             {staff.map(s => {
               const staffDeptMap = deptMapByStaff.get(s.id) ?? new Map();
               const staffSkills = employeeSkillMap.get(s.id) ?? new Set();
+              const staffDepts = allDeptsPerStaff.get(s.id) ?? new Set();
+              const permLevel = (s.permission_level || 'staff') as PermissionLevel;
               const permLevel = (s.permission_level || 'staff') as PermissionLevel;
 
               return (
