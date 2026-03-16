@@ -64,6 +64,8 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
   const staffIds = filteredEmployees.map(e => e.id);
   const { data: absences = [] } = useAbsences(staffIds, startDate, endDate);
 
+  const [absenceTarget, setAbsenceTarget] = useState<{ staffId: string; staffName: string; absence?: any } | null>(null);
+
   const getAbsenceForDay = (staffId: string, date: string) => {
     return absences.find(a =>
       a.staff_id === staffId && a.start_date <= date && a.end_date >= date
