@@ -105,7 +105,7 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
           </TableHeader>
           <TableBody>
             {staff.map(s => {
-              const assignedRestaurants = new Set(s.staff_restaurants?.map(sr => sr.restaurant_id) ?? []);
+              const staffDeptMap = deptMapByStaff.get(s.id) ?? new Map();
               const staffSkills = employeeSkillMap.get(s.id) ?? new Set();
               const permLevel = (s.permission_level || 'staff') as PermissionLevel;
 
@@ -144,36 +144,22 @@ export function StaffMatrixView({ staff, restaurants, onEdit }: StaffMatrixViewP
                     </Select>
                   </TableCell>
 
-                  {/* Restaurants with dept */}
+                  {/* Restaurants with dept checkboxes */}
                   {restaurants.map(r => {
-                    const isAssigned = assignedRestaurants.has(r.id);
-                    const sr = s.staff_restaurants?.find(x => x.restaurant_id === r.id);
-                    const dept = sr?.zt_department ?? null;
-
+                    const depts = staffDeptMap.get(r.id) ?? new Set();
                     return (
                       <TableCell key={r.id} className="text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <Checkbox
-                            checked={isAssigned}
-                            onCheckedChange={() => handleRestaurantToggle(s, r.id, isAssigned)}
-                            className="mx-auto"
-                          />
-                          {isAssigned && (
-                            <Select
-                              value={dept ?? 'none'}
-                              onValueChange={(val) => handleDeptChange(s, r.id, val === 'none' ? null : val)}
-                            >
-                              <SelectTrigger className="h-6 text-[10px] w-[70px] px-1">
-                                <SelectValue placeholder="—" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none" className="text-[11px]">—</SelectItem>
-                                {deptOptions.map(d => (
-                                  <SelectItem key={d} value={d} className="text-[11px]">{d}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
+                        <div className="flex flex-col items-start gap-1">
+                          {deptOptions.map(d => (
+                            <label key={d} className="flex items-center gap-1.5 cursor-pointer text-[11px]">
+                              <Checkbox
+                                checked={depts.has(d)}
+                                onCheckedChange={() => handleDeptToggle(s.id, r.id, d, depts.has(d))}
+                                className="h-3.5 w-3.5"
+                              />
+                              <span>{d}</span>
+                            </label>
+                          ))}
                         </div>
                       </TableCell>
                     );

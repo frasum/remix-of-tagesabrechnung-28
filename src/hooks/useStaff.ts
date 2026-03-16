@@ -294,6 +294,7 @@ export function useActiveStaffByRestaurant(restaurantId: string | null, role?: S
         .select(`
           *,
           staff_restaurants (
+            id,
             restaurant_id,
             zt_department,
             restaurants (
