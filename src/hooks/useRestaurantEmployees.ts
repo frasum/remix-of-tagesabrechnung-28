@@ -17,9 +17,10 @@ export function useRestaurantEmployees(restaurantId: string) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_restaurants")
-        .select("zt_department, staff_id, staff!inner(id, name, perso_nr, first_name, last_name, nickname)")
+        .select("zt_department, staff_id, staff!inner(id, name, perso_nr, first_name, last_name, nickname, is_active)")
         .eq("restaurant_id", restaurantId)
-        .not("zt_department", "is", null);
+        .not("zt_department", "is", null)
+        .eq("staff.is_active", true);
       if (error) throw error;
 
       return (data as any[]).map((row) => ({
