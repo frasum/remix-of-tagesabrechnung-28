@@ -5,7 +5,7 @@ import { useRestaurant } from '@/hooks/useRestaurant';
 import { useRestaurantEmployees } from '@/hooks/useRestaurantEmployees';
 import { ShiftCell } from './ShiftCell';
 import { getPeriodRange } from '@/lib/periodUtils';
-import { SkillCoverageRow } from './SkillCoverageRow';
+
 import { AbsenceDialog } from './AbsenceDialog';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -232,9 +232,6 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
               </tr>
             );
           })}
-          {department === 'kitchen' && (
-            <SkillCoverageRow dates={dates} shifts={shifts} skills={skills} category="kitchen" />
-          )}
         </tbody>
       </table>
 
