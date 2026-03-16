@@ -29,6 +29,7 @@ export function ShiftEditPopover({
   skills,
   employeeSkillIds,
   onClose,
+  onAbsence,
 }: ShiftEditPopoverProps) {
   const [startTime, setStartTime] = useState(shift?.start_time?.substring(0, 5) || '16:00');
   const [endTime, setEndTime] = useState(shift?.end_time?.substring(0, 5) || '23:00');
