@@ -114,7 +114,6 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
             const empSkillIds = allEmployeeSkills
               .filter(es => es.staff_id === emp.id)
               .map(es => es.skill_id);
-            const empSkills = skills.filter(s => empSkillIds.includes(s.id));
 
             const totalHours = shifts
               .filter(s => s.staff_id === emp.id)
