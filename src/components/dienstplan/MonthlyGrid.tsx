@@ -40,6 +40,10 @@ function formatDayHeader(dateStr: string) {
 export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
   const { restaurantId } = useRestaurant();
   const dates = useMemo(() => getPeriodDates(month, year), [year, month]);
+  const todayStr = useMemo(() => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+  }, []);
   const startDate = dates[0];
   const endDate = dates[dates.length - 1];
 
