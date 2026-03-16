@@ -62,9 +62,9 @@ export default function StaffManagement() {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const waiterCount = allStaff.filter(s => hasRole(s.role, 'waiter')).length;
-  const kitchenCount = allStaff.filter(s => hasRole(s.role, 'kitchen')).length;
-  const counts: Record<FilterTab, number> = { all: allStaff.length, waiter: waiterCount, kitchen: kitchenCount };
+  const waiterCount = activeStaff.filter(s => hasRole(s.role, 'waiter')).length;
+  const kitchenCount = activeStaff.filter(s => hasRole(s.role, 'kitchen')).length;
+  const counts: Record<FilterTab, number> = { all: activeStaff.length, waiter: waiterCount, kitchen: kitchenCount };
 
   useEffect(() => {
     if (!selectedRankingRestaurantId && restaurants.length > 0) {
