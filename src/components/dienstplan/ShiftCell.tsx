@@ -117,7 +117,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   }
 
   return (
-    <td ref={ref} className={cn('p-0 min-w-[52px] border border-border/50', focusRing)}>
+    <td ref={ref} className={cn('p-0 min-w-[52px] border border-border/50', todayBg, focusRing)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
