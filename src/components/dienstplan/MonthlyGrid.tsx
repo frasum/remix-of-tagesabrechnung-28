@@ -106,7 +106,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                 </th>
               );
             })}
-            <th className="p-2 text-center text-xs font-semibold min-w-[60px] border border-border/50">Σ Std</th>
+            <th className="p-2 text-center text-xs font-semibold min-w-[60px] border border-border/50">Σ</th>
           </tr>
         </thead>
         <tbody>
