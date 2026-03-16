@@ -168,6 +168,18 @@ export default function StaffManagement() {
             })}
           </div>
 
+          {inactiveStaff.length > 0 && (
+            <Button
+              variant={showInactive ? "secondary" : "outline"}
+              size="sm"
+              className="gap-1.5 shrink-0"
+              onClick={() => setShowInactive(!showInactive)}
+            >
+              {showInactive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{showInactive ? 'Inaktive ausblenden' : 'Inaktive anzeigen'}</span>
+              <span className="sm:hidden">{inactiveStaff.length}</span>
+            </Button>
+          )}
         </div>
 
         {/* Tip Ranking Toggle */}
