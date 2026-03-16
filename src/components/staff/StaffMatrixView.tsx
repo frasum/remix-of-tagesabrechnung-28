@@ -25,6 +25,7 @@ interface StaffMatrixViewProps {
   staff: Staff[];
   restaurants: Restaurant[];
   onEdit: (staff: Staff) => void;
+  onDelete: (staff: Staff) => void;
 }
 
 const permLabels: Record<PermissionLevel, string> = {
