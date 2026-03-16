@@ -44,6 +44,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   const availableSkills = skills.filter(s => employeeSkillIds.includes(s.id));
 
   const focusRing = isFocused ? 'ring-2 ring-primary ring-inset' : '';
+  const todayBg = isToday ? 'bg-primary/5' : '';
 
   // Absence cell
   if (absenceType && !shift) {
