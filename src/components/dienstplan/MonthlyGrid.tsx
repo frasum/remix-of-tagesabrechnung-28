@@ -148,7 +148,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                   );
                 })}
                 <td className="p-2 text-center text-xs font-semibold border border-border/50">
-                  {totalHours.toFixed(1)}h
+                  {shiftCount}
                 </td>
               </tr>
             );
