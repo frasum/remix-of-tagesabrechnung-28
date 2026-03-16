@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Users, Plus, ChefHat, UtensilsCrossed, Search, Trophy, ChevronDown, UserPlus, Download } from 'lucide-react';
+import { Users, Plus, ChefHat, UtensilsCrossed, Search, Trophy, ChevronDown, UserPlus, Download, List, LayoutGrid } from 'lucide-react';
 import { toast } from 'sonner';
 import { getAuthHeaders } from '@/lib/authToken';
 import { GlobalLayout } from '@/components/layout/GlobalLayout';
