@@ -16,7 +16,7 @@ export default function DienstplanLayout() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
+      <div className="space-y-4 min-w-0 overflow-hidden">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-2xl font-bold">Dienstplan</h1>
           <Tabs value={currentTab} onValueChange={handleTabChange}>
