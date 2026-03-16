@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useUpsertShift, useDeleteShift, type ShiftAssignment } from '@/hooks/useDienstplan';
 import type { Skill } from '@/hooks/useSkills';
@@ -16,9 +16,10 @@ interface ShiftCellProps {
   skills: Skill[];
   employeeSkillIds: string[];
   onAbsence?: () => void;
+  isFocused?: boolean;
 }
 
-export function ShiftCell({
+export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   shift,
   absenceType,
   staffId,
@@ -28,7 +29,8 @@ export function ShiftCell({
   skills,
   employeeSkillIds,
   onAbsence,
-}: ShiftCellProps) {
+  isFocused,
+}, ref) => {
   const [open, setOpen] = useState(false);
   const upsertShift = useUpsertShift();
   const deleteShift = useDeleteShift();
@@ -39,15 +41,19 @@ export function ShiftCell({
 
   const availableSkills = skills.filter(s => employeeSkillIds.includes(s.id));
 
-  // Absence cell (no popover needed, click opens absence dialog)
+  const focusRing = isFocused ? 'ring-2 ring-primary ring-inset' : '';
+
+  // Absence cell
   if (absenceType && !shift) {
     const isVacation = absenceType === 'vacation';
     return (
       <td
+        ref={ref}
         onClick={onAbsence}
         className={cn(
           'text-center text-xs font-semibold p-1 min-w-[52px] cursor-pointer border border-border/50',
-          isVacation ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+          isVacation ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800',
+          focusRing
         )}
       >
         {isVacation ? 'U' : 'K'}
@@ -84,7 +90,7 @@ export function ShiftCell({
   // No skills assigned → simple toggle
   if (availableSkills.length === 0) {
     return (
-      <td className="p-0 min-w-[52px] border border-border/50">
+      <td ref={ref} className={cn('p-0 min-w-[52px] border border-border/50', focusRing)}>
         <button
           className={cn(
             'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors',
@@ -92,6 +98,7 @@ export function ShiftCell({
               ? 'bg-primary/10 text-primary font-semibold hover:bg-primary/20'
               : 'hover:bg-muted/50 text-muted-foreground/40'
           )}
+          tabIndex={-1}
           onClick={() => {
             if (shift) {
               handleDelete();
@@ -107,13 +114,14 @@ export function ShiftCell({
   }
 
   return (
-    <td className="p-0 min-w-[52px] border border-border/50">
+    <td ref={ref} className={cn('p-0 min-w-[52px] border border-border/50', focusRing)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             className={cn(
               'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors'
             )}
+            tabIndex={-1}
             style={assignedSkill ? { backgroundColor: assignedSkill.color + '20' } : undefined}
           >
             {assignedSkill ? (
@@ -175,4 +183,6 @@ export function ShiftCell({
       </Popover>
     </td>
   );
-}
+});
+
+ShiftCell.displayName = 'ShiftCell';
