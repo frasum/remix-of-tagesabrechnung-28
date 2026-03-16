@@ -14,6 +14,7 @@ interface ShiftCellProps {
   restaurantId: string;
   skills: Skill[];
   employeeSkillIds: string[];
+  onAbsence?: () => void;
 }
 
 function formatTime(t: string | null) {
