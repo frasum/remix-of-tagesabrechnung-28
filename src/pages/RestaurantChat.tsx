@@ -30,6 +30,7 @@ export default function RestaurantChat() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { data: restaurants = [] } = useRestaurants();
@@ -43,6 +44,13 @@ export default function RestaurantChat() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Loading timer
+  useEffect(() => {
+    if (!isLoading) { setLoadingSeconds(0); return; }
+    const interval = setInterval(() => setLoadingSeconds(s => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -275,8 +283,15 @@ export default function RestaurantChat() {
 
           {isLoading && messages[messages.length - 1]?.role !== 'assistant' && (
             <div className="flex justify-start">
-              <div className="bg-muted rounded-2xl px-4 py-3">
+              <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">
+                  {loadingSeconds < 5
+                    ? 'Daten laden…'
+                    : loadingSeconds < 15
+                    ? 'Daten analysieren…'
+                    : `Antwort wird erstellt… (${loadingSeconds}s)`}
+                </span>
               </div>
             </div>
           )}
