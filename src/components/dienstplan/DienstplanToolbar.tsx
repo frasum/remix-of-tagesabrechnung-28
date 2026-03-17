@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import { getPeriodRange } from '@/lib/periodUtils';
-import { useShiftAssignments, useBatchInsertShifts } from '@/hooks/useDienstplan';
+import { useShiftAssignments, useBatchInsertShifts, useConflictingShifts } from '@/hooks/useDienstplan';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { toast } from 'sonner';
 
