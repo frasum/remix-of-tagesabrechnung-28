@@ -229,7 +229,9 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                   const isFocused = focusedCell?.[0] === empIdx && focusedCell?.[1] === dateIdx;
                   const isToday = date === todayStr;
                   const conflictRestaurant = conflictMap.get(`${emp.id}-${date}`);
-                  const isBirthday = birthdaySet.has(`${emp.id}-${date}`);
+                  const birthdayKey = `${emp.id}-${date}`;
+                  const isBirthday = birthdayMap.has(birthdayKey);
+                  const birthdayLabel = birthdayMap.get(birthdayKey);
 
                   return (
                     <ShiftCell
@@ -247,6 +249,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                        isToday={isToday}
                        conflictRestaurant={conflictRestaurant}
                        isBirthday={isBirthday}
+                       birthdayLabel={birthdayLabel}
                       onAbsence={() => setAbsenceTarget({
                         staffId: emp.id,
                         staffName: emp.name,
