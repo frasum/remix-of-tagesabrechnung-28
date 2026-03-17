@@ -1,19 +1,20 @@
 
-## Dienstplan – 2 Pläne pro Standort (Küche + Service/GL)
 
-### Status: ✅ Implementiert
+## Plan: Geburtstage im Dienstplan anzeigen
 
-### Was wurde gebaut
+### Was sich ändert
+An Tagen, an denen ein Mitarbeiter Geburtstag hat (Tag+Monat stimmen überein), wird ein kleines 🎂-Icon in der Zelle angezeigt.
 
-- **Datenbank**: 4 neue Tabellen (`skills`, `employee_skills`, `shift_assignments`, `absences`) + `contracted_hours_per_month` auf `staff`
-- **7 Seed-Skills**: VS, PASS, SPÜLEN, CO (Küche), SERVICE, BAR (Service), GL
-- **Routing**: `/:restaurant/dienstplan/kueche` und `/:restaurant/dienstplan/service`
-- **Sidebar**: "Dienstplan" unter Tagesgeschäft
-- **Grid-UI**: Monatsansicht mit Skill-farbcodierten Zellen, Inline-Edit via Popover, Skill-Besetzungszeile (Küche)
-- **Hooks**: `useSkills`, `useDienstplan` für CRUD
+### Änderungen
 
-### Nächste Schritte
+**1. `src/hooks/useRestaurantEmployees.ts`**
+- `date_of_birth` zum Select und zum `RestaurantEmployee`-Type hinzufügen
 
-- Employee-Skills zuweisen (UI in Mitarbeiterverwaltung)
-- AbsenceDialog für mehrtägige Abwesenheiten
-- Dienstplan-Filter nach Skill
+**2. `src/components/dienstplan/MonthlyGrid.tsx`**
+- Einen `birthdaySet` als `Set<string>` berechnen (Schlüssel: `staffId-date`), der für jeden Mitarbeiter prüft, ob Tag+Monat seines `date_of_birth` mit einem Datum im Grid übereinstimmt
+- Neuen Prop `isBirthday` an `ShiftCell` übergeben
+
+**3. `src/components/dienstplan/ShiftCell.tsx`**
+- Neuen Prop `isBirthday?: boolean` aufnehmen
+- In jeder Zelle bei `isBirthday === true` ein kleines `Cake`-Icon (lucide-react) oder 🎂-Emoji in der Ecke anzeigen (ähnlich wie das ⚠-Conflict-Icon)
+
