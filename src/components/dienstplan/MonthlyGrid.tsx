@@ -209,8 +209,9 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                 {dates.map((date, dateIdx) => {
                   const shift = shifts.find(s => s.staff_id === emp.id && s.shift_date === date);
                   const absence = getAbsenceForDay(emp.id, date);
-                    const isFocused = focusedCell?.[0] === empIdx && focusedCell?.[1] === dateIdx;
-                    const isToday = date === todayStr;
+                  const isFocused = focusedCell?.[0] === empIdx && focusedCell?.[1] === dateIdx;
+                  const isToday = date === todayStr;
+                  const conflictRestaurant = conflictMap.get(`${emp.id}-${date}`);
 
                   return (
                     <ShiftCell
