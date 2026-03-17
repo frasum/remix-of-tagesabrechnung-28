@@ -24,8 +24,9 @@ export interface Absence {
   notes: string | null;
 }
 
-export function useShiftAssignments(department: 'kitchen' | 'service', startDate: string, endDate: string) {
-  const { restaurantId } = useRestaurant();
+export function useShiftAssignments(department: 'kitchen' | 'service', startDate: string, endDate: string, restaurantIdOverride?: string) {
+  const ctx = useContext(RestaurantContext);
+  const restaurantId = restaurantIdOverride || ctx?.restaurantId || '';
 
   return useQuery({
     queryKey: ['shift_assignments', restaurantId, department, startDate, endDate],
