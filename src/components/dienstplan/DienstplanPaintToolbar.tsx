@@ -59,9 +59,9 @@ export function DienstplanPaintToolbar({
   const activeColor = deleteMode
     ? 'hsl(var(--destructive))'
     : absencePaintType === 'vacation'
-    ? '#f59e0b'
+    ? absColors.vacation
     : absencePaintType === 'sick'
-    ? '#ef4444'
+    ? absColors.sick
     : filteredSkills.find(s => s.id === activeSkillId)?.color;
 
   const activeLabel = deleteMode
