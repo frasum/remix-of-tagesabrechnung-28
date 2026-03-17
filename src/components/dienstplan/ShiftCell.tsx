@@ -124,7 +124,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   }
 
   return (
-    <td ref={ref} className={cn('p-0 min-w-[52px] border border-border/50', todayBg, focusRing)}>
+    <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -191,6 +191,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
           </div>
         </PopoverContent>
       </Popover>
+      {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
     </td>
   );
 });
