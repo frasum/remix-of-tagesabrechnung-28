@@ -1,15 +1,19 @@
 
+## Dienstplan – 2 Pläne pro Standort (Küche + Service/GL)
 
-## Plan: Bayerische Feiertage im Restaurant-Chat verfügbar machen
+### Status: ✅ Implementiert
 
-### Problem
-Die Edge Function `restaurant-chat` lädt keine Daten aus der `bavarian_holidays`-Tabelle. Der KI-Assistent hat daher keinen Zugriff auf Feiertagsinformationen und kann die Frage "liste die kommenden feiertage" nicht beantworten.
+### Was wurde gebaut
 
-### Änderung: `supabase/functions/restaurant-chat/index.ts`
+- **Datenbank**: 4 neue Tabellen (`skills`, `employee_skills`, `shift_assignments`, `absences`) + `contracted_hours_per_month` auf `staff`
+- **7 Seed-Skills**: VS, PASS, SPÜLEN, CO (Küche), SERVICE, BAR (Service), GL
+- **Routing**: `/:restaurant/dienstplan/kueche` und `/:restaurant/dienstplan/service`
+- **Sidebar**: "Dienstplan" unter Tagesgeschäft
+- **Grid-UI**: Monatsansicht mit Skill-farbcodierten Zellen, Inline-Edit via Popover, Skill-Besetzungszeile (Küche)
+- **Hooks**: `useSkills`, `useDienstplan` für CRUD
 
-1. **Feiertage laden**: Parallel zu den bestehenden Queries eine Query auf `bavarian_holidays` hinzufügen, die alle Feiertage ab heute lädt (`.gte("holiday_date", today)`), sortiert nach Datum.
+### Nächste Schritte
 
-2. **Kontext-Abschnitt hinzufügen**: Neuen Abschnitt `=== BAYERISCHE FEIERTAGE ===` in `contextParts` einfügen mit Spalten: `Datum | Name | Zuschlagssatz | Ab Stunde`.
-
-3. **System-Prompt ergänzen**: Regel hinzufügen, dass die Feiertags-Tabelle für Fragen nach kommenden Feiertagen, Zuschlägen an Feiertagen etc. verwendet werden soll.
-
+- Employee-Skills zuweisen (UI in Mitarbeiterverwaltung)
+- AbsenceDialog für mehrtägige Abwesenheiten
+- Dienstplan-Filter nach Skill

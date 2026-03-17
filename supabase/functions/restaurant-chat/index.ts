@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       "https://api.open-meteo.com/v1/forecast?latitude=48.14&longitude=11.58&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode&timezone=Europe/Berlin&past_days=90&forecast_days=3"
     ).then(r => r.json()).catch(() => null);
 
-    const [sessionsRes, staffRes, restaurantsRes, settingsRes, staffRestaurantsRes, weatherData] = await Promise.all([
+    const [sessionsRes, staffRes, restaurantsRes, settingsRes, staffRestaurantsRes, weatherData, holidaysRes] = await Promise.all([
       supabase
         .from("sessions")
         .select("id, session_date, restaurant_id, pos_total, terminal_1_total, terminal_2_total, ordersmart_revenue, wolt_revenue, guest_count, vouchers_sold, vouchers_redeemed, finedine_vouchers, einladung, sonstige_einnahme, notes, created_by_name")
@@ -111,6 +111,10 @@ Deno.serve(async (req) => {
         .select("staff_id, restaurant_id, zt_department")
         .in("restaurant_id", restaurant_ids),
       weatherPromise,
+      supabase
+        .from("bavarian_holidays")
+        .select("holiday_date, name, surcharge_rate, from_hour")
+        .order("holiday_date"),
     ]);
 
     const sessions = sessionsRes.data || [];
@@ -593,6 +597,16 @@ Deno.serve(async (req) => {
       contextParts.push(`${r.name} (${r.slug})`);
     });
 
+    // Bavarian holidays
+    const holidays = holidaysRes.data || [];
+    if (holidays.length > 0) {
+      contextParts.push("\n=== BAYERISCHE FEIERTAGE ===");
+      contextParts.push("Datum | Name | Zuschlagssatz | Ab Stunde");
+      holidays.forEach((h: any) => {
+        contextParts.push(`${h.holiday_date} | ${h.name} | ${(h.surcharge_rate * 100).toFixed(0)}% | ${h.from_hour != null ? h.from_hour + ":00" : "ganztägig"}`);
+      });
+    }
+
     // Monthly summary BEFORE raw data
     contextParts.push("\n=== MONATLICHE ZUSAMMENFASSUNG (voraggregiert, alle verfügbaren Monate) ===");
     contextParts.push("Monat | Restaurant | Tage | Umsatz | Kreditkarten | OrderSmart | Wolt | Gutschein-VK | Gutschein-Einl | FineDine | Einladung | SoEinnahme | Gäste | Ausgaben | Vorschüsse | Küchen-TG-Gesamt");
@@ -914,6 +928,7 @@ Wichtige Regeln:
 - Die Rohdaten (Sessions, Schichten, Ausgaben, Vorschüsse) sind nur für die letzten 30 Tage verfügbar. Für ältere Zeiträume nutze die monatlichen Aggregationen.
 - Alle Fragen beziehen sich ausschließlich auf dieses Restaurant-Kassensystem ("Tagesabrechnung") und die darin verfügbaren Daten. Wenn jemand eine Frage stellt, die nichts mit dem System, den Restaurants oder den Betriebsdaten zu tun hat, weise freundlich darauf hin, dass du nur Fragen zu diesem System beantworten kannst.
 - Du kennst die Funktionen des Systems: Tagesabrechnung (Kassenschluss), Kellner-Abrechnung, Küchentrinkgeld-Aufteilung, Kassenstand, Ausgaben & Vorschüsse, Mitarbeiterverwaltung, Statistiken, Zeiterfassung mit Schichtplanung und Provisionsberechnung.
+- Die BAYERISCHEN FEIERTAGE enthalten alle gespeicherten Feiertage mit Datum, Name, Zuschlagssatz und ggf. Ab-Stunde. Nutze diese Tabelle für Fragen nach kommenden Feiertagen, Feiertags-Zuschlägen oder welche Feiertage in einem bestimmten Zeitraum liegen.
 - Heute ist ${new Date().toISOString().split("T")[0]}`;
 
     // Call OpenAI API
