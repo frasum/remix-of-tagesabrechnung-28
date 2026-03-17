@@ -99,7 +99,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   // No skills assigned → simple toggle
   if (availableSkills.length === 0) {
     return (
-      <td ref={ref} className={cn('p-0 min-w-[52px] border border-border/50', todayBg, focusRing)}>
+      <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
         <button
           className={cn(
             'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors',
@@ -118,6 +118,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
         >
           {shift ? '✓' : '+'}
         </button>
+        {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
       </td>
     );
   }
