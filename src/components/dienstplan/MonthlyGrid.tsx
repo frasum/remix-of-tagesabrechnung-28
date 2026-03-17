@@ -65,6 +65,20 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
     return Array.from(unique.values());
   }, [employees, department]);
 
+  const birthdaySet = useMemo(() => {
+    const set = new Set<string>();
+    for (const emp of filteredEmployees) {
+      if (!emp.date_of_birth) continue;
+      const dobMD = emp.date_of_birth.slice(5); // "MM-DD"
+      for (const date of dates) {
+        if (date.slice(5) === dobMD) {
+          set.add(`${emp.id}-${date}`);
+        }
+      }
+    }
+    return set;
+  }, [filteredEmployees, dates]);
+
   const staffIds = filteredEmployees.map(e => e.id);
   const { data: absences = [] } = useAbsences(staffIds, startDate, endDate);
   const { data: conflictMap = new Map<string, string>() } = useConflictingShifts(restaurantId, staffIds, startDate, endDate);
