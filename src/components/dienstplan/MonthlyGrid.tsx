@@ -1,9 +1,9 @@
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useShiftAssignments, useAbsences, useConflictingShifts } from '@/hooks/useDienstplan';
 import { useSkills, useEmployeeSkills } from '@/hooks/useSkills';
-import { useRestaurant } from '@/hooks/useRestaurant';
+import { RestaurantContext } from '@/contexts/RestaurantContext';
 import { useRestaurantEmployees } from '@/hooks/useRestaurantEmployees';
 import { ShiftCell } from './ShiftCell';
 import { getPeriodRange } from '@/lib/periodUtils';
