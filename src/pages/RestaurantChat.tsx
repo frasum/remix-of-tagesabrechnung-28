@@ -156,14 +156,11 @@ export default function RestaurantChat() {
           variant: 'destructive',
         });
       }
-        title: 'Chat-Fehler',
-        description: e.message || 'Verbindung fehlgeschlagen',
-        variant: 'destructive',
-      });
       if (!assistantSoFar) {
         setMessages(prev => prev.slice(0, -1));
       }
     } finally {
+      clearTimeout(timeoutId);
       setIsLoading(false);
     }
   };
