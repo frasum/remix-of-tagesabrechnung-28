@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { X, Palmtree, Thermometer } from 'lucide-react';
 import { useSkills } from '@/hooks/useSkills';
+import { useDienstplanColors } from '@/hooks/useDienstplanColors';
 
 export interface PaintModeState {
   activeSkillId: string | null;
@@ -25,6 +26,7 @@ export function DienstplanPaintToolbar({
   onModeChange,
 }: DienstplanPaintToolbarProps) {
   const { data: skills = [] } = useSkills();
+  const { colors: absColors } = useDienstplanColors();
   const filteredSkills = useMemo(
     () => skills.filter(s => department === 'kitchen' ? s.category === 'kitchen' : (s.category === 'service' || s.category === 'gl')),
     [skills, department],
@@ -57,9 +59,9 @@ export function DienstplanPaintToolbar({
   const activeColor = deleteMode
     ? 'hsl(var(--destructive))'
     : absencePaintType === 'vacation'
-    ? '#f59e0b'
+    ? absColors.vacation
     : absencePaintType === 'sick'
-    ? '#ef4444'
+    ? absColors.sick
     : filteredSkills.find(s => s.id === activeSkillId)?.color;
 
   const activeLabel = deleteMode
@@ -101,14 +103,26 @@ export function DienstplanPaintToolbar({
 
           <ToggleGroupItem
             value="__vacation"
-            className="h-8 px-3 text-xs font-bold rounded-full border border-amber-500 data-[state=on]:bg-amber-500 data-[state=on]:text-white text-amber-600 transition-colors"
+            className="h-8 px-3 text-xs font-bold rounded-full border data-[state=on]:text-white transition-colors"
+            style={{
+              borderColor: absColors.vacation,
+              ...(toggleValue === '__vacation'
+                ? { backgroundColor: absColors.vacation, color: 'white' }
+                : { color: absColors.vacation }),
+            }}
           >
             <Palmtree className="w-3.5 h-3.5 mr-1" />
             Urlaub
           </ToggleGroupItem>
           <ToggleGroupItem
             value="__sick"
-            className="h-8 px-3 text-xs font-bold rounded-full border border-red-500 data-[state=on]:bg-red-500 data-[state=on]:text-white text-red-600 transition-colors"
+            className="h-8 px-3 text-xs font-bold rounded-full border data-[state=on]:text-white transition-colors"
+            style={{
+              borderColor: absColors.sick,
+              ...(toggleValue === '__sick'
+                ? { backgroundColor: absColors.sick, color: 'white' }
+                : { color: absColors.sick }),
+            }}
           >
             <Thermometer className="w-3.5 h-3.5 mr-1" />
             Krank

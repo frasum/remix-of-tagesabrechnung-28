@@ -18,7 +18,8 @@ import {
   LucideIcon,
   Send,
   MessageCircle,
-  CalendarDays
+  CalendarDays,
+  Palette
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,7 @@ const allNavItems: NavItem[] = [
 const adminNavItems: NavItem[] = [
   { path: '/staff', label: 'Mitarbeiter', icon: UserCog, minLevel: 'admin' },
   { path: '/telegram', label: 'Telegram', icon: Send, minLevel: 'admin' },
+  { path: '/skill-settings', label: 'Farben', icon: Palette, minLevel: 'admin' },
   { path: 'chat', label: 'Chat', icon: MessageCircle, minLevel: 'admin' },
 ];
 
@@ -74,7 +76,7 @@ const navGroups: NavGroup[] = [
   { label: 'Tagesgeschäft', paths: ['', 'kitchen', 'summary', 'zeiterfassung', 'qr-poster'] },
   { label: 'Auswertung', paths: ['statistics', 'history', 'cash-balance'] },
   { label: 'Planung', paths: ['dienstplan', '/kueche-plan'] },
-  { label: 'Verwaltung', paths: ['/staff', '/telegram', 'chat'], adminOnly: true },
+  { label: 'Verwaltung', paths: ['/staff', '/telegram', '/skill-settings', 'chat'], adminOnly: true },
 ];
 
 export function AppLayout({ children }: AppLayoutProps) {

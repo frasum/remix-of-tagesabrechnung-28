@@ -7,7 +7,8 @@ import {
   LogOut,
   Home,
   Shield,
-  ChefHat
+  ChefHat,
+  Palette
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -80,6 +81,14 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
       >
         <ChefHat className={iconClasses('/kueche-plan')} />
         Küchenplan
+      </Link>
+      <Link
+        to="/skill-settings"
+        onClick={onClickLink}
+        className={linkClasses('/skill-settings')}
+      >
+        <Palette className={iconClasses('/skill-settings')} />
+        Farben
       </Link>
     </>
   );

@@ -10,6 +10,7 @@ import type { Skill } from '@/hooks/useSkills';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { X, Cake, CalendarIcon } from 'lucide-react';
+import { useDienstplanColors } from '@/hooks/useDienstplanColors';
 
 interface ShiftCellProps {
   shift?: ShiftAssignment;
@@ -54,6 +55,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   const [absencePopoverOpen, setAbsencePopoverOpen] = useState(false);
   const [absenceStartDate, setAbsenceStartDate] = useState<Date | undefined>();
   const [absenceEndDate, setAbsenceEndDate] = useState<Date | undefined>();
+  const { colors: absColors } = useDienstplanColors();
   const upsertShift = useUpsertShift();
   const deleteShift = useDeleteShift();
   const upsertAbsence = useUpsertAbsence();
@@ -77,6 +79,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   // Absence cell
   if (absenceType && !shift) {
     const isVacation = absenceType === 'vacation';
+    const absBg = isVacation ? absColors.vacation : absColors.sick;
     return (
       <td
         ref={ref}
@@ -84,9 +87,9 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
         title={conflictTitle}
         className={cn(
           'text-center text-xs font-semibold p-1 min-w-[52px] cursor-pointer border border-border/50 relative',
-          isVacation ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800',
           focusRing, conflictStyle
         )}
+        style={{ backgroundColor: absBg + '30', color: absBg }}
       >
         {isVacation ? 'U' : 'K'}
         {isBirthday && <Tooltip><TooltipTrigger asChild><Cake className="absolute bottom-0.5 left-0.5 w-3 h-3 text-pink-500 cursor-default" /></TooltipTrigger><TooltipContent side="top" className="text-xs">{birthdayLabel}</TooltipContent></Tooltip>}
@@ -126,6 +129,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   // Absence paint mode rendering
   if (isAbsencePaintMode && !isPaintMode) {
     const isVacation = paintAbsenceType === 'vacation';
+    const absBg = isVacation ? absColors.vacation : absColors.sick;
     return (
       <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
         <Popover
@@ -143,12 +147,12 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
             <button
               className={cn(
                 'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors',
-                absenceType && !shift
-                  ? isVacation ? 'bg-amber-100 text-amber-800 font-semibold' : 'bg-red-100 text-red-800 font-semibold'
-                  : isVacation
-                  ? 'hover:bg-amber-100/50 text-muted-foreground/40'
-                  : 'hover:bg-red-100/50 text-muted-foreground/40'
               )}
+              style={
+                absenceType && !shift
+                  ? { backgroundColor: absBg + '30', color: absBg, fontWeight: 600 }
+                  : undefined
+              }
               tabIndex={-1}
             >
               {absenceType && !shift ? (absenceType === 'vacation' ? 'U' : 'K') : '+'}
@@ -157,7 +161,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
           <PopoverContent className="w-auto p-3" align="start" side="bottom">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <span className={cn('text-sm font-semibold', isVacation ? 'text-amber-700' : 'text-red-700')}>
+                <span className="text-sm font-semibold" style={{ color: absBg }}>
                   {isVacation ? '🏖️ Urlaub' : '🤒 Krank'}
                 </span>
               </div>
