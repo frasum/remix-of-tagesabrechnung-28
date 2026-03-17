@@ -938,22 +938,22 @@ Wichtige Regeln:
 - Die BAYERISCHEN FEIERTAGE enthalten alle gespeicherten Feiertage mit Datum, Name, Zuschlagssatz und ggf. Ab-Stunde. Nutze diese Tabelle für Fragen nach kommenden Feiertagen, Feiertags-Zuschlägen oder welche Feiertage in einem bestimmten Zeitraum liegen.
 - Heute ist ${new Date().toISOString().split("T")[0]}`;
 
-    // Call OpenAI API
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+    // Call Lovable AI Gateway
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const aiResponse = await fetch(
-      "https://api.openai.com/v1/chat/completions",
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: systemPrompt },
             ...messages,
@@ -965,13 +965,22 @@ Wichtige Regeln:
 
     if (!aiResponse.ok) {
       const errText = await aiResponse.text();
-      console.error("OpenAI API error:", aiResponse.status, errText);
-      const errorMsg = aiResponse.status === 429
-        ? `Rate limit / Kontingent: ${errText}`
-        : `OpenAI Fehler (${aiResponse.status}): ${errText}`;
+      console.error("AI Gateway error:", aiResponse.status, errText);
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit überschritten, bitte versuche es gleich nochmal." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "AI-Kontingent aufgebraucht." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       return new Response(
-        JSON.stringify({ error: errorMsg }),
-        { status: aiResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: `AI Fehler (${aiResponse.status})` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
