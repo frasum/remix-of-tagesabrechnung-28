@@ -43,6 +43,7 @@ const DienstplanService = lazy(() => import("./pages/dienstplan/DienstplanServic
 const RestaurantChat = lazy(() => import("./pages/RestaurantChat"));
 const SharedZtView = lazy(() => import("./pages/shared/SharedZtView"));
 const PayrollPortal = lazy(() => import("./pages/shared/PayrollPortal"));
+const KuechePlan = lazy(() => import("./pages/KuechePlan"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
