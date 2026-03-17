@@ -129,6 +129,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   // Absence paint mode rendering
   if (isAbsencePaintMode && !isPaintMode) {
     const isVacation = paintAbsenceType === 'vacation';
+    const absBg = isVacation ? absColors.vacation : absColors.sick;
     return (
       <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
         <Popover
@@ -146,12 +147,12 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
             <button
               className={cn(
                 'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors',
-                absenceType && !shift
-                  ? isVacation ? 'bg-amber-100 text-amber-800 font-semibold' : 'bg-red-100 text-red-800 font-semibold'
-                  : isVacation
-                  ? 'hover:bg-amber-100/50 text-muted-foreground/40'
-                  : 'hover:bg-red-100/50 text-muted-foreground/40'
               )}
+              style={
+                absenceType && !shift
+                  ? { backgroundColor: absBg + '30', color: absBg, fontWeight: 600 }
+                  : undefined
+              }
               tabIndex={-1}
             >
               {absenceType && !shift ? (absenceType === 'vacation' ? 'U' : 'K') : '+'}
