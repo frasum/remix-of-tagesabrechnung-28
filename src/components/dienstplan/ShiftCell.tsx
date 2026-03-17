@@ -171,7 +171,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
             <span className="text-muted-foreground/40">+</span>
           )}
         </button>
-        {isBirthday && <Cake className="absolute bottom-0.5 left-0.5 w-3 h-3 text-pink-500" />}
+        {isBirthday && <Tooltip><TooltipTrigger asChild><Cake className="absolute bottom-0.5 left-0.5 w-3 h-3 text-pink-500 cursor-default" /></TooltipTrigger><TooltipContent side="top" className="text-xs">{birthdayLabel}</TooltipContent></Tooltip>}
         {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
       </td>
     );
