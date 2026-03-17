@@ -47,7 +47,13 @@ export function useTelegramSettings() {
         show_kitchen: settings.show_kitchen,
         show_pdf_export_notification: settings.show_pdf_export_notification,
         show_notes: settings.show_notes,
+        report_time: settings.report_time,
       };
+
+      // Update cron schedule if report_time changed
+      await supabase.functions.invoke('update-telegram-schedule', {
+        body: { report_time: settings.report_time },
+      });
 
       if (settings.id) {
         const { error } = await supabase
