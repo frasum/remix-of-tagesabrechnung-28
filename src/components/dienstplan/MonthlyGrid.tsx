@@ -19,6 +19,7 @@ interface MonthlyGridProps {
   restaurantIdOverride?: string;
   activeSkillId?: string | null;
   deleteMode?: boolean;
+  paintAbsenceType?: 'vacation' | 'sick' | null;
 }
 
 function getPeriodDates(month0: number, year: number): string[] {
