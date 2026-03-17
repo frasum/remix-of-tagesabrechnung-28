@@ -122,6 +122,18 @@ export default function KuechePlan() {
                 </span>
               )}
             </div>
+
+            {/* Active mode indicator bar */}
+            {(activeSkillId || deleteMode) && (
+              <div
+                className="h-1 rounded-full mt-2 transition-all duration-300"
+                style={{
+                  backgroundColor: deleteMode
+                    ? 'hsl(var(--destructive))'
+                    : kitchenSkills.find(s => s.id === activeSkillId)?.color,
+                }}
+              />
+            )}
           </div>
         </div>
 
