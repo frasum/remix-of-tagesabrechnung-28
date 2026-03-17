@@ -125,14 +125,26 @@ export default function KuechePlan() {
 
             {/* Active mode indicator bar */}
             {(activeSkillId || deleteMode) && (
-              <div
-                className="h-1 rounded-full mt-2 transition-all duration-300"
-                style={{
-                  backgroundColor: deleteMode
-                    ? 'hsl(var(--destructive))'
-                    : kitchenSkills.find(s => s.id === activeSkillId)?.color,
-                }}
-              />
+              <div className="flex items-center gap-2 mt-2">
+                <div
+                  className="h-1 flex-1 rounded-full transition-all duration-300"
+                  style={{
+                    backgroundColor: deleteMode
+                      ? 'hsl(var(--destructive))'
+                      : kitchenSkills.find(s => s.id === activeSkillId)?.color,
+                  }}
+                />
+                <span
+                  className="text-xs font-medium whitespace-nowrap transition-colors duration-300"
+                  style={{
+                    color: deleteMode
+                      ? 'hsl(var(--destructive))'
+                      : kitchenSkills.find(s => s.id === activeSkillId)?.color,
+                  }}
+                >
+                  {deleteMode ? 'Löschmodus' : kitchenSkills.find(s => s.id === activeSkillId)?.name}
+                </span>
+              </div>
             )}
           </div>
         </div>
