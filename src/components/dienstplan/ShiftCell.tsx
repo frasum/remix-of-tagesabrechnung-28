@@ -18,6 +18,7 @@ interface ShiftCellProps {
   onAbsence?: () => void;
   isFocused?: boolean;
   isToday?: boolean;
+  conflictRestaurant?: string;
 }
 
 export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
@@ -32,6 +33,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   onAbsence,
   isFocused,
   isToday,
+  conflictRestaurant,
 }, ref) => {
   const [open, setOpen] = useState(false);
   const upsertShift = useUpsertShift();
@@ -45,6 +47,8 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
 
   const focusRing = isFocused ? 'ring-2 ring-primary ring-inset' : '';
   const todayBg = isToday ? 'bg-primary/5' : '';
+  const conflictStyle = conflictRestaurant ? 'border-l-2 border-l-amber-500' : '';
+  const conflictTitle = conflictRestaurant ? `Bereits eingeteilt bei ${conflictRestaurant}` : undefined;
 
   // Absence cell
   if (absenceType && !shift) {
@@ -53,13 +57,15 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
       <td
         ref={ref}
         onClick={onAbsence}
+        title={conflictTitle}
         className={cn(
-          'text-center text-xs font-semibold p-1 min-w-[52px] cursor-pointer border border-border/50',
+          'text-center text-xs font-semibold p-1 min-w-[52px] cursor-pointer border border-border/50 relative',
           isVacation ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800',
-          focusRing
+          focusRing, conflictStyle
         )}
       >
         {isVacation ? 'U' : 'K'}
+        {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
       </td>
     );
   }
@@ -93,7 +99,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   // No skills assigned → simple toggle
   if (availableSkills.length === 0) {
     return (
-      <td ref={ref} className={cn('p-0 min-w-[52px] border border-border/50', todayBg, focusRing)}>
+      <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
         <button
           className={cn(
             'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors',
@@ -112,12 +118,13 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
         >
           {shift ? '✓' : '+'}
         </button>
+        {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
       </td>
     );
   }
 
   return (
-    <td ref={ref} className={cn('p-0 min-w-[52px] border border-border/50', todayBg, focusRing)}>
+    <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -184,6 +191,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
           </div>
         </PopoverContent>
       </Popover>
+      {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
     </td>
   );
 });

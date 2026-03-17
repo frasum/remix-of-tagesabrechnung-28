@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useCallback } from 'react';
-import { useShiftAssignments, useAbsences } from '@/hooks/useDienstplan';
+import { useShiftAssignments, useAbsences, useConflictingShifts } from '@/hooks/useDienstplan';
 import { useSkills, useEmployeeSkills } from '@/hooks/useSkills';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useRestaurantEmployees } from '@/hooks/useRestaurantEmployees';
@@ -67,6 +67,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
 
   const staffIds = filteredEmployees.map(e => e.id);
   const { data: absences = [] } = useAbsences(staffIds, startDate, endDate);
+  const { data: conflictMap = new Map<string, string>() } = useConflictingShifts(restaurantId, staffIds, startDate, endDate);
 
   const [absenceTarget, setAbsenceTarget] = useState<{ staffId: string; staffName: string; absence?: any } | null>(null);
 
@@ -208,8 +209,9 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                 {dates.map((date, dateIdx) => {
                   const shift = shifts.find(s => s.staff_id === emp.id && s.shift_date === date);
                   const absence = getAbsenceForDay(emp.id, date);
-                    const isFocused = focusedCell?.[0] === empIdx && focusedCell?.[1] === dateIdx;
-                    const isToday = date === todayStr;
+                  const isFocused = focusedCell?.[0] === empIdx && focusedCell?.[1] === dateIdx;
+                  const isToday = date === todayStr;
+                  const conflictRestaurant = conflictMap.get(`${emp.id}-${date}`);
 
                   return (
                     <ShiftCell
@@ -223,8 +225,9 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                       restaurantId={restaurantId}
                       skills={skills}
                       employeeSkillIds={empSkillIds}
-                      isFocused={isFocused}
-                      isToday={isToday}
+                       isFocused={isFocused}
+                       isToday={isToday}
+                       conflictRestaurant={conflictRestaurant}
                       onAbsence={() => setAbsenceTarget({
                         staffId: emp.id,
                         staffName: emp.name,
