@@ -19,6 +19,7 @@ interface MonthlyGridProps {
   restaurantIdOverride?: string;
   activeSkillId?: string | null;
   deleteMode?: boolean;
+  paintAbsenceType?: 'vacation' | 'sick' | null;
 }
 
 function getPeriodDates(month0: number, year: number): string[] {
@@ -43,7 +44,7 @@ function formatDayHeader(dateStr: string) {
   return { day, weekday, isSunday };
 }
 
-export function MonthlyGrid({ department, month, year, restaurantIdOverride, activeSkillId, deleteMode }: MonthlyGridProps) {
+export function MonthlyGrid({ department, month, year, restaurantIdOverride, activeSkillId, deleteMode, paintAbsenceType }: MonthlyGridProps) {
   const ctx = useContext(RestaurantContext);
   const restaurantId = restaurantIdOverride || ctx?.restaurantId || '';
   const dates = useMemo(() => getPeriodDates(month, year), [year, month]);
@@ -307,6 +308,7 @@ export function MonthlyGrid({ department, month, year, restaurantIdOverride, act
                       birthdayLabel={birthdayLabel}
                       paintSkillId={activeSkillId}
                       paintDeleteMode={deleteMode}
+                      paintAbsenceType={paintAbsenceType}
                       onAbsence={() => setAbsenceTarget({
                         staffId: emp.id,
                         staffName: emp.name,

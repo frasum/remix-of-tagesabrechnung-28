@@ -6,7 +6,7 @@ import { useSkills } from '@/hooks/useSkills';
 import { GlobalLayout } from '@/components/layout/GlobalLayout';
 import { Button } from '@/components/ui/button';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Palmtree, Thermometer } from 'lucide-react';
 import { getPeriodRange } from '@/lib/periodUtils';
 
 const monthNames = [
@@ -26,6 +26,7 @@ export default function KuechePlan() {
   const [year, setYear] = useState(now.getFullYear());
   const [activeSkillId, setActiveSkillId] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
+  const [absencePaintType, setAbsencePaintType] = useState<'vacation' | 'sick' | null>(null);
 
   const { data: skills = [] } = useSkills();
   const kitchenSkills = useMemo(() => skills.filter(s => s.category === 'kitchen'), [skills]);
@@ -52,16 +53,27 @@ export default function KuechePlan() {
     if (value === '__delete') {
       setDeleteMode(true);
       setActiveSkillId(null);
+      setAbsencePaintType(null);
+    } else if (value === '__vacation') {
+      setAbsencePaintType('vacation');
+      setActiveSkillId(null);
+      setDeleteMode(false);
+    } else if (value === '__sick') {
+      setAbsencePaintType('sick');
+      setActiveSkillId(null);
+      setDeleteMode(false);
     } else if (value) {
       setDeleteMode(false);
       setActiveSkillId(value);
+      setAbsencePaintType(null);
     } else {
       setDeleteMode(false);
       setActiveSkillId(null);
+      setAbsencePaintType(null);
     }
   };
 
-  const toggleValue = deleteMode ? '__delete' : (activeSkillId || '');
+  const toggleValue = deleteMode ? '__delete' : absencePaintType === 'vacation' ? '__vacation' : absencePaintType === 'sick' ? '__sick' : (activeSkillId || '');
 
   return (
     <GlobalLayout>
@@ -114,23 +126,44 @@ export default function KuechePlan() {
                   <X className="w-3.5 h-3.5 mr-1" />
                   Löschen
                 </ToggleGroupItem>
+
+                <div className="h-6 w-px bg-border mx-1" />
+
+                <ToggleGroupItem
+                  value="__vacation"
+                  className="h-8 px-3 text-xs font-bold rounded-full border border-amber-500 data-[state=on]:bg-amber-500 data-[state=on]:text-white text-amber-600 transition-colors"
+                >
+                  <Palmtree className="w-3.5 h-3.5 mr-1" />
+                  Urlaub
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="__sick"
+                  className="h-8 px-3 text-xs font-bold rounded-full border border-red-500 data-[state=on]:bg-red-500 data-[state=on]:text-white text-red-600 transition-colors"
+                >
+                  <Thermometer className="w-3.5 h-3.5 mr-1" />
+                  Krank
+                </ToggleGroupItem>
               </ToggleGroup>
 
-              {(activeSkillId || deleteMode) && (
+              {(activeSkillId || deleteMode || absencePaintType) && (
                 <span className="text-xs text-muted-foreground ml-2">
-                  Klick = {deleteMode ? 'Schicht löschen' : 'Skill zuweisen / entfernen'}
+                  Klick = {deleteMode ? 'Schicht löschen' : absencePaintType ? 'Abwesenheit eintragen' : 'Skill zuweisen / entfernen'}
                 </span>
               )}
             </div>
 
             {/* Active mode indicator bar */}
-            {(activeSkillId || deleteMode) && (
+            {(activeSkillId || deleteMode || absencePaintType) && (
               <div className="flex items-center gap-2 mt-2">
                 <div
                   className="h-1 flex-1 rounded-full transition-all duration-300"
                   style={{
                     backgroundColor: deleteMode
                       ? 'hsl(var(--destructive))'
+                      : absencePaintType === 'vacation'
+                      ? '#f59e0b'
+                      : absencePaintType === 'sick'
+                      ? '#ef4444'
                       : kitchenSkills.find(s => s.id === activeSkillId)?.color,
                   }}
                 />
@@ -139,10 +172,14 @@ export default function KuechePlan() {
                   style={{
                     color: deleteMode
                       ? 'hsl(var(--destructive))'
+                      : absencePaintType === 'vacation'
+                      ? '#f59e0b'
+                      : absencePaintType === 'sick'
+                      ? '#ef4444'
                       : kitchenSkills.find(s => s.id === activeSkillId)?.color,
                   }}
                 >
-                  {deleteMode ? 'Löschmodus' : kitchenSkills.find(s => s.id === activeSkillId)?.name}
+                  {deleteMode ? 'Löschmodus' : absencePaintType === 'vacation' ? 'Urlaub' : absencePaintType === 'sick' ? 'Krank' : kitchenSkills.find(s => s.id === activeSkillId)?.name}
                 </span>
               </div>
             )}
@@ -162,6 +199,7 @@ export default function KuechePlan() {
               restaurantIdOverride={restaurant.id}
               activeSkillId={activeSkillId}
               deleteMode={deleteMode}
+              paintAbsenceType={absencePaintType}
             />
           </div>
         ))}
