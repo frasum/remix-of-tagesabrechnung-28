@@ -936,7 +936,30 @@ Wichtige Regeln:
 - Alle Fragen beziehen sich ausschließlich auf dieses Restaurant-Kassensystem ("Tagesabrechnung") und die darin verfügbaren Daten. Wenn jemand eine Frage stellt, die nichts mit dem System, den Restaurants oder den Betriebsdaten zu tun hat, weise freundlich darauf hin, dass du nur Fragen zu diesem System beantworten kannst.
 - Du kennst die Funktionen des Systems: Tagesabrechnung (Kassenschluss), Kellner-Abrechnung, Küchentrinkgeld-Aufteilung, Kassenstand, Ausgaben & Vorschüsse, Mitarbeiterverwaltung, Statistiken, Zeiterfassung mit Schichtplanung und Provisionsberechnung.
 - Die BAYERISCHEN FEIERTAGE enthalten alle gespeicherten Feiertage mit Datum, Name, Zuschlagssatz und ggf. Ab-Stunde. Nutze diese Tabelle für Fragen nach kommenden Feiertagen, Feiertags-Zuschlägen oder welche Feiertage in einem bestimmten Zeitraum liegen.
-- Heute ist ${(() => { const n = new Date(); const o = n.getTimezoneOffset(); const local = new Date(n.getTime() - o * 60000); return local.toISOString().split("T")[0]; })()}. Wochentag: ${new Date().toLocaleDateString("de-DE", { weekday: "long", timeZone: "Europe/Berlin" })}.`;
+- ` + (() => {
+  const now = new Date();
+  const berlin = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Berlin" }));
+  const fmt = (d: Date) => d.toISOString().split("T")[0];
+  const dow = berlin.getDay();
+  const thisMonday = new Date(berlin); thisMonday.setDate(berlin.getDate() - ((dow + 6) % 7));
+  const thisSunday = new Date(thisMonday); thisSunday.setDate(thisMonday.getDate() + 6);
+  const lastMonday = new Date(thisMonday); lastMonday.setDate(thisMonday.getDate() - 7);
+  const lastSunday = new Date(thisMonday); lastSunday.setDate(thisMonday.getDate() - 1);
+  const thisMonth1 = new Date(berlin.getFullYear(), berlin.getMonth(), 1);
+  const thisMonthEnd = new Date(berlin.getFullYear(), berlin.getMonth() + 1, 0);
+  const lastMonth1 = new Date(berlin.getFullYear(), berlin.getMonth() - 1, 1);
+  const lastMonthEnd = new Date(berlin.getFullYear(), berlin.getMonth(), 0);
+  const yesterday = new Date(berlin); yesterday.setDate(berlin.getDate() - 1);
+  const wday = berlin.toLocaleDateString("de-DE", { weekday: "long", timeZone: "Europe/Berlin" });
+  return `Heute ist ${fmt(berlin)} (${wday}).
+Zeitraum-Referenzen (verwende IMMER diese exakten Datumsbereiche):
+  - "diese Woche" = ${fmt(thisMonday)} bis ${fmt(thisSunday)}
+  - "letzte Woche" = ${fmt(lastMonday)} bis ${fmt(lastSunday)}
+  - "dieser Monat" = ${fmt(thisMonth1)} bis ${fmt(thisMonthEnd)}
+  - "letzter Monat" = ${fmt(lastMonth1)} bis ${fmt(lastMonthEnd)}
+  - "gestern" = ${fmt(yesterday)}
+Wochen gehen IMMER von Montag bis Sonntag. Wenn der Nutzer "letzte Woche" sagt, filtere die Daten exakt auf den oben genannten Zeitraum.`;
+})();
 
     // Call Lovable AI Gateway
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
