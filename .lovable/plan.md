@@ -12,11 +12,24 @@
 - **Grid-UI**: Monatsansicht mit Skill-farbcodierten Zellen, Inline-Edit via Popover, Skill-Besetzungszeile (Küche)
 - **Hooks**: `useSkills`, `useDienstplan` für CRUD
 
+## Küchenplan Dual-View mit Paint-Mode
+
+### Status: ✅ Implementiert
+
+### Was wurde gebaut
+
+- **Neue Route** `/kueche-plan` (Admin-only, globale Route ohne Restaurant-Kontext)
+- **Seite** `src/pages/KuechePlan.tsx`: Zeigt beide Restaurants (Spicery + YUM) untereinander mit je einem MonthlyGrid
+- **Paint-Mode Toolbar**: Küchen-Skills (VS, PASS, SPÜLEN, CO) als farbige ToggleGroup-Buttons + Löschen-Button
+- **MonthlyGrid erweitert**: Neue Props `restaurantIdOverride`, `activeSkillId`, `deleteMode`
+- **ShiftCell erweitert**: Paint-Mode — Klick auf leere Zelle weist aktiven Skill zu, Klick auf belegte Zelle löscht sie
+- **Navigation**: "Küchenplan" unter Planung in GlobalLayout-Sidebar
+- **Konflikterkennung**: Amber-Marker bei Doppelbelegung über Standorte hinweg
+
 ### Nächste Schritte
 
 - Employee-Skills zuweisen (UI in Mitarbeiterverwaltung)
 - AbsenceDialog für mehrtägige Abwesenheiten
-- Dienstplan-Filter nach Skill
 
 ## Datenbankarchitektur-Optimierung für Skalierbarkeit
 
