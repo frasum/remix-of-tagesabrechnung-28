@@ -145,9 +145,9 @@ export default function KuechePlan() {
                 </ToggleGroupItem>
               </ToggleGroup>
 
-              {(activeSkillId || deleteMode) && (
+              {(activeSkillId || deleteMode || absencePaintType) && (
                 <span className="text-xs text-muted-foreground ml-2">
-                  Klick = {deleteMode ? 'Schicht löschen' : 'Skill zuweisen / entfernen'}
+                  Klick = {deleteMode ? 'Schicht löschen' : absencePaintType ? 'Abwesenheit eintragen' : 'Skill zuweisen / entfernen'}
                 </span>
               )}
             </div>
