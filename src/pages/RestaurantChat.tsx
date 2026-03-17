@@ -30,6 +30,7 @@ export default function RestaurantChat() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { user } = useAuth();
   const { data: restaurants = [] } = useRestaurants();
