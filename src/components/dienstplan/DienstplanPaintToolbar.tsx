@@ -26,6 +26,7 @@ export function DienstplanPaintToolbar({
   onModeChange,
 }: DienstplanPaintToolbarProps) {
   const { data: skills = [] } = useSkills();
+  const { colors: absColors } = useDienstplanColors();
   const filteredSkills = useMemo(
     () => skills.filter(s => department === 'kitchen' ? s.category === 'kitchen' : (s.category === 'service' || s.category === 'gl')),
     [skills, department],
