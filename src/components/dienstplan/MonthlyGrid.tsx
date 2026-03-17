@@ -44,8 +44,8 @@ function formatDayHeader(dateStr: string) {
 }
 
 export function MonthlyGrid({ department, month, year, restaurantIdOverride, activeSkillId, deleteMode }: MonthlyGridProps) {
-  const ctx = useRestaurant();
-  const restaurantId = restaurantIdOverride || ctx.restaurantId;
+  const ctx = useContext(RestaurantContext);
+  const restaurantId = restaurantIdOverride || ctx?.restaurantId || '';
   const dates = useMemo(() => getPeriodDates(month, year), [year, month]);
   const todayStr = useMemo(() => {
     const t = new Date();
