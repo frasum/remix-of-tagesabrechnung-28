@@ -65,18 +65,21 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
     return Array.from(unique.values());
   }, [employees, department]);
 
-  const birthdaySet = useMemo(() => {
-    const set = new Set<string>();
+  const birthdayMap = useMemo(() => {
+    const map = new Map<string, string>();
     for (const emp of filteredEmployees) {
       if (!emp.date_of_birth) continue;
       const dobMD = emp.date_of_birth.slice(5); // "MM-DD"
       for (const date of dates) {
         if (date.slice(5) === dobMD) {
-          set.add(`${emp.id}-${date}`);
+          const birthYear = parseInt(emp.date_of_birth.slice(0, 4), 10);
+          const currentYear = parseInt(date.slice(0, 4), 10);
+          const age = currentYear - birthYear;
+          map.set(`${emp.id}-${date}`, `🎂 ${emp.name} wird ${age}`);
         }
       }
     }
-    return set;
+    return map;
   }, [filteredEmployees, dates]);
 
   const staffIds = filteredEmployees.map(e => e.id);
