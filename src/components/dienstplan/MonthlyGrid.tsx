@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useCallback } from 'react';
-import { useShiftAssignments, useAbsences } from '@/hooks/useDienstplan';
+import { useShiftAssignments, useAbsences, useConflictingShifts } from '@/hooks/useDienstplan';
 import { useSkills, useEmployeeSkills } from '@/hooks/useSkills';
 import { useRestaurant } from '@/hooks/useRestaurant';
 import { useRestaurantEmployees } from '@/hooks/useRestaurantEmployees';
