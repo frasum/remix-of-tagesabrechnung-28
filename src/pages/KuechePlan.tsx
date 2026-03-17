@@ -126,6 +126,23 @@ export default function KuechePlan() {
                   <X className="w-3.5 h-3.5 mr-1" />
                   Löschen
                 </ToggleGroupItem>
+
+                <div className="h-6 w-px bg-border mx-1" />
+
+                <ToggleGroupItem
+                  value="__vacation"
+                  className="h-8 px-3 text-xs font-bold rounded-full border border-amber-500 data-[state=on]:bg-amber-500 data-[state=on]:text-white text-amber-600 transition-colors"
+                >
+                  <Palmtree className="w-3.5 h-3.5 mr-1" />
+                  Urlaub
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="__sick"
+                  className="h-8 px-3 text-xs font-bold rounded-full border border-red-500 data-[state=on]:bg-red-500 data-[state=on]:text-white text-red-600 transition-colors"
+                >
+                  <Thermometer className="w-3.5 h-3.5 mr-1" />
+                  Krank
+                </ToggleGroupItem>
               </ToggleGroup>
 
               {(activeSkillId || deleteMode) && (
