@@ -66,6 +66,9 @@ export default function RestaurantChat() {
       });
     };
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 120_000); // 2 min timeout
+
     try {
       const restaurantIds = restaurants.map(r => r.id);
       const resp = await fetch(CHAT_URL, {
@@ -79,6 +82,7 @@ export default function RestaurantChat() {
           restaurant_ids: restaurantIds,
           caller_staff_id: user?.staffId,
         }),
+        signal: controller.signal,
       });
 
       if (!resp.ok) {
