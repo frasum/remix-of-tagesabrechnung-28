@@ -101,6 +101,27 @@ function TelegramSettingsContent() {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-lg">Versandzeitpunkt</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Label htmlFor="report-time">Uhrzeit (UTC)</Label>
+            <Input
+              id="report-time"
+              type="time"
+              value={reportTime}
+              onChange={e => setReportTime(e.target.value)}
+              className="w-32"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            Aktuell: {reportTime} Uhr UTC — Der tägliche Report wird zu dieser Uhrzeit automatisch versendet.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-lg">Inhalt der Nachricht</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
