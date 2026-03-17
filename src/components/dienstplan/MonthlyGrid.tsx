@@ -308,6 +308,7 @@ export function MonthlyGrid({ department, month, year, restaurantIdOverride, act
                       birthdayLabel={birthdayLabel}
                       paintSkillId={activeSkillId}
                       paintDeleteMode={deleteMode}
+                      paintAbsenceType={paintAbsenceType}
                       onAbsence={() => setAbsenceTarget({
                         staffId: emp.id,
                         staffName: emp.name,
