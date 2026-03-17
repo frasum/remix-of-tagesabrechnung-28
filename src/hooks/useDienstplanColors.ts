@@ -42,16 +42,17 @@ export function useDienstplanColors() {
         .eq('restaurant_id', restaurantId)
         .maybeSingle();
 
+      const jsonValue = colors as unknown as import('@/integrations/supabase/types').Json;
       if (existing) {
         const { error } = await supabase
           .from('settings')
-          .update({ value: colors as unknown as Record<string, unknown> })
+          .update({ value: jsonValue })
           .eq('id', existing.id);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('settings')
-          .insert({ key: SETTINGS_KEY, restaurant_id: restaurantId, value: colors as unknown as Record<string, unknown> });
+          .insert([{ key: SETTINGS_KEY, restaurant_id: restaurantId, value: jsonValue }]);
         if (error) throw error;
       }
     },
