@@ -45,6 +45,13 @@ export default function RestaurantChat() {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Loading timer
+  useEffect(() => {
+    if (!isLoading) { setLoadingSeconds(0); return; }
+    const interval = setInterval(() => setLoadingSeconds(s => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
 
