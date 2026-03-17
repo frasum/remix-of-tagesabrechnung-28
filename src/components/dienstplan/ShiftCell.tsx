@@ -10,6 +10,7 @@ import type { Skill } from '@/hooks/useSkills';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { X, Cake, CalendarIcon } from 'lucide-react';
+import { useDienstplanColors } from '@/hooks/useDienstplanColors';
 
 interface ShiftCellProps {
   shift?: ShiftAssignment;
