@@ -55,7 +55,7 @@ export function MonthlyGrid({ department, month, year, restaurantIdOverride, act
   const endDate = dates[dates.length - 1];
 
   const { data: employees = [], isLoading: loadingEmp } = useRestaurantEmployees(restaurantId);
-  const { data: shifts = [], isLoading: loadingShifts } = useShiftAssignments(department, startDate, endDate);
+  const { data: shifts = [], isLoading: loadingShifts } = useShiftAssignments(department, startDate, endDate, restaurantId);
   const { data: skills = [] } = useSkills();
   const { data: allEmployeeSkills = [] } = useEmployeeSkills();
 
