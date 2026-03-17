@@ -48,10 +48,15 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   birthdayLabel,
   paintSkillId,
   paintDeleteMode,
+  paintAbsenceType,
 }, ref) => {
   const [open, setOpen] = useState(false);
+  const [absencePopoverOpen, setAbsencePopoverOpen] = useState(false);
+  const [absenceStartDate, setAbsenceStartDate] = useState<Date | undefined>();
+  const [absenceEndDate, setAbsenceEndDate] = useState<Date | undefined>();
   const upsertShift = useUpsertShift();
   const deleteShift = useDeleteShift();
+  const upsertAbsence = useUpsertAbsence();
 
   const assignedSkill = shift?.assigned_skill_id
     ? skills.find(s => s.id === shift.assigned_skill_id)
