@@ -6,7 +6,8 @@ import {
   X,
   LogOut,
   Home,
-  Shield
+  Shield,
+  ChefHat
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
