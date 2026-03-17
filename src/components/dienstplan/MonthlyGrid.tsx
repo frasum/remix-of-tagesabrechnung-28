@@ -89,6 +89,18 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
   const { data: absences = [] } = useAbsences(staffIds, startDate, endDate);
   const { data: conflictMap = new Map<string, string>() } = useConflictingShifts(restaurantId, staffIds, startDate, endDate);
 
+  const { data: holidayMap = new Map<string, string>() } = useQuery({
+    queryKey: ['bavarian-holidays-dienstplan', startDate, endDate],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('bavarian_holidays')
+        .select('holiday_date, name')
+        .gte('holiday_date', startDate)
+        .lte('holiday_date', endDate);
+      return new Map(data?.map(h => [h.holiday_date, h.name]) ?? []);
+    },
+  });
+
   const [absenceTarget, setAbsenceTarget] = useState<{ staffId: string; staffName: string; absence?: any } | null>(null);
 
   // Keyboard navigation
