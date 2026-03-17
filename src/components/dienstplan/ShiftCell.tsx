@@ -161,7 +161,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
           <PopoverContent className="w-auto p-3" align="start" side="bottom">
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <span className={cn('text-sm font-semibold', isVacation ? 'text-amber-700' : 'text-red-700')}>
+                <span className="text-sm font-semibold" style={{ color: absBg }}>
                   {isVacation ? '🏖️ Urlaub' : '🤒 Krank'}
                 </span>
               </div>
