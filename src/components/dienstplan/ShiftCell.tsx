@@ -57,13 +57,15 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
       <td
         ref={ref}
         onClick={onAbsence}
+        title={conflictTitle}
         className={cn(
-          'text-center text-xs font-semibold p-1 min-w-[52px] cursor-pointer border border-border/50',
+          'text-center text-xs font-semibold p-1 min-w-[52px] cursor-pointer border border-border/50 relative',
           isVacation ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800',
-          focusRing
+          focusRing, conflictStyle
         )}
       >
         {isVacation ? 'U' : 'K'}
+        {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
       </td>
     );
   }
