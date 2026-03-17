@@ -98,6 +98,135 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   // Paint mode: single click toggles shift with active skill
   const isPaintMode = !!(paintSkillId || paintDeleteMode);
 
+  // Absence paint mode: click opens date range popover
+  const isAbsencePaintMode = !!paintAbsenceType;
+
+  const handleAbsenceSave = () => {
+    if (!absenceStartDate || !absenceEndDate) return;
+    const startStr = format(absenceStartDate, 'yyyy-MM-dd');
+    const endStr = format(absenceEndDate, 'yyyy-MM-dd');
+    upsertAbsence.mutate(
+      {
+        staff_id: staffId,
+        absence_type: paintAbsenceType!,
+        start_date: startStr,
+        end_date: endStr,
+        notes: null,
+      },
+      {
+        onSuccess: () => {
+          setAbsencePopoverOpen(false);
+          toast.success(paintAbsenceType === 'vacation' ? 'Urlaub eingetragen' : 'Krankheit eingetragen');
+        },
+        onError: () => toast.error('Fehler beim Speichern'),
+      }
+    );
+  };
+
+  // Absence paint mode rendering
+  if (isAbsencePaintMode && !isPaintMode) {
+    const isVacation = paintAbsenceType === 'vacation';
+    return (
+      <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
+        <Popover
+          open={absencePopoverOpen}
+          onOpenChange={(o) => {
+            setAbsencePopoverOpen(o);
+            if (o) {
+              const d = parseISO(date);
+              setAbsenceStartDate(d);
+              setAbsenceEndDate(d);
+            }
+          }}
+        >
+          <PopoverTrigger asChild>
+            <button
+              className={cn(
+                'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors',
+                absenceType && !shift
+                  ? isVacation ? 'bg-amber-100 text-amber-800 font-semibold' : 'bg-red-100 text-red-800 font-semibold'
+                  : isVacation
+                  ? 'hover:bg-amber-100/50 text-muted-foreground/40'
+                  : 'hover:bg-red-100/50 text-muted-foreground/40'
+              )}
+              tabIndex={-1}
+            >
+              {absenceType && !shift ? (absenceType === 'vacation' ? 'U' : 'K') : '+'}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-3" align="start" side="bottom">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <span className={cn('text-sm font-semibold', isVacation ? 'text-amber-700' : 'text-red-700')}>
+                  {isVacation ? '🏖️ Urlaub' : '🤒 Krank'}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">Von</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="justify-start text-left text-xs h-8">
+                        <CalendarIcon className="mr-1.5 h-3 w-3" />
+                        {absenceStartDate ? format(absenceStartDate, 'dd.MM.yyyy', { locale: de }) : 'Datum'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={absenceStartDate}
+                        onSelect={(d) => {
+                          setAbsenceStartDate(d);
+                          if (d && absenceEndDate && d > absenceEndDate) setAbsenceEndDate(d);
+                        }}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">Bis</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="justify-start text-left text-xs h-8">
+                        <CalendarIcon className="mr-1.5 h-3 w-3" />
+                        {absenceEndDate ? format(absenceEndDate, 'dd.MM.yyyy', { locale: de }) : 'Datum'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={absenceEndDate}
+                        onSelect={(d) => {
+                          setAbsenceEndDate(d);
+                          if (d && absenceStartDate && d < absenceStartDate) setAbsenceStartDate(d);
+                        }}
+                        disabled={(d) => absenceStartDate ? d < absenceStartDate : false}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                className="h-8 text-xs"
+                onClick={handleAbsenceSave}
+                disabled={!absenceStartDate || !absenceEndDate || upsertAbsence.isPending}
+              >
+                Speichern
+              </Button>
+            </div>
+          </PopoverContent>
+        </Popover>
+        {isBirthday && <Tooltip><TooltipTrigger asChild><Cake className="absolute bottom-0.5 left-0.5 w-3 h-3 text-pink-500 cursor-default" /></TooltipTrigger><TooltipContent side="top" className="text-xs">{birthdayLabel}</TooltipContent></Tooltip>}
+        {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
+      </td>
+    );
+  }
+
   const handlePaintClick = () => {
     if (paintDeleteMode) {
       if (shift?.id) deleteShift.mutate(shift.id);
