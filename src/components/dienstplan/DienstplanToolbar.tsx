@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Copy } from 'lucide-react';
 import { getPeriodRange } from '@/lib/periodUtils';
