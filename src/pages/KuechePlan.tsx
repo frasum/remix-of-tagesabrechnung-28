@@ -26,6 +26,7 @@ export default function KuechePlan() {
   const [year, setYear] = useState(now.getFullYear());
   const [activeSkillId, setActiveSkillId] = useState<string | null>(null);
   const [deleteMode, setDeleteMode] = useState(false);
+  const [absencePaintType, setAbsencePaintType] = useState<'vacation' | 'sick' | null>(null);
 
   const { data: skills = [] } = useSkills();
   const kitchenSkills = useMemo(() => skills.filter(s => s.category === 'kitchen'), [skills]);
