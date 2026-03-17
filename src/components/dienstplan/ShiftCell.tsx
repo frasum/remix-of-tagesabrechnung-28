@@ -33,6 +33,7 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
   onAbsence,
   isFocused,
   isToday,
+  conflictRestaurant,
 }, ref) => {
   const [open, setOpen] = useState(false);
   const upsertShift = useUpsertShift();
