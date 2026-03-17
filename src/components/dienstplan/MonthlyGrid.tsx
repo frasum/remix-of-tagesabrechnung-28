@@ -105,6 +105,22 @@ export function MonthlyGrid({ department, month, year, restaurantIdOverride, act
     },
   });
 
+  const { data: allShifts = [] } = useQuery({
+    queryKey: ['all_shift_assignments', department, staffIds, startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shift_assignments')
+        .select('staff_id')
+        .eq('department', department)
+        .in('staff_id', staffIds)
+        .gte('shift_date', startDate)
+        .lte('shift_date', endDate);
+      if (error) throw error;
+      return data;
+    },
+    enabled: staffIds.length > 0,
+  });
+
   const [absenceTarget, setAbsenceTarget] = useState<{ staffId: string; staffName: string; absence?: any } | null>(null);
 
   // Keyboard navigation
@@ -255,7 +271,7 @@ export function MonthlyGrid({ department, month, year, restaurantIdOverride, act
               .filter(es => es.staff_id === emp.id)
               .map(es => es.skill_id);
 
-            const shiftCount = shifts.filter(s => s.staff_id === emp.id).length;
+            const shiftCount = allShifts.filter(s => s.staff_id === emp.id).length;
 
             return (
               <tr key={emp.id} className="hover:bg-muted/30">
