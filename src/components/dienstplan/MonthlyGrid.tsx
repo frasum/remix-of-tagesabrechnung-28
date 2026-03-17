@@ -1,9 +1,9 @@
-import { useMemo, useState, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef, useCallback, useContext } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useShiftAssignments, useAbsences, useConflictingShifts } from '@/hooks/useDienstplan';
 import { useSkills, useEmployeeSkills } from '@/hooks/useSkills';
-import { useRestaurant } from '@/hooks/useRestaurant';
+import { RestaurantContext } from '@/contexts/RestaurantContext';
 import { useRestaurantEmployees } from '@/hooks/useRestaurantEmployees';
 import { ShiftCell } from './ShiftCell';
 import { getPeriodRange } from '@/lib/periodUtils';
@@ -16,6 +16,9 @@ interface MonthlyGridProps {
   department: 'kitchen' | 'service';
   month: number;
   year: number;
+  restaurantIdOverride?: string;
+  activeSkillId?: string | null;
+  deleteMode?: boolean;
 }
 
 function getPeriodDates(month0: number, year: number): string[] {
@@ -40,8 +43,9 @@ function formatDayHeader(dateStr: string) {
   return { day, weekday, isSunday };
 }
 
-export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
-  const { restaurantId } = useRestaurant();
+export function MonthlyGrid({ department, month, year, restaurantIdOverride, activeSkillId, deleteMode }: MonthlyGridProps) {
+  const ctx = useContext(RestaurantContext);
+  const restaurantId = restaurantIdOverride || ctx?.restaurantId || '';
   const dates = useMemo(() => getPeriodDates(month, year), [year, month]);
   const todayStr = useMemo(() => {
     const t = new Date();
@@ -51,7 +55,7 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
   const endDate = dates[dates.length - 1];
 
   const { data: employees = [], isLoading: loadingEmp } = useRestaurantEmployees(restaurantId);
-  const { data: shifts = [], isLoading: loadingShifts } = useShiftAssignments(department, startDate, endDate);
+  const { data: shifts = [], isLoading: loadingShifts } = useShiftAssignments(department, startDate, endDate, restaurantId);
   const { data: skills = [] } = useSkills();
   const { data: allEmployeeSkills = [] } = useEmployeeSkills();
 
@@ -280,11 +284,13 @@ export function MonthlyGrid({ department, month, year }: MonthlyGridProps) {
                       restaurantId={restaurantId}
                       skills={skills}
                       employeeSkillIds={empSkillIds}
-                       isFocused={isFocused}
-                       isToday={isToday}
-                       conflictRestaurant={conflictRestaurant}
-                       isBirthday={isBirthday}
-                       birthdayLabel={birthdayLabel}
+                      isFocused={isFocused}
+                      isToday={isToday}
+                      conflictRestaurant={conflictRestaurant}
+                      isBirthday={isBirthday}
+                      birthdayLabel={birthdayLabel}
+                      paintSkillId={activeSkillId}
+                      paintDeleteMode={deleteMode}
                       onAbsence={() => setAbsenceTarget({
                         staffId: emp.id,
                         staffName: emp.name,

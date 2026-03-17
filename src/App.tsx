@@ -43,6 +43,7 @@ const DienstplanService = lazy(() => import("./pages/dienstplan/DienstplanServic
 const RestaurantChat = lazy(() => import("./pages/RestaurantChat"));
 const SharedZtView = lazy(() => import("./pages/shared/SharedZtView"));
 const PayrollPortal = lazy(() => import("./pages/shared/PayrollPortal"));
+const KuechePlan = lazy(() => import("./pages/KuechePlan"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -136,6 +137,7 @@ function AppContent() {
           <Route path="/staff" element={<ProtectedRoute requiredLevel="admin"><StaffManagement /></ProtectedRoute>} />
           <Route path="/permissions" element={<ProtectedRoute requiredLevel="admin"><PermissionManagement /></ProtectedRoute>} />
           <Route path="/telegram" element={<ProtectedRoute requiredLevel="admin"><TelegramSettings /></ProtectedRoute>} />
+          <Route path="/kueche-plan" element={<ProtectedRoute requiredLevel="admin"><KuechePlan /></ProtectedRoute>} />
 
           {/* Redirect root to restaurant selection */}
           <Route path="/" element={<Navigate to="/select-restaurant" replace />} />

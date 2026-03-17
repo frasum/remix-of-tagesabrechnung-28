@@ -1,61 +1,49 @@
 
+## Dienstplan – 2 Pläne pro Standort (Küche + Service/GL)
 
-## Küchen-Dienstplan Dual-View mit Paint-Mode
+### Status: ✅ Implementiert
 
-### Konzept
+### Was wurde gebaut
 
-Eine neue Seite `/kueche-plan` zeigt beide Restaurants (Spicery + YUM) untereinander. Oben eine Toolbar mit den 4 Küchen-Skills als farbige Toggle-Buttons. Der aktive Skill gilt als "Pinsel" — jeder Klick auf eine leere Zelle weist diesen Skill zu, ein Klick auf eine belegte Zelle löscht sie.
+- **Datenbank**: 4 neue Tabellen (`skills`, `employee_skills`, `shift_assignments`, `absences`) + `contracted_hours_per_month` auf `staff`
+- **7 Seed-Skills**: VS, PASS, SPÜLEN, CO (Küche), SERVICE, BAR (Service), GL
+- **Routing**: `/:restaurant/dienstplan/kueche` und `/:restaurant/dienstplan/service`
+- **Sidebar**: "Dienstplan" unter Tagesgeschäft
+- **Grid-UI**: Monatsansicht mit Skill-farbcodierten Zellen, Inline-Edit via Popover, Skill-Besetzungszeile (Küche)
+- **Hooks**: `useSkills`, `useDienstplan` für CRUD
 
-### Layout
+## Küchenplan Dual-View mit Paint-Mode
 
-```text
-┌──────────────────────────────────────────────────┐
-│ Küchenplan           [◀ März 2026 ▶]             │
-│                                                   │
-│ [VS] [PASS] [SPÜLEN] [CO]  [✕ Löschen]          │
-│  ^^^ farbige Toggle-Buttons, aktiver = hervorgehoben
-│                                                   │
-│ ▎ Spicery                                         │
-│ ┌──────┬──┬──┬──┬──┬──┬──┬──┬──┐                │
-│ │ Koch │26│27│28│29│30│01│02│Σ │                 │
-│ │ Lisa │  │CO│  │CO│  │CO│CO│4 │  ← ein Klick   │
-│ └──────┴──┴──┴──┴──┴──┴──┴──┴──┘                │
-│                                                   │
-│ ▎ YUM                                             │
-│ ┌──────┬──┬──┬──┬──┬──┬──┬──┬──┐                │
-│ │ Koch │26│27│28│29│30│01│02│Σ │                 │
-│ │ Lisa │VS│  │VS│  │VS│  │  │3 │                 │
-│ └──────┴──┴──┴──┴──┴──┴──┴──┴──┘                │
-└──────────────────────────────────────────────────┘
-```
+### Status: ✅ Implementiert
 
-### Interaktion
+### Was wurde gebaut
 
-- **Skill auswählen**: Klick auf einen der farbigen Buttons oben (ToggleGroup, nur einer aktiv)
-- **Zelle klicken**: Leere Zelle → weist den aktiven Skill zu (ein Klick, kein Popover)
-- **Belegte Zelle klicken**: Löscht die Schicht (Toggle-Verhalten)
-- **Löschen-Modus**: Ein separater "✕"-Button als Alternative zum Skill — löscht beim Klick
-- **Kein Skill gewählt**: Klick öffnet das normale Popover als Fallback
-- **Konflikte**: Amber-Marker wenn Mitarbeiter am selben Tag im anderen Restaurant eingeteilt
+- **Neue Route** `/kueche-plan` (Admin-only, globale Route ohne Restaurant-Kontext)
+- **Seite** `src/pages/KuechePlan.tsx`: Zeigt beide Restaurants (Spicery + YUM) untereinander mit je einem MonthlyGrid
+- **Paint-Mode Toolbar**: Küchen-Skills (VS, PASS, SPÜLEN, CO) als farbige ToggleGroup-Buttons + Löschen-Button
+- **MonthlyGrid erweitert**: Neue Props `restaurantIdOverride`, `activeSkillId`, `deleteMode`
+- **ShiftCell erweitert**: Paint-Mode — Klick auf leere Zelle weist aktiven Skill zu, Klick auf belegte Zelle löscht sie
+- **Navigation**: "Küchenplan" unter Planung in GlobalLayout-Sidebar
+- **Konflikterkennung**: Amber-Marker bei Doppelbelegung über Standorte hinweg
 
-### Technische Umsetzung
+### Nächste Schritte
 
-1. **Neue Route** `/kueche-plan` in `App.tsx` (geschützt, Admin-only)
-2. **Neue Seite** `src/pages/KuechePlan.tsx`:
-   - Gemeinsame Toolbar mit Monatspicker + Skill-ToggleGroup
-   - State `activeSkillId: string | null` + `deleteMode: boolean`
-   - Zwei `MonthlyGrid`-Instanzen mit je festem `restaurantId`
-3. **MonthlyGrid erweitern**:
-   - Neuer optionaler Prop `restaurantId?: string` (überschreibt Context)
-   - Neuer optionaler Prop `activeSkillId?: string | null` — wird an ShiftCell durchgereicht
-   - Neuer optionaler Prop `deleteMode?: boolean`
-4. **ShiftCell erweitern**:
-   - Wenn `activeSkillId` gesetzt: Klick auf leere Zelle → direkt `upsertShift` mit dem Skill, kein Popover
-   - Wenn `deleteMode`: Klick auf belegte Zelle → `deleteShift`
-   - Wenn kein Mode aktiv: bisheriges Verhalten (Popover)
-5. **Navigation**: Menüpunkt "Küchenplan" in der Sidebar
+- Employee-Skills zuweisen (UI in Mitarbeiterverwaltung)
+- AbsenceDialog für mehrtägige Abwesenheiten
 
-### Keine DB-Änderungen nötig
+## Datenbankarchitektur-Optimierung für Skalierbarkeit
 
-Nutzt die bestehenden `shift_assignments`, `skills` und `employee_skills` Tabellen.
+### Status: ✅ Implementiert
 
+### Was wurde gebaut
+
+- **5 Indexes**: `idx_zt_shifts_week`, `idx_zt_shifts_date`, `idx_sessions_date`, `idx_kitchen_shifts_staff`, `idx_waiter_shifts_staff`
+- **Cleanup-Funktion**: `cleanup_old_records()` löscht login_confirmations (>7d) und auth_attempts (>90d)
+- **pg_cron Job**: Cleanup täglich um 3:00 Uhr
+- **Materialized View**: `mv_daily_summary` mit täglichen Zusammenfassungen (Umsatz, Gäste, Kellner, Stunden, Ausgaben)
+- **pg_cron Job**: View-Refresh täglich um 4:00 Uhr (`REFRESH MATERIALIZED VIEW CONCURRENTLY`)
+- **Sicherheit**: Öffentlicher API-Zugriff auf View gesperrt (nur service_role)
+
+### Nächste Schritte
+
+- AI-Chat auf `mv_daily_summary` umstellen wenn Performance-Probleme bei >1.000 Sessions auftreten
