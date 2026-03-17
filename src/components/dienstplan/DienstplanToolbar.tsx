@@ -63,6 +63,14 @@ export function DienstplanToolbar({ month, year, department, onMonthChange }: Di
   const { data: prevWeekShifts } = useShiftAssignments(department, prevStart, prevEnd);
   const { data: thisWeekShifts } = useShiftAssignments(department, thisStart, thisEnd);
 
+  // Get unique staff IDs from previous week for conflict check
+  const prevWeekStaffIds = useMemo(() => {
+    if (!prevWeekShifts) return [];
+    return [...new Set(prevWeekShifts.map(s => s.staff_id))];
+  }, [prevWeekShifts]);
+
+  const { data: conflicts } = useConflictingShifts(restaurantId, prevWeekStaffIds, thisStart, thisEnd);
+
   const prev = () => {
     if (month === 0) onMonthChange(11, year - 1);
     else onMonthChange(month - 1, year);
