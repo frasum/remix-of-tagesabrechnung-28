@@ -28,6 +28,7 @@ interface ShiftCellProps {
   birthdayLabel?: string;
   paintSkillId?: string | null;
   paintDeleteMode?: boolean;
+  paintAbsenceType?: 'vacation' | 'sick' | null;
 }
 
 export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
