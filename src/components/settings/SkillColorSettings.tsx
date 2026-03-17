@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, X, Palmtree, Thermometer } from 'lucide-react';
 
 interface SkillColorSettingsProps {
   restaurantId: string;
@@ -134,6 +134,83 @@ export function SkillColorSettings({ restaurantId }: SkillColorSettingsProps) {
               onChange={e => setSickColor(e.target.value)}
               className="w-10 h-8 rounded cursor-pointer border border-border"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Live Preview */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Vorschau</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-3">So werden die Buttons im Dienstplan aussehen:</p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {skills.map(skill => (
+              <span
+                key={skill.id}
+                className="h-8 px-3 text-xs font-bold rounded-full border inline-flex items-center text-white"
+                style={{
+                  backgroundColor: skillColors[skill.id] || skill.color,
+                  borderColor: skillColors[skill.id] || skill.color,
+                }}
+              >
+                {skill.name}
+              </span>
+            ))}
+
+            <span className="h-8 px-3 text-xs font-bold rounded-full border inline-flex items-center text-destructive-foreground bg-destructive border-destructive">
+              <X className="w-3.5 h-3.5 mr-1" />
+              Löschen
+            </span>
+
+            <div className="h-6 w-px bg-border mx-0.5" />
+
+            <span
+              className="h-8 px-3 text-xs font-bold rounded-full border inline-flex items-center text-white"
+              style={{ backgroundColor: vacationColor, borderColor: vacationColor }}
+            >
+              <Palmtree className="w-3.5 h-3.5 mr-1" />
+              Urlaub
+            </span>
+            <span
+              className="h-8 px-3 text-xs font-bold rounded-full border inline-flex items-center text-white"
+              style={{ backgroundColor: sickColor, borderColor: sickColor }}
+            >
+              <Thermometer className="w-3.5 h-3.5 mr-1" />
+              Krank
+            </span>
+          </div>
+
+          {/* Grid cell preview */}
+          <p className="text-xs text-muted-foreground mt-4 mb-2">Zellen-Vorschau:</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {skills.slice(0, 3).map(skill => (
+              <div
+                key={skill.id}
+                className="w-14 h-9 rounded border border-border flex items-center justify-center"
+                style={{ backgroundColor: (skillColors[skill.id] || skill.color) + '20' }}
+              >
+                <span
+                  className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded"
+                  style={{ backgroundColor: skillColors[skill.id] || skill.color }}
+                >
+                  {skill.name}
+                </span>
+              </div>
+            ))}
+            <div
+              className="w-14 h-9 rounded border border-border flex items-center justify-center text-xs font-semibold"
+              style={{ backgroundColor: vacationColor + '30', color: vacationColor }}
+            >
+              U
+            </div>
+            <div
+              className="w-14 h-9 rounded border border-border flex items-center justify-center text-xs font-semibold"
+              style={{ backgroundColor: sickColor + '30', color: sickColor }}
+            >
+              K
+            </div>
           </div>
         </CardContent>
       </Card>
