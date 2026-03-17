@@ -1,5 +1,6 @@
 import { useState, forwardRef } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUpsertShift, useDeleteShift, type ShiftAssignment } from '@/hooks/useDienstplan';
 import type { Skill } from '@/hooks/useSkills';
 import { cn } from '@/lib/utils';
