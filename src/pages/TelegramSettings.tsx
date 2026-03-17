@@ -44,6 +44,7 @@ function TelegramSettingsContent() {
     show_pdf_export_notification: true,
     show_notes: true,
   });
+  const [reportTime, setReportTime] = useState('06:00');
   const [testDate, setTestDate] = useState(() => format(subDays(new Date(), 1), 'yyyy-MM-dd'));
 
   useEffect(() => {
