@@ -139,7 +139,38 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
     deleteShift.mutate(shift.id);
   };
 
-  // No skills assigned → simple toggle
+  // Paint mode rendering — single click, no popover
+  if (isPaintMode) {
+    const paintSkill = paintSkillId ? skills.find(s => s.id === paintSkillId) : null;
+    return (
+      <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
+        <button
+          className={cn(
+            'w-full h-full min-h-[36px] text-xs flex items-center justify-center transition-colors',
+            shift && assignedSkill
+              ? 'font-semibold'
+              : shift
+              ? 'bg-primary/10 text-primary font-semibold hover:bg-primary/20'
+              : paintDeleteMode
+              ? 'hover:bg-destructive/10 text-muted-foreground/40'
+              : 'hover:bg-muted/50 text-muted-foreground/40'
+          )}
+          style={assignedSkill ? { backgroundColor: assignedSkill.color + '20' } : undefined}
+          tabIndex={-1}
+          onClick={handlePaintClick}
+        >
+          {assignedSkill ? (
+            <span className="text-[10px] font-bold text-white px-1.5 py-0.5 rounded" style={{ backgroundColor: assignedSkill.color }}>
+              {assignedSkill.name}
+            </span>
+          ) : shift ? '✓' : paintDeleteMode ? '−' : '+'}
+        </button>
+        {isBirthday && <Tooltip><TooltipTrigger asChild><Cake className="absolute bottom-0.5 left-0.5 w-3 h-3 text-pink-500 cursor-default" /></TooltipTrigger><TooltipContent side="top" className="text-xs">{birthdayLabel}</TooltipContent></Tooltip>}
+        {conflictRestaurant && <span className="absolute top-0 right-0.5 text-[8px] text-amber-600">⚠</span>}
+      </td>
+    );
+  }
+
   if (availableSkills.length === 0) {
     return (
       <td ref={ref} title={conflictTitle} className={cn('p-0 min-w-[52px] border border-border/50 relative', todayBg, focusRing, conflictStyle)}>
