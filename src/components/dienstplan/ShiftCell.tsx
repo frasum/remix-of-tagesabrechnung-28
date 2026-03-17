@@ -47,6 +47,8 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
 
   const focusRing = isFocused ? 'ring-2 ring-primary ring-inset' : '';
   const todayBg = isToday ? 'bg-primary/5' : '';
+  const conflictStyle = conflictRestaurant ? 'border-l-2 border-l-amber-500' : '';
+  const conflictTitle = conflictRestaurant ? `Bereits eingeteilt bei ${conflictRestaurant}` : undefined;
 
   // Absence cell
   if (absenceType && !shift) {
