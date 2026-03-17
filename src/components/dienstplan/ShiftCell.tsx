@@ -85,6 +85,28 @@ export const ShiftCell = forwardRef<HTMLTableCellElement, ShiftCellProps>(({
     );
   }
 
+  // Paint mode: single click toggles shift with active skill
+  const isPaintMode = !!(paintSkillId || paintDeleteMode);
+
+  const handlePaintClick = () => {
+    if (paintDeleteMode) {
+      if (shift?.id) deleteShift.mutate(shift.id);
+      return;
+    }
+    if (paintSkillId) {
+      if (shift) {
+        // Already has shift → delete (toggle)
+        if (shift.id) deleteShift.mutate(shift.id);
+      } else {
+        if (conflictRestaurant) {
+          toast.error(`Bereits eingeteilt bei ${conflictRestaurant}`);
+          return;
+        }
+        handleSkillSelect(paintSkillId);
+      }
+    }
+  };
+
   const handleSkillSelect = (skillId: string | null) => {
     // Block new assignment if already scheduled at another restaurant
     if (!shift && conflictRestaurant) {
