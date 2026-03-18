@@ -13,6 +13,7 @@ interface SkillColorSettingsProps {
 }
 
 export function SkillColorSettings({ restaurantId }: SkillColorSettingsProps) {
+  const queryClient = useQueryClient();
   const { data: skills = [], isLoading: loadingSkills } = useSkills();
   const { colors: absenceColors, isLoading: loadingColors, saveColors, isSaving } = useDienstplanColors();
 
