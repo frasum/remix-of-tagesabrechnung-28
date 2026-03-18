@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSkills } from '@/hooks/useSkills';
 import { useDienstplanColors } from '@/hooks/useDienstplanColors';
 import { supabase } from '@/integrations/supabase/client';
