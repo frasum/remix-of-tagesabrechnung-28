@@ -63,6 +63,9 @@ export function SkillColorSettings({ restaurantId }: SkillColorSettingsProps) {
       // Save absence colors
       await saveColors({ colors: { vacation: vacationColor, sick: sickColor }, restaurantId });
 
+      // Invalidate skills cache so other components pick up new colors
+      queryClient.invalidateQueries({ queryKey: ['skills'] });
+
       toast.success('Farben gespeichert');
     } catch {
       toast.error('Fehler beim Speichern');
