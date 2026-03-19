@@ -31,7 +31,7 @@ export function useCumulatedZtData(
       if (!selectedPeriod) return [];
       const { data, error } = await supabase
         .from("scheduling_periods")
-        .select("*")
+        .select("id, label, start_date, end_date, status, restaurant_id")
         .eq("start_date", selectedPeriod.start_date)
         .eq("end_date", selectedPeriod.end_date);
       if (error) throw error;
