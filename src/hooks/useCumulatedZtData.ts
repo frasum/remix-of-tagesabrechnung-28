@@ -49,7 +49,7 @@ export function useCumulatedZtData(
       if (!allPeriodIds.length) return [];
       const { data, error } = await supabase
         .from("weeks")
-        .select("*")
+        .select("id, period_id, week_number, start_date, end_date")
         .in("period_id", allPeriodIds)
         .order("week_number");
       if (error) throw error;
