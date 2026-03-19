@@ -204,7 +204,7 @@ export function PdfPreview({ blobUrl, className, fileName }: PdfPreviewProps) {
 }
 
 type PdfPageProps = {
-  pdf: pdfjs.PDFDocumentProxy;
+  pdf: pdfjsTypes.PDFDocumentProxy;
   pageNumber: number;
   scale: number;
   onCanvasReady: (pageNumber: number, canvas: HTMLCanvasElement | null) => void;

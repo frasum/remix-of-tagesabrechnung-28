@@ -115,7 +115,7 @@ export function useCumulatedZtData(
       if (!allPeriodIds.length) return [];
       const { data, error } = await supabase
         .from("payroll_notes")
-        .select("*")
+        .select("id, employee_id, period_id, vorschuss, urlaub_tage, besonderheiten")
         .in("period_id", allPeriodIds);
       if (error) throw error;
       return data;

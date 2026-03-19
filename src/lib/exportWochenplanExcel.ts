@@ -39,7 +39,7 @@ function fmtTime(t: string | null): string {
   return t.slice(0, 5).replace(/^0/, "");
 }
 
-export function exportWochenplanExcel(
+export async function exportWochenplanExcel(
   periodLabel: string,
   employees: Employee[],
   weeks: Week[],
@@ -48,6 +48,7 @@ export function exportWochenplanExcel(
   sfnMode: "simple" | "extended" = "simple",
   holidayRates?: Map<string, number>
 ) {
+  const XLSX: typeof XLSXType = await import("xlsx") as any;
   const isExtended = sfnMode === "extended";
   const wb = XLSX.utils.book_new();
 
