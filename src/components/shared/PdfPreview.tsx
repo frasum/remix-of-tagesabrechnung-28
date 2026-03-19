@@ -41,6 +41,7 @@ export function PdfPreview({ blobUrl, className, fileName }: PdfPreviewProps) {
 
     (async () => {
       try {
+        const pdfjs = await getPdfjs();
         const res = await fetch(blobUrl);
         const data = await res.arrayBuffer();
 
