@@ -233,8 +233,10 @@ Deno.serve(async (req) => {
 
     const weekIds = (weeks ?? []).map((w: any) => w.id);
 
-    // 3. Load shifts, employees, notes, advances, holidays in parallel
-    const [shiftsRes, employeesRes, notesRes, advancesRes, holidaysRes] = await Promise.all([
+    const restaurantIds = (matchingPeriods ?? []).map((p: any) => p.restaurant_id).filter(Boolean);
+
+    // 3. Load shifts, employees, notes, advances, holidays, waiter data, staff roles, commission settings in parallel
+    const [shiftsRes, employeesRes, notesRes, advancesRes, holidaysRes, waiterShiftsRes, staffRolesRes, commissionSettingsRes] = await Promise.all([
       weekIds.length > 0
         ? supabase.from("zt_shifts").select("*").in("week_id", weekIds)
         : { data: [], error: null },
@@ -242,7 +244,7 @@ Deno.serve(async (req) => {
         .from("staff_restaurants")
         .select("zt_department, staff_id, restaurant_id, staff!inner(id, name, perso_nr, first_name, last_name, nickname)")
         .not("zt_department", "is", null)
-        .in("restaurant_id", (matchingPeriods ?? []).map((p: any) => p.restaurant_id).filter(Boolean)),
+        .in("restaurant_id", restaurantIds),
       supabase
         .from("payroll_notes")
         .select("*")
@@ -255,6 +257,24 @@ Deno.serve(async (req) => {
       supabase
         .from("bavarian_holidays")
         .select("holiday_date, name, surcharge_rate"),
+      // Waiter shifts for commission calculation
+      supabase
+        .from("waiter_shifts")
+        .select("staff_id, waiter_name, second_waiter_name, additional_waiters, pos_sales, hours_worked, sessions!inner(session_date, restaurant_id)")
+        .in("sessions.restaurant_id", restaurantIds)
+        .gte("sessions.session_date", period_start_date)
+        .lte("sessions.session_date", period_end_date),
+      // Staff roles for GL exclusion
+      supabase
+        .from("staff")
+        .select("id, role, name, nickname")
+        .eq("is_active", true),
+      // Commission settings per restaurant
+      supabase
+        .from("settings")
+        .select("key, value, restaurant_id")
+        .in("key", ["commission_min_revenue", "commission_pct"])
+        .in("restaurant_id", restaurantIds),
     ]);
 
     // Deduplicate employees by id + department
