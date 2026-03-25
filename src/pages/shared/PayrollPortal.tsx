@@ -53,6 +53,24 @@ type SharedPeriod = {
   restaurant_name: string;
 };
 
+type WaiterShiftEntry = {
+  staff_id: string | null;
+  waiter_name: string;
+  second_waiter_name: string | null;
+  additional_waiters: string[];
+  pos_sales: number;
+  hours_worked: number | null;
+  session_date: string;
+  restaurant_id: string;
+};
+
+type StaffRoleEntry = {
+  id: string;
+  role: string;
+  name: string;
+  nickname: string | null;
+};
+
 type CumulatedData = {
   period: { label: string; start_date: string; end_date: string; status: string };
   weeks: any[];
@@ -65,6 +83,9 @@ type CumulatedData = {
   advances: AdvanceEntry[];
   holidays: { holiday_date: string; name: string; surcharge_rate?: number }[];
   matchingPeriods: { id: string; label: string; restaurant_name: string; restaurant_id: string }[];
+  waiterShifts?: WaiterShiftEntry[];
+  staffRoles?: StaffRoleEntry[];
+  commissionSettings?: Record<string, { minRevenue: number; pct: number }>;
 };
 
 export default function PayrollPortal() {
