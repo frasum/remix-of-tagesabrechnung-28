@@ -605,10 +605,10 @@ export default function ZtWochenplan() {
         }}
         actions={
           <>
-             <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!allPeriodShifts?.length || !employees?.length || !effectiveWeeks?.length} onClick={() => { const period = periods?.find(p => p.id === selectedPeriodId); if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return; exportWochenplanPdf(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map(), sfnMode, holidayRatesMap); }}>
+             <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!allPeriodShifts?.length || !employees?.length || !effectiveWeeks?.length} onClick={async () => { const period = periods?.find(p => p.id === selectedPeriodId); if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return; try { await exportWochenplanPdf(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map(), sfnMode, holidayRatesMap); toast.success("PDF exportiert"); } catch (err) { console.error("PDF export failed:", err); toast.error("PDF-Export fehlgeschlagen"); } }}>
               <FileDown className="h-3.5 w-3.5" /> PDF
             </Button>
-            <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!allPeriodShifts?.length || !employees?.length || !effectiveWeeks?.length} onClick={() => { const period = periods?.find(p => p.id === selectedPeriodId); if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return; exportWochenplanExcel(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map(), sfnMode, holidayRatesMap); }}>
+            <Button variant="outline" size="sm" className="h-7 px-2 text-xs gap-1" disabled={!allPeriodShifts?.length || !employees?.length || !effectiveWeeks?.length} onClick={async () => { const period = periods?.find(p => p.id === selectedPeriodId); if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return; try { await exportWochenplanExcel(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map(), sfnMode, holidayRatesMap); toast.success("Excel exportiert"); } catch (err) { console.error("Excel export failed:", err); toast.error("Excel-Export fehlgeschlagen"); } }}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> Excel
             </Button>
           </>
