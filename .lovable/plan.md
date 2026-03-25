@@ -1,36 +1,32 @@
 
 
-## Fix: Wochenplan PDF/Excel Export funktioniert nicht
+## Peters YUM-Schichten → Spicery umordnen
 
-### Analyse
+### Ausgangslage
+Peter (GL) hat **ca. 20 Schichten** im YUM für die Periode März 2026 (26.02.–25.03.2026), alle mit 17:00–01:00. In der Spicery existiert die gleiche Periode mit identischen Wochen-Nummern. Es gibt keine Konflikte (keine bestehenden Spicery-Schichten für Peter in diesem Zeitraum).
 
-Die Export-Buttons rufen `exportWochenplanPdf()` und `exportWochenplanExcel()` auf. Beide Funktionen sind `async` (Excel wegen `await import("xlsx")`, PDF wegen jsPDF-Blob-Download), aber die `onClick`-Handler verwenden kein `async/await` und kein Error-Handling. Wenn ein Fehler auftritt (z.B. beim dynamischen Import oder Download), wird er stillschweigend verschluckt — der User sieht nichts.
+### Vorgehen
 
-Zusätzlich fehlt ein visuelles Feedback (Loading-State), dass der Export läuft.
+Da die `zt_shifts`-Tabelle einen UNIQUE-Constraint auf `employee_id, shift_date, department` hat, kann ich die `week_id` der bestehenden Schichten direkt auf die Spicery-Wochen ändern. Das ist ein reines Daten-Update — kein Code oder Schema muss geändert werden.
 
-### Änderungen
+**Wochen-Mapping (YUM → Spicery):**
 
-**1. `src/pages/zeiterfassung/ZtWochenplan.tsx`**
+| Woche | YUM week_id | Spicery week_id |
+|-------|-------------|-----------------|
+| 1 | `1a41c986-...` | `944b58ee-...` |
+| 2 | `ffc44363-...` | `4557444e-...` |
+| 3 | `8b5c2120-...` | `73c6cced-...` |
+| 4 | `361c1f1f-...` | `8a5ca6c4-...` |
+| 5 | `bc3f93c0-...` | `d64786c0-...` |
 
-Die `onClick`-Handler in `async` Wrapper mit `try/catch` und Toast-Feedback umwandeln:
+**Aktion:** 5 UPDATE-Statements, je eines pro Woche, die Peters Schichten von der YUM-`week_id` auf die Spicery-`week_id` umsetzen. Die Schichtdaten (Zeiten, Stunden, Feiertag-Flags) bleiben unverändert.
 
-```typescript
-onClick={async () => {
-  const period = periods?.find(p => p.id === selectedPeriodId);
-  if (!period || !employees || !effectiveWeeks || !allPeriodShifts) return;
-  try {
-    await exportWochenplanPdf(period.label, employees, effectiveWeeks, allPeriodShifts, holidays ?? new Map(), sfnMode, holidayRatesMap);
-    toast.success("PDF exportiert");
-  } catch (err) {
-    console.error("PDF export failed:", err);
-    toast.error("PDF-Export fehlgeschlagen");
-  }
-}}
+```sql
+-- Woche 1
+UPDATE zt_shifts SET week_id = '944b58ee-...' 
+WHERE employee_id = 'peter_id' AND week_id = '1a41c986-...';
+-- ... analog für Wochen 2–5
 ```
 
-Gleiches Pattern für den Excel-Button.
-
-Optional: Ein `isExporting`-State für einen Loading-Indicator auf den Buttons.
-
-1 Datei, minimale Änderung — die Handler werden in async-Funktionen mit Error-Handling gewrappt.
+Keine Code-Änderungen nötig. Reine Datenkorrektur.
 
