@@ -105,6 +105,25 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, advances, is
   );
 }
 
+function AutoExpandTextarea({ defaultValue, onBlur }: { defaultValue: string; onBlur: (e: React.FocusEvent<HTMLTextAreaElement>) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const autoResize = useCallback((el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    el.style.height = el.scrollHeight + "px";
+  }, []);
+
+  return (
+    <Textarea
+      ref={ref}
+      className="time-input-clean text-xs min-h-[28px] h-auto resize-none overflow-hidden"
+      defaultValue={defaultValue}
+      onInput={(e) => autoResize(e.currentTarget)}
+      onBlur={onBlur}
+      onFocus={(e) => autoResize(e.currentTarget)}
+    />
+  );
+}
+
 function SickDaysCell({ empShifts, krankTage }: { empShifts: Shift[]; krankTage: number }) {
   const ranges = getSickDateRanges(empShifts);
   const formatted = formatSickRanges(ranges);
