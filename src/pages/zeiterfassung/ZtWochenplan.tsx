@@ -135,10 +135,10 @@ export default function ZtWochenplan() {
   const { data: restaurantEmployees } = useRestaurantEmployees(restaurantId);
 
   // Effective employees: cumulated or restaurant-specific
-  const employees = cumulated ? cumData.employees : restaurantEmployees;
+  const employees = (cumulated || isSearchActive) ? cumData.employees : restaurantEmployees;
 
   // Effective weeks: cumulated (deduplicated by week_number) or restaurant-specific
-  const effectiveWeeks = cumulated ? cumData.weeks : weeks;
+  const effectiveWeeks = (cumulated || isSearchActive) ? cumData.weeks : weeks;
 
   // When cumulated, map selectedWeekId to the deduplicated week
   // We need a "virtual" selectedWeekId for cumulated mode

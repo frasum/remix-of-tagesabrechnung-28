@@ -61,7 +61,7 @@ export default function ZtZusammenfassung() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_restaurants")
-        .select("zt_department, staff_id, restaurant_id, staff!inner(id, name, perso_nr, first_name, last_name, nickname)")
+        .select("zt_department, staff_id, restaurant_id, restaurants(name), staff!inner(id, name, perso_nr, first_name, last_name, nickname)")
         .in("restaurant_id", allRestaurantIds)
         .not("zt_department", "is", null);
       if (error) throw error;
@@ -73,6 +73,8 @@ export default function ZtZusammenfassung() {
         last_name: row.staff.last_name,
         nickname: row.staff.nickname,
         department: row.zt_department,
+        restaurant_name: row.restaurants?.name ?? undefined,
+        restaurant_id: row.restaurant_id,
       }));
     },
     enabled: allRestaurantIds.length > 0,
