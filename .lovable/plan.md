@@ -1,45 +1,38 @@
 
 
-## Restaurant-Filter-Buttons in der ZtToolbar
+## Fix: Kumulierte Stunden bei "Alle Restaurants"
 
-### Konzept
-Der einzelne "Alle Restaurants"-Toggle wird durch eine segmentierte Button-Gruppe ersetzt:
+### Problem
+Bei "Alle" erscheint ein Mitarbeiter, der in 2 Restaurants arbeitet, als 2 separate Zeilen mit identischen Stunden statt als **eine Zeile mit der Summe** aller Schichten.
 
-```text
-[Periode ▼]  [Gesperrt]  [ YUM | Spicery | Alle ]        [PDF] [Excel]
-```
+### Ursache
+`useCumulatedZtData` liefert pro Staff+Abteilung+Restaurant je einen Eintrag. Im "Alle"-Modus werden diese nicht zusammengeführt, und die Shift-Filterung nach `restaurant_id` verhindert sogar die korrekte Summierung.
 
-- Standardmäßig ist das aktuelle Restaurant (aus URL/Sidebar) vorausgewählt
-- Klick auf ein anderes Restaurant oder "Alle" wechselt auf kumulierte Daten mit entsprechendem Filter
-- Funktioniert unabhängig von der Sidebar-Navigation
+### Lösung
+In allen drei Tabs (Zusammenfassung, Buchhaltung, Wochenplan): Wenn `restaurantFilter === "all"`, die Employee-Liste nach `id+department` deduplizieren (ohne Restaurant-Unterscheidung) und die Shift-Berechnung **ohne** Restaurant-Filter durchführen — so werden alle Schichten korrekt summiert.
 
 ### Änderungen
 
-**1. `src/components/zeiterfassung/ZtToolbar.tsx`**
-- Alte Props `showCumulated`, `cumulated`, `onCumulatedToggle` durch neue Props ersetzen: `restaurants?: {id: string, name: string}[]`, `restaurantFilter?: string | 'all'`, `onRestaurantFilterChange?: (id: string | 'all') => void`
-- Segmentierte Button-Gruppe rendern: ein Button pro Restaurant + "Alle"
+**1. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
+- Employee-Filterung: Bei `restaurantFilter === "all"` die Employees nach `${id}-${dept}` deduplizieren (ersten Treffer behalten)
+- `getEmployeeTotals()` Zeile 171: Restaurant-Filter nur anwenden wenn `restaurantFilter !== "all"` (d.h. bei spezifischem fremdem Restaurant oder Suche)
+- `getWeeklyHours()` Zeile 222: Gleiche Bedingung
+- Shift-Existenz-Check Zeile 160: Restaurant-Filter nur anwenden wenn `restaurantFilter !== "all"`
+- RestaurantBadge: Bei "Alle" nicht anzeigen (da Mitarbeiter zusammengeführt)
 
 **2. `src/pages/zeiterfassung/ZtBuchhaltung.tsx`**
-- `cumulated` boolean-State durch `restaurantFilter` State ersetzen (default = aktuelles `restaurantId`)
-- `cumulated` als abgeleiteter Wert: `restaurantFilter !== restaurantId`
-- `useRestaurants()` importieren, an Toolbar übergeben
-- Employees bei spezifischem fremden Restaurant zusätzlich filtern
+- Gleiche Deduplizierung und Filter-Anpassung
+- `getEmployeeTotals` aus `buchhaltung/utils.ts` wird inline angepasst oder die Shifts werden vorab gefiltert
 
-**3. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
-- Gleiche Umstellung
+**3. `src/pages/zeiterfassung/ZtWochenplan.tsx`**
+- Gleiche Deduplizierung und Filter-Anpassung
 
-**4. `src/pages/zeiterfassung/ZtWochenplan.tsx`**
-- Gleiche Umstellung
-
-**5. `src/pages/shared/PayrollPortal.tsx`**
-- Prüfen ob dort der Toggle verwendet wird und ggf. anpassen
-
-### Filterlogik
+### Logik-Zusammenfassung
 ```text
-restaurantFilter = restaurantId  → lokale Daten (wie bisher, kein kumuliert)
-restaurantFilter = andere ID     → kumulierte Daten laden, nach diesem Restaurant filtern
-restaurantFilter = "all"         → kumulierte Daten laden, alle zeigen
+restaurantFilter = restaurantId  → lokale Daten, keine Deduplizierung
+restaurantFilter = andere ID     → cumulated, nach Restaurant filtern, Badges zeigen
+restaurantFilter = "all"         → cumulated, DEDUPLIZIEREN nach id+dept, ALLE Shifts summieren, keine Badges
 ```
 
-5 Dateien, keine DB-Änderungen.
+3 Dateien, keine DB-Änderungen.
 
