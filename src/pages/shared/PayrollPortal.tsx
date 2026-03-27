@@ -378,10 +378,20 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
   // Filtering logic
   const effectiveRestaurant = hasMultipleRestaurants ? selectedRestaurant : "all";
 
+  const filteredEmployees = useMemo(() => {
+    const enriched = employees.map((e: any) => ({
+      ...e,
+      restaurant_name: e.restaurant_name ?? restaurantIdToName.get(e.restaurant_id) ?? undefined,
+    }));
+    if (effectiveRestaurant === "all") return enriched;
+    return enriched.filter((e: any) => e.restaurant_id === effectiveRestaurant);
+  }, [employees, effectiveRestaurant, restaurantIdToName]);
+
   const filteredShifts = useMemo(() => {
     if (effectiveRestaurant === "all") return shifts;
-    return shifts.filter(s => weekToRestaurant[s.week_id] === effectiveRestaurant);
-  }, [shifts, effectiveRestaurant, weekToRestaurant]);
+    const empIds = new Set(filteredEmployees.map((e: any) => e.id));
+    return shifts.filter(s => empIds.has(s.employee_id));
+  }, [shifts, effectiveRestaurant, filteredEmployees]);
 
   const filteredEmployees = useMemo(() => {
     const enriched = employees.map((e: any) => ({
