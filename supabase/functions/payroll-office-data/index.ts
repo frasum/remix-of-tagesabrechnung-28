@@ -79,6 +79,43 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---- update_staff ----
+    if (action === "update_staff") {
+      const { staff_id, updates } = body;
+      if (!staff_id || !updates || typeof updates !== "object") {
+        return new Response(JSON.stringify({ error: "Fehlende Parameter" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Whitelist allowed fields
+      const allowedFields = [
+        "first_name", "last_name", "nickname", "date_of_birth", "nationality",
+        "perso_nr", "personnel_group", "employment_start", "employment_end",
+        "hourly_rate", "contracted_hours_per_month", "is_minijob", "is_sv_exempt",
+        "tax_id", "tax_class", "social_security_nr", "health_insurance",
+        "vacation_days_contractual", "vacation_days_current", "vacation_days_previous",
+        "vacation_days_taken", "sick_days_total",
+      ];
+      const sanitized: Record<string, any> = {};
+      for (const key of allowedFields) {
+        if (key in updates) sanitized[key] = updates[key];
+      }
+
+      if (Object.keys(sanitized).length === 0) {
+        return new Response(JSON.stringify({ error: "Keine gültigen Felder" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error } = await supabase.from("staff").update(sanitized).eq("id", staff_id);
+      if (error) throw error;
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // ---- upsert_shift ----
     if (action === "upsert_shift") {
       const { employee_id, week_id, shift_date, start_time, end_time, absence_type, department, field } = body;
