@@ -108,7 +108,8 @@ export default function ZtWochenplan() {
   const { hasPermission } = useAuth();
   const showSfn = hasPermission('admin');
 
-  const [cumulated, setCumulated] = useState(false);
+  const [restaurantFilter, setRestaurantFilter] = useState<string | "all">(restaurantId);
+  const cumulated = restaurantFilter !== restaurantId;
   const [searchTerm, setSearchTerm] = useState("");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
