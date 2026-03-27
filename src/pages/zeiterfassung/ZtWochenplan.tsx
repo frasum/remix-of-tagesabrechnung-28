@@ -137,7 +137,11 @@ export default function ZtWochenplan() {
   const { data: restaurantEmployees } = useRestaurantEmployees(restaurantId);
 
   // Effective employees: cumulated or restaurant-specific
-  const employees = (cumulated || isSearchActive) ? cumData.employees : restaurantEmployees;
+  const allEmployees = (cumulated || isSearchActive) ? cumData.employees : restaurantEmployees;
+  const employees = allEmployees?.filter(emp => {
+    if (restaurantFilter === "all" || !cumulated) return true;
+    return (emp as any).restaurant_id === restaurantFilter;
+  });
 
   // Effective weeks: cumulated (deduplicated by week_number) or restaurant-specific
   const effectiveWeeks = (cumulated || isSearchActive) ? cumData.weeks : weeks;
