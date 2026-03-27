@@ -2,7 +2,7 @@ import { useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { formatHours, getSickDateRanges, getVacationDateRanges, formatSickRanges } from "@/lib/shiftCalculations";
+import { formatHours, getSickDateRanges, getVacationDateRanges, formatSickRanges, formatVacationRanges } from "@/lib/shiftCalculations";
 import { displayNum } from "./utils";
 import type { EmployeeTotals, PayrollNote, Shift, AdvanceEntry } from "./types";
 import type { RestaurantEmployee } from "@/hooks/useRestaurantEmployees";
@@ -37,7 +37,7 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, advances, is
 
   const vorschussValue = advanceSum > 0 ? advanceSum : (note?.vorschuss ?? 0);
   const vacRanges = getVacationDateRanges(shifts);
-  const vacText = vacRanges.length > 0 ? `U: ${formatSickRanges(vacRanges).join(", ")}` : "";
+  const vacText = vacRanges.length > 0 ? `U: ${formatVacationRanges(vacRanges, shifts).join(", ")}` : "";
   const autoPrefix = [advanceText, vacText].filter(Boolean).join(" | ");
 
   // Strip auto-generated prefix from stored note to avoid duplication
