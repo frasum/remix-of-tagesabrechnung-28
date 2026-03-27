@@ -452,6 +452,29 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
     onError: () => toast.error("Fehler beim Speichern"),
   });
 
+  const updateStaff = useMutation({
+    mutationFn: async (params: { staff_id: string; updates: Record<string, any> }) => {
+      const res = await fetch(`https://${PROJECT_ID}.supabase.co/functions/v1/payroll-office-data`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: API_KEY },
+        body: JSON.stringify({ pin, action: "update_staff", ...params }),
+      });
+      if (!res.ok) throw new Error("Fehler beim Speichern");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payroll-data"] });
+      toast.success("Mitarbeiterdaten gespeichert");
+      setStaffDetailEmployee(null);
+    },
+    onError: () => toast.error("Fehler beim Speichern"),
+  });
+
+  const handleEmployeeClick = useCallback((empId: string) => {
+    // Find unique employee data (take first occurrence regardless of department)
+    const emp = employees.find(e => e.id === empId);
+    if (emp) setStaffDetailEmployee(emp);
+  }, [employees]);
+
   return (
     <div className="max-w-7xl mx-auto p-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
