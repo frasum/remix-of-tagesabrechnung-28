@@ -697,13 +697,26 @@ function WochenplanTab({ weeks, shifts, employees, holidays, periodLabel, select
 }
 
 // ========== Zusammenfassung Tab ==========
-function ZusammenfassungTab({ weeks, shifts, employees, periodLabel, weekNumberToAllIds }: {
+function ZusammenfassungTab({ weeks, shifts, employees, periodLabel, weekNumberToAllIds, weekToRestaurant }: {
   weeks: SharedData["weeks"];
   shifts: Shift[];
   employees: SharedData["employees"];
   periodLabel: string;
   weekNumberToAllIds?: Record<number, string[]>;
+  weekToRestaurant?: Record<string, string>;
 }) {
+  // Pre-scope shifts for exports
+  const exportShifts = useMemo(() => {
+    if (!weekToRestaurant) return shifts;
+    const empRestMap = new Map<string, string>();
+    employees.forEach(emp => { if (emp.restaurant_id) empRestMap.set(`${emp.id}-${emp.department}`, emp.restaurant_id); });
+    return shifts.filter(s => {
+      const restId = weekToRestaurant[s.week_id];
+      if (!restId) return true;
+      const empRest = empRestMap.get(`${s.employee_id}-${s.department}`);
+      return !empRest || empRest === restId;
+    });
+  }, [shifts, weekToRestaurant, employees]);
   const getWeeklyHours = (empId: string, weekNumber: number, department?: string) => {
     const wIds = weekNumberToAllIds
       ? (weekNumberToAllIds[weekNumber] ?? weeks.filter(w => w.week_number === weekNumber).map(w => w.id))
