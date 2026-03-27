@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calculator, Info, AlertTriangle, Users } from "lucide-react";
+import { Calculator, Info, AlertTriangle, Users, Download } from "lucide-react";
+import { toast } from "sonner";
 import { SFN_RATES } from "@/lib/sfnRates";
 import type { SfnMode } from "@/hooks/useSfnMode";
 
@@ -378,6 +379,45 @@ export default function BatchPayrollCalculation({
     { hours: 0, gross: 0, net: 0, sfn: 0, payout: 0, agCost: 0 }
   );
 
+  const handleExcelExport = useCallback(async () => {
+    if (batchResults.length === 0) return;
+    try {
+      const XLSX = await import("xlsx");
+      const wsData: (string | number | null)[][] = [];
+
+      wsData.push(["Mitarbeiter", "Perso-Nr", "Abt.", "Stunden", "€/h", "Brutto", "Netto", "SFN", "Auszahlung", "AG-Kosten", "Hinweis"]);
+
+      const grouped = batchResults.reduce<Record<string, BatchResult[]>>((acc, r) => {
+        (acc[r.restaurantName] = acc[r.restaurantName] || []).push(r);
+        return acc;
+      }, {});
+
+      for (const [restName, items] of Object.entries(grouped)) {
+        wsData.push([`RESTAURANT: ${restName}`, "", "", "", "", "", "", "", "", "", ""]);
+        for (const r of items) {
+          wsData.push([r.staffName, r.persoNr, r.department, r.hours, r.hourlyRate, r.gross, r.net, r.sfnBonus, r.payout, r.agCost, r.warning || ""]);
+        }
+        const sub = items.reduce((a, r) => ({
+          hours: a.hours + r.hours, gross: a.gross + r.gross, net: a.net + r.net,
+          sfn: a.sfn + r.sfnBonus, payout: a.payout + r.payout, agCost: a.agCost + r.agCost,
+        }), { hours: 0, gross: 0, net: 0, sfn: 0, payout: 0, agCost: 0 });
+        wsData.push([`Summe ${restName}`, "", "", sub.hours, "", sub.gross, sub.net, sub.sfn, sub.payout, sub.agCost, ""]);
+        wsData.push([]);
+      }
+
+      wsData.push(["GESAMT", "", "", grandTotals.hours, "", grandTotals.gross, grandTotals.net, grandTotals.sfn, grandTotals.payout, grandTotals.agCost, ""]);
+
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws["!cols"] = [{ wch: 22 }, { wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 20 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Brutto-Netto");
+      XLSX.writeFile(wb, `Brutto-Netto_${dateFrom}_${dateTo}.xlsx`);
+      toast.success("Excel-Export erstellt");
+    } catch (e: any) {
+      toast.error("Excel-Export fehlgeschlagen: " + (e.message || "Unbekannter Fehler"));
+    }
+  }, [batchResults, grandTotals, dateFrom, dateTo]);
+
   const progressPercent = batchProgress.total > 0 ? (batchProgress.current / batchProgress.total) * 100 : 0;
 
   return (
@@ -532,6 +572,10 @@ export default function BatchPayrollCalculation({
                   {batchResults.filter(r => r.warning).length} mit Hinweis
                 </Badge>
               )}
+              <Button variant="outline" size="sm" onClick={handleExcelExport}>
+                <Download className="h-3.5 w-3.5 mr-1" />
+                Excel Export
+              </Button>
             </div>
           </div>
         )}
