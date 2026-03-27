@@ -529,7 +529,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
           <PayrollBuchhaltungTab
             key={`buch-${sfnMode}`}
             shifts={filteredShifts}
-            employees={employeesWithShifts}
+            employees={filterEmployeesBySearch(employeesWithShifts, searchTerm)}
             payrollNotes={filteredPayrollNotes}
             advances={filteredAdvances}
             periodLabel={period.label}
