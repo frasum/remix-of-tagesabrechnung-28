@@ -1010,14 +1010,26 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
   const additive = sfnMode === "extended";
   const isExtended = sfnMode === "extended";
 
-  const getWeeklyHours = (empId: string, weekNumber: number, department?: string) => {
+  // Scope shifts to a specific employee's restaurant (for "Alle" mode)
+  const scopeShifts = useCallback((empId: string, department?: string, restaurantId?: string) => {
+    let s = shifts.filter(sh => sh.employee_id === empId && (!department || sh.department === department));
+    if (restaurantId && weekToRestaurant) {
+      s = s.filter(sh => weekToRestaurant[sh.week_id] === restaurantId);
+    }
+    return s;
+  }, [shifts, weekToRestaurant]);
+
+  const getWeeklyHours = (empId: string, weekNumber: number, department?: string, restaurantId?: string) => {
     const wIds = weekNumberToAllIds[weekNumber] ?? weeks.filter(w => w.week_number === weekNumber).map(w => w.id);
-    return shifts.filter(s => s.employee_id === empId && wIds.includes(s.week_id) && (!department || s.department === department))
+    const filteredWIds = restaurantId && weekToRestaurant
+      ? wIds.filter(id => weekToRestaurant[id] === restaurantId)
+      : wIds;
+    return shifts.filter(s => s.employee_id === empId && filteredWIds.includes(s.week_id) && (!department || s.department === department))
       .reduce((sum, s) => sum + Number(s.total_hours), 0);
   };
 
-  const getEmpTotals = (empId: string, department?: string) => {
-    const empShifts = shifts.filter(s => s.employee_id === empId && (!department || s.department === department));
+  const getEmpTotals = (empId: string, department?: string, restaurantId?: string) => {
+    const empShifts = scopeShifts(empId, department, restaurantId);
     return {
       gesamt: empShifts.reduce((sum, s) => sum + Number(s.total_hours), 0),
       soFeiStunden: empShifts.reduce((sum, s) => sum + Number(s.sunday_holiday_hours), 0),
