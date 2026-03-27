@@ -109,7 +109,7 @@ export default function ZtBuchhaltung() {
         date: d.sessions.session_date as string,
       })) as AdvanceEntry[];
     },
-    enabled: !cumulated && !!selectedPeriod && !!restaurantId,
+    enabled: !cumulated && !isSearchActive && !!selectedPeriod && !!restaurantId,
   });
 
   const advances = cumulated ? (cumData.advances as AdvanceEntry[] | undefined) : singleAdvances;
