@@ -170,7 +170,7 @@ export default function ZtZusammenfassung() {
     shifts?.some((s) => {
       if (s.employee_id !== emp.id || s.department !== emp.department) return false;
       if (!(Number(s.total_hours) > 0 || !!s.absence_type)) return false;
-      if (restaurantFilter !== "all" && (cumulated || isSearchActive) && (emp as any).restaurant_id && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== (emp as any).restaurant_id) return false;
+      
       return true;
     })
   );
@@ -181,7 +181,6 @@ export default function ZtZusammenfassung() {
     const empShifts = shifts?.filter((s) => {
       if (s.employee_id !== empId) return false;
       if (department && s.department !== department) return false;
-      if (restaurantFilter !== "all" && (cumulated || isSearchActive) && empRestaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== empRestaurantId) return false;
       return true;
     }) ?? [];
     return {
@@ -232,7 +231,7 @@ export default function ZtZusammenfassung() {
     const weekShifts = shifts?.filter((s) => {
       if (s.employee_id !== empId || !wIds.includes(s.week_id)) return false;
       if (department && s.department !== department) return false;
-      if (restaurantFilter !== "all" && (cumulated || isSearchActive) && empRestaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== empRestaurantId) return false;
+      
       return true;
     }) ?? [];
     return weekShifts.reduce((sum, s) => sum + Number(s.total_hours), 0);
