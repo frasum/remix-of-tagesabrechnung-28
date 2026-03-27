@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calculator, Info, AlertTriangle, Users } from "lucide-react";
+import { Calculator, Info, AlertTriangle, Users, Download } from "lucide-react";
+import { toast } from "sonner";
 import { SFN_RATES } from "@/lib/sfnRates";
 import type { SfnMode } from "@/hooks/useSfnMode";
 
