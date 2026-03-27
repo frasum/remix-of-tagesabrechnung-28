@@ -361,6 +361,13 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
   }, [matchingPeriods]);
 
+  // Map restaurant_id to restaurant_name for employees
+  const restaurantIdToName = useMemo(() => {
+    const map = new Map<string, string>();
+    matchingPeriods.forEach(p => map.set(p.restaurant_id, p.restaurant_name));
+    return map;
+  }, [matchingPeriods]);
+
   useEffect(() => {
     if (weeks?.length && !selectedWeekId) setSelectedWeekId(weeks[0].id);
   }, [weeks, selectedWeekId]);
