@@ -568,7 +568,7 @@ export default function ZtWochenplan() {
     const empShifts = shifts?.filter((s) => {
       if (s.employee_id !== employeeId) return false;
       if (department && s.department !== department) return false;
-      if ((cumulated || isSearchActive) && restaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== restaurantId) return false;
+      if (restaurantFilter !== "all" && (cumulated || isSearchActive) && restaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== restaurantId) return false;
       return true;
     }) ?? [];
     let sonntagStunden = 0;
