@@ -1,35 +1,41 @@
 
 
-## Fix: Portal und SharedZtView zeigen falsche Stunden bei Restaurant-Filter
+# Plan: Abteilungsübergreifende Konflikterkennung im Dienstplan
 
-### Problem
-Das Lohnbüro-Portal und die SharedZtView (Freigabe-Link) filtern Schichten nach `weekToRestaurant[s.week_id] === effectiveRestaurant`. Dies schließt Schichten aus, die unter einem anderen Restaurant-Kontext gespeichert wurden (z.B. Jean arbeitet bei YUM, aber Schichten sind unter Spicery-Wochen gespeichert).
+## Problem
+Der `useConflictingShifts`-Hook prüft nur Schichten in **anderen Restaurants** (`.neq('restaurant_id', restaurantId)`). Schichten im **selben Restaurant, aber anderer Abteilung** (z.B. Coco ist im Service eingeteilt, erscheint aber in der Küche ohne Hinweis) werden nicht erkannt.
 
-**Auswirkung**: YUM zeigt im Portal GESAMT 2644,58 (327 Schichten) statt 3163,37 (390 Schichten) — eine Differenz von 519 Stunden und 63 Schichten.
+## Lösung
+Den `useConflictingShifts`-Hook erweitern, damit er **auch** Schichten im selben Restaurant mit anderer Abteilung erkennt. Die Conflict-Map liefert dann statt nur des Restaurant-Namens einen beschreibenden Text wie "Service (Spicery)" oder "Küche".
 
-### Ursache
-Identischer Bug wie zuvor im Admin (ZtZusammenfassung, ZtBuchhaltung), aber diesmal in den Portal-Dateien.
+## Änderungen
 
-### Lösung
-In beiden Dateien die `filteredShifts`-Logik ändern: Statt nach `weekToRestaurant` zu filtern, alle Schichten durchlassen (die Filterung passiert bereits über `filteredEmployees` → `employeesWithShifts`, die nur Mitarbeiter des gewählten Restaurants enthalten).
+### 1. `src/hooks/useDienstplan.ts` — `useConflictingShifts` erweitern
+- Zusätzlich zur bestehenden Query (andere Restaurants) eine zweite Query für **gleiches Restaurant, andere Abteilung** ausführen
+- Beide Ergebnisse in einer gemeinsamen Map zusammenführen
+- Für abteilungsinterne Konflikte den Text z.B. auf "Service" oder "Küche" setzen, für restaurantübergreifende weiterhin den Restaurant-Namen
 
-**Datei 1: `src/pages/shared/PayrollPortal.tsx`** (Zeile 381-384)
-- `filteredShifts`: Den `weekToRestaurant`-Filter entfernen, stattdessen nach `employee_id`s der `filteredEmployees` filtern
+Parameter `department` hinzufügen, damit die aktuelle Abteilung bekannt ist.
 
-**Datei 2: `src/pages/shared/SharedZtView.tsx`** (Zeile 143-147)
-- `filteredShifts`: Identische Änderung — nach `employee_id`s der `filteredEmployees` filtern statt nach `weekToRestaurant`
+### 2. `src/components/dienstplan/MonthlyGrid.tsx` — `department` an Hook übergeben
+- Den `department`-Prop an `useConflictingShifts` weiterreichen
 
-Konkret wird in beiden Dateien:
-```typescript
-// ALT:
-return shifts.filter(s => weekToRestaurant[s.week_id] === effectiveRestaurant);
+### 3. Verhalten bei Konflikten (bereits implementiert, keine Änderung nötig)
+- Amber-Rand und ⚠-Icon werden bereits über `conflictRestaurant` gesteuert
+- Blockierung neuer Zuweisungen bei Konflikt funktioniert bereits via `toast.error`
+- Der angezeigte Text passt sich automatisch an (z.B. "Bereits eingeteilt: Service")
 
-// NEU:
-const empIds = new Set(filteredEmployees.map(e => e.id));
-return shifts.filter(s => empIds.has(s.employee_id));
+## Technische Details
+
+```text
+useConflictingShifts(restaurantId, department, staffIds, start, end)
+│
+├─ Query 1 (bestehend): shift_assignments WHERE restaurant_id != X
+│  → Map: "staff-date" → Restaurant-Name
+│
+├─ Query 2 (neu): shift_assignments WHERE restaurant_id == X AND department != Y
+│  → Map: "staff-date" → Abteilungs-Name (Service/Küche)
+│
+└─ Merge beider Maps → eine einheitliche conflictMap
 ```
-
-**Hinweis**: Da `filteredShifts` von `filteredEmployees` abhängt, muss die `useMemo`-Dependency-Liste angepasst werden. Zudem muss in `SharedZtView` sichergestellt werden, dass `filteredEmployees` vor `filteredShifts` berechnet wird (ist bereits der Fall).
-
-2 Dateien, keine DB-Änderung.
 
