@@ -19,6 +19,7 @@ import { useHolidayRates } from "@/hooks/useHolidayRates";
 import ShiftTimeOverride from "@/components/zeiterfassung/ShiftTimeOverride";
 import { useSfnMode } from "@/hooks/useSfnMode";
 import EmployeeSearchFilter, { filterEmployeesBySearch } from "@/components/zeiterfassung/EmployeeSearchFilter";
+import RestaurantBadge from "@/components/zeiterfassung/RestaurantBadge";
 
 type Shift = {
   id: string;
