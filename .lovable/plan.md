@@ -1,35 +1,19 @@
 
 
-# Fix: Abteilungsübergreifende Konflikterkennung im Wochenplan (Zeiterfassung)
+# Fix: Fehlerhafte Umlaute in der nationality-Spalte korrigieren
 
 ## Problem
-Die `getConflict`-Funktion in `ZtWochenplan.tsx` prüft nur `s.week_id !== selectedWeekId`. Da Schichten im selben Restaurant aber anderer Abteilung dieselbe `week_id` haben, werden sie nie als Konflikt erkannt. Coco ist z.B. im Service eingetragen, aber in der Küche fehlt der Konflikthinweis.
+Zwei Einträge in der `nationality`-Spalte haben kaputte Umlaute (Mojibake):
+- `225 - �thiopisch` → soll `225 - äthiopisch` sein
+- `476 - thail�ndisch` → soll `476 - thailändisch` sein
 
 ## Lösung
+Eine Daten-Migration (via Insert-Tool / UPDATE) die diese zwei Werte korrigiert:
 
-### Datei: `src/pages/zeiterfassung/ZtWochenplan.tsx`
-
-Die `getConflict`-Funktion erweitern, um **auch** Schichten mit gleicher `week_id` aber **anderer Abteilung** als Konflikt zu erkennen:
-
-```typescript
-const getConflict = useCallback(
-  (empId: string, date: string, dept: string) => {
-    if (cumulated) return null;
-    return globalShifts?.find(s =>
-      s.employee_id === empId &&
-      s.shift_date === date &&
-      (s.start_time || s.absence_type || (s.total_hours ?? 0) > 0) &&
-      (
-        s.week_id !== selectedWeekId ||          // anderes Restaurant
-        (s.department || '') !== (dept || '')     // gleiche week_id, andere Abteilung
-      )
-    ) ?? null;
-  },
-  [globalShifts, selectedWeekId, cumulated]
-);
+```sql
+UPDATE staff SET nationality = '225 - äthiopisch' WHERE nationality = '225 - Äthiopisch' OR nationality LIKE '225 - _thiopisch' OR nationality LIKE '225 -%thiopisch';
+UPDATE staff SET nationality = '476 - thailändisch' WHERE nationality LIKE '476 - thail_ndisch' AND nationality != '476 - thailändisch';
 ```
 
-Dadurch wird Coco in der Küche-Ansicht mit dem bestehenden Amber-Hinweis "Bereits in Service eingetragen" markiert und das Eintragen blockiert — genau wie bei restaurantübergreifenden Konflikten.
-
-Keine weiteren Dateien müssen geändert werden, da die HoverCard-Anzeige bereits `conflict.department` auswertet.
+Zwei UPDATE-Statements, keine Schemaänderung nötig. Wird über das Insert-Tool ausgeführt.
 
