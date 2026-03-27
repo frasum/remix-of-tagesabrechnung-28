@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useRestaurants } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,11 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, Info, AlertTriangle, Users } from "lucide-react";
 import { SFN_RATES } from "@/lib/sfnRates";
 import type { SfnMode } from "@/hooks/useSfnMode";
-import { format } from "date-fns";
 
 interface BatchResult {
   restaurantName: string;
@@ -30,14 +28,6 @@ interface BatchResult {
   warning?: string;
 }
 
-interface PeriodOption {
-  id: string;
-  label: string;
-  start_date: string;
-  end_date: string;
-  status: string;
-}
-
 interface BatchPayrollCalculationProps {
   dateFrom: string;
   dateTo: string;
@@ -45,7 +35,6 @@ interface BatchPayrollCalculationProps {
   holidays: Map<string, number> | undefined;
   calculationYear?: number;
   calculationMonth?: number;
-  periods?: PeriodOption[];
   onSelectEmployee?: (staffId: string) => void;
 }
 
@@ -124,7 +113,6 @@ export default function BatchPayrollCalculation({
   holidays,
   calculationYear,
   calculationMonth,
-  periods,
   onSelectEmployee,
 }: BatchPayrollCalculationProps) {
   const { data: restaurants = [] } = useRestaurants();
@@ -132,32 +120,12 @@ export default function BatchPayrollCalculation({
   const [batchCalculating, setBatchCalculating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [batchError, setBatchError] = useState<string | null>(null);
-  const [selectedBatchPeriodId, setSelectedBatchPeriodId] = useState<string>("");
-
-  // Auto-select the last completed period (end_date < today)
-  useEffect(() => {
-    if (!periods?.length || selectedBatchPeriodId) return;
-    const today = format(new Date(), "yyyy-MM-dd");
-    const completed = periods.filter(p => p.end_date < today);
-    if (completed.length > 0) {
-      // periods are sorted desc, so first completed is the most recent
-      setSelectedBatchPeriodId(completed[0].id);
-    } else {
-      setSelectedBatchPeriodId(periods[0].id);
-    }
-  }, [periods, selectedBatchPeriodId]);
-
-  // Derive effective date range from selected period
-  const effectiveDates = useMemo(() => {
-    const sel = periods?.find(p => p.id === selectedBatchPeriodId);
-    if (sel) return { from: sel.start_date, to: sel.end_date };
-    return { from: dateFrom, to: dateTo };
-  }, [selectedBatchPeriodId, periods, dateFrom, dateTo]);
 
   const isExtended = sfnMode === "extended";
 
   const handleBatchCalculate = useCallback(async () => {
-    if (!effectiveDates.from || !effectiveDates.to) return;
+    if (!dateFrom || !dateTo) return;
+    setBatchCalculating(true);
     setBatchResults([]);
     setBatchError(null);
     setBatchProgress({ current: 0, total: 0 });
@@ -178,8 +146,8 @@ export default function BatchPayrollCalculation({
       const { data: allShifts, error: shiftErr } = await supabase
         .from("zt_shifts")
         .select("employee_id, total_hours, night_hours, night_deep_hours, sunday_holiday_hours, is_holiday, evening_hours, shift_date")
-        .gte("shift_date", effectiveDates.from)
-        .lte("shift_date", effectiveDates.to)
+        .gte("shift_date", dateFrom)
+        .lte("shift_date", dateTo)
         .is("absence_type", null)
         .limit(5000);
 
@@ -370,7 +338,7 @@ export default function BatchPayrollCalculation({
     } finally {
       setBatchCalculating(false);
     }
-  }, [effectiveDates, isExtended, holidays, restaurants, calculationYear, calculationMonth]);
+  }, [dateFrom, dateTo, isExtended, holidays, restaurants, calculationYear, calculationMonth]);
 
   // Group results by restaurant
   const groupedResults = batchResults.reduce<Record<string, BatchResult[]>>((acc, r) => {
@@ -409,24 +377,10 @@ export default function BatchPayrollCalculation({
           </AlertDescription>
         </Alert>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          {periods && periods.length > 0 && (
-            <Select value={selectedBatchPeriodId} onValueChange={setSelectedBatchPeriodId}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Periode wählen" />
-              </SelectTrigger>
-              <SelectContent>
-                {periods.map(p => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
+        <div className="flex items-center gap-3">
           <Button
             onClick={handleBatchCalculate}
-            disabled={batchCalculating || !effectiveDates.from || !effectiveDates.to}
+            disabled={batchCalculating || !dateFrom || !dateTo}
             size="lg"
           >
             <Calculator className="h-4 w-4 mr-2" />
@@ -434,9 +388,9 @@ export default function BatchPayrollCalculation({
               ? `Berechne ${batchProgress.current}/${batchProgress.total}...`
               : "Alle Mitarbeiter berechnen"}
           </Button>
-          {effectiveDates.from && effectiveDates.to && (
+          {dateFrom && dateTo && (
             <span className="text-sm text-muted-foreground">
-              {new Date(effectiveDates.from + "T00:00:00").toLocaleDateString("de-DE")} – {new Date(effectiveDates.to + "T00:00:00").toLocaleDateString("de-DE")}
+              {new Date(dateFrom).toLocaleDateString("de-DE")} – {new Date(dateTo).toLocaleDateString("de-DE")}
             </span>
           )}
         </div>

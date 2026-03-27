@@ -349,7 +349,6 @@ export default function ZtBruttoNetto() {
         holidays={holidays}
         calculationYear={calculationYear}
         calculationMonth={calculationMonth}
-        periods={periods}
         onSelectEmployee={(staffId) => setEmployeeId(staffId)}
       />
 
