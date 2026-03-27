@@ -323,6 +323,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
   const [activeTab, setActiveTab] = useState("wochenplan");
   const [selectedWeekId, setSelectedWeekId] = useState<string>("");
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const { sfnMode, setSfnMode } = useSfnMode();
 
   // Commission data for Buchhaltung tab
