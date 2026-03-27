@@ -644,7 +644,7 @@ function handleTimeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
 
 // =================== Wochenplan Tab ===================
 
-function PayrollWochenplanTab({ weeks, shifts, employees, holidays, periodLabel, selectedWeekId, onSelectWeek, isLocked, pin, weekNumberToAllIds, onShiftsChanged, searchTerm = "" }: {
+function PayrollWochenplanTab({ weeks, shifts, employees, holidays, periodLabel, selectedWeekId, onSelectWeek, isLocked, pin, weekNumberToAllIds, onShiftsChanged, searchTerm = "", onEmployeeClick }: {
   weeks: any[];
   shifts: Shift[];
   employees: any[];
@@ -657,6 +657,7 @@ function PayrollWochenplanTab({ weeks, shifts, employees, holidays, periodLabel,
   weekNumberToAllIds: Record<number, string[]>;
   onShiftsChanged: () => void;
   searchTerm?: string;
+  onEmployeeClick?: (empId: string) => void;
 }) {
   const [editingTime, setEditingTime] = useState<Record<string, string>>({});
   const [absenceDialog, setAbsenceDialog] = useState<{
