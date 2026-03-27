@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Loader2, EyeOff, Eye, Search } from "lucide-react";
+import { Settings, Loader2, EyeOff, Eye, Search, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { calculateShiftHours } from "@/lib/shiftCalculations";
 import { toast } from "@/hooks/use-toast";
 
