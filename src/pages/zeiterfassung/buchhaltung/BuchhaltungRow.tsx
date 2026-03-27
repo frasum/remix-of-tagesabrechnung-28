@@ -2,7 +2,7 @@ import { useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
-import { formatHours, getSickDateRanges, getVacationDateRanges, formatSickRanges } from "@/lib/shiftCalculations";
+import { formatHours, getSickDateRanges, getVacationDateRanges, formatSickRanges, formatVacationRanges } from "@/lib/shiftCalculations";
 import { displayNum } from "./utils";
 import type { EmployeeTotals, PayrollNote, Shift, AdvanceEntry } from "./types";
 import type { RestaurantEmployee } from "@/hooks/useRestaurantEmployees";
