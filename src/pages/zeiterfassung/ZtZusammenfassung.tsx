@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useHolidayRates } from "@/hooks/useHolidayRates";
 import ShiftTimeOverride from "@/components/zeiterfassung/ShiftTimeOverride";
 import { useSfnMode } from "@/hooks/useSfnMode";
+import EmployeeSearchFilter, { filterEmployeesBySearch } from "@/components/zeiterfassung/EmployeeSearchFilter";
 
 type Shift = {
   id: string;
