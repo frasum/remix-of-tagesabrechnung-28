@@ -561,6 +561,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             onShiftsChanged={() => queryClient.invalidateQueries({ queryKey: ["payroll-data"] })}
             searchTerm={searchTerm}
             onEmployeeClick={handleEmployeeClick}
+            weekToRestaurant={effectiveRestaurant === "all" ? weekToRestaurant : undefined}
           />
         </TabsContent>
 
