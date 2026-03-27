@@ -575,6 +575,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             weekNumberToAllIds={effectiveWeekNumberToAllIds}
             searchTerm={searchTerm}
             onEmployeeClick={handleEmployeeClick}
+            weekToRestaurant={effectiveRestaurant === "all" ? weekToRestaurant : undefined}
           />
         </TabsContent>
 
