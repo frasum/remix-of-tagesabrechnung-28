@@ -68,7 +68,8 @@ export function useCumulatedZtData(
       const { data, error } = await supabase
         .from("zt_shifts")
         .select("id, week_id, employee_id, shift_date, start_time, end_time, total_hours, evening_hours, night_hours, night_deep_hours, sunday_holiday_hours, is_holiday, absence_type, department")
-        .in("week_id", weekIds);
+        .in("week_id", weekIds)
+        .limit(5000);
       if (error) throw error;
       return data;
     },
