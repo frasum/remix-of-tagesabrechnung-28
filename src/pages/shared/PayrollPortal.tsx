@@ -1137,7 +1137,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
 
                 return (
                   <React.Fragment key={`${emp.id}-${emp.department}`}>
-                    {showDeptHeader && <BuchhaltungDeptHeader department={emp.department} sfnMode={sfnMode} showCommission={showCommission} />}
+                    {showDeptHeader && !searchTerm.trim() && <BuchhaltungDeptHeader department={emp.department} sfnMode={sfnMode} showCommission={showCommission} />}
                     <BuchhaltungRow
                       emp={emp}
                       totals={totals}
