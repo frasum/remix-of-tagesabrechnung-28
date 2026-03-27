@@ -33,7 +33,9 @@ export default function ZtBuchhaltung() {
   const { restaurantId } = useRestaurant();
   const { selectedPeriodId, setSelectedPeriodId, periods, weeks, isPeriodLocked } = useZt();
   const { data: restaurantEmployees } = useRestaurantEmployees(restaurantId);
-  const [cumulated, setCumulated] = useState(false);
+  const { data: allRestaurants } = useRestaurants();
+  const [restaurantFilter, setRestaurantFilter] = useState<string | "all">(restaurantId);
+  const cumulated = restaurantFilter !== restaurantId;
   const [searchTerm, setSearchTerm] = useState("");
   const outletContext = useOutletContext<{ sfnMode?: string }>();
   const sfnMode = (outletContext?.sfnMode as "simple" | "extended") ?? "simple";
