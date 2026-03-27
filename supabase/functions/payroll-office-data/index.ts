@@ -279,7 +279,7 @@ Deno.serve(async (req) => {
         : { data: [], error: null },
       supabase
         .from("staff_restaurants")
-        .select("zt_department, staff_id, restaurant_id, staff!inner(id, name, perso_nr, first_name, last_name, nickname)")
+        .select("zt_department, staff_id, restaurant_id, staff!inner(id, name, perso_nr, first_name, last_name, nickname, date_of_birth, employment_start, employment_end, hourly_rate, contracted_hours_per_month, tax_id, tax_class, social_security_nr, health_insurance, nationality, personnel_group, is_minijob, is_sv_exempt, vacation_days_contractual, vacation_days_current, vacation_days_previous, vacation_days_taken, sick_days_total, role)")
         .not("zt_department", "is", null)
         .eq("staff.is_active", true)
         .in("restaurant_id", restaurantIds),
