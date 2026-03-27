@@ -231,7 +231,7 @@ export default function ZtZusammenfassung() {
     const weekShifts = shifts?.filter((s) => {
       if (s.employee_id !== empId || !wIds.includes(s.week_id)) return false;
       if (department && s.department !== department) return false;
-      if (restaurantFilter !== "all" && (cumulated || isSearchActive) && empRestaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== empRestaurantId) return false;
+      
       return true;
     }) ?? [];
     return weekShifts.reduce((sum, s) => sum + Number(s.total_hours), 0);
