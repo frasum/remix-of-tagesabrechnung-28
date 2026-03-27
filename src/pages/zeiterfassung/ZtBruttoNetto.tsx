@@ -19,6 +19,7 @@ import { SFN_RATES } from "@/lib/sfnRates";
 import { GERMAN_STATES, TAX_CLASSES, type PayrollResult } from "@/types/payroll";
 import { useZt } from "@/contexts/ZtContext";
 import type { SfnMode } from "@/hooks/useSfnMode";
+import BatchPayrollCalculation from "@/components/zeiterfassung/BatchPayrollCalculation";
 
 const CHILD_ALLOWANCE_OPTIONS = Array.from({ length: 17 }, (_, i) => i * 0.5);
 
