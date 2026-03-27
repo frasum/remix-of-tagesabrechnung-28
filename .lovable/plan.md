@@ -1,47 +1,67 @@
 
+## Warum das passiert
 
-## Bug-Fix: Doppelte Stunden bei restaurantübergreifender Suche
+Das ist kein Stunden- oder Restaurant-Bug, sondern die aktuelle Suchlogik:
 
-### Problem
-Wenn nach einem Mitarbeiter gesucht wird, erscheint er korrekt einmal pro Restaurant+Abteilung (z.B. „YUM · Küche" und „Spicery · Küche"). Aber die **Stunden sind identisch**, weil die Schichten nur nach `employee_id + department` gefiltert werden — nicht nach Restaurant. Jede Zeile zeigt daher alle Schichten aus allen Restaurants.
+- In allen betroffenen Ansichten wird dieselbe Funktion `filterEmployeesBySearch(...)` verwendet.
+- Diese sucht per `includes(...)` in `nickname`, `name`, `first_name` und `last_name`.
+- Deshalb trifft `mo` nicht nur auf den Nickname `MO`, sondern auch auf Namen wie:
+  - `Amonwan`
+  - `Duangkamon`
 
-### Ursache
-Schichten (`zt_shifts`) haben keine `restaurant_id`. Der Restaurant-Bezug ergibt sich über: `shift → week_id → week → period_id → period → restaurant_id`. Aktuell wird diese Kette nicht genutzt.
+Zusätzlich erscheinen `MO`-Zeilen mehrfach, weil derselbe Mitarbeiter in mehreren Restaurant-/Abteilungs-Kombinationen geführt wird. Das ist bei der restaurantübergreifenden Suche grundsätzlich korrekt.
 
-### Lösung
+## Sinnvoller Fix
 
-**1. `src/hooks/useCumulatedZtData.ts`** — Mapping `weekId → restaurantId` bereitstellen
-- Aus `matchingPeriods` (haben `restaurant_id`) und `weeks` (haben `period_id`) ein Mapping aufbauen: `weekIdToRestaurantId: Record<string, string>`
-- Dieses Mapping im Return-Objekt exportieren
+Die Suche sollte für kurze Eingaben strenger werden:
 
-**2. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`** — Shifts nach Restaurant filtern
-- `RestaurantEmployee`-Typ hat bereits `restaurant_id`
-- Bei der Shift-Filterung (Zeile 152 und 158) zusätzlich prüfen: `weekIdToRestaurantId[s.week_id] === emp.restaurant_id` — aber **nur** wenn im Search/Cumulated-Modus
-- Gleiche Logik für `getDepartmentTotals` und `grandTotals`
+1. **Bei 1–2 Zeichen**
+   - nur **exakter Nickname-Treffer** oder
+   - **Beginn eines Namens/Wortteils** matchen
 
-**3. `src/pages/zeiterfassung/ZtBuchhaltung.tsx`** — Gleiche Korrektur
-- Shift-Filterung um Restaurant-Check erweitern
+2. **Ab 3 Zeichen**
+   - die bisherige großzügige Teilstring-Suche beibehalten
 
-**4. `src/pages/zeiterfassung/ZtWochenplan.tsx`** — Gleiche Korrektur
-- Wochenstunden pro Mitarbeiter nur für das jeweilige Restaurant berechnen
+Damit würde:
+- `Mo` noch `MO`, `Monika`, `Mohammad` finden
+- aber **nicht mehr** `Amonwan` oder `Duangkamon`
 
-### Technisches Detail
-```text
-week → period → restaurant_id
+## Umsetzung
 
-weekIdToRestaurantId = {
-  "week-abc": "restaurant-yum",
-  "week-def": "restaurant-spicery",
-  ...
-}
+**Datei:** `src/components/zeiterfassung/EmployeeSearchFilter.tsx`
 
-// Beim Filtern:
-empShifts = shifts.filter(s => 
-  s.employee_id === emp.id 
-  && s.department === emp.department
-  && weekIdToRestaurantId[s.week_id] === emp.restaurant_id  // NEU
-)
+Dort die zentrale Funktion `filterEmployeesBySearch(...)` anpassen, damit:
+- kurze Suchbegriffe nicht mehr mitten im Namen matchen
+- stattdessen Wortanfänge/Nickname priorisiert werden
+
+## Technisches Detail
+
+Aktuell ist die Logik sinngemäß:
+
+```ts
+displayName.includes(term) ||
+first_name?.includes(term) ||
+last_name?.includes(term) ||
+name?.includes(term)
 ```
 
-4 Dateien, keine DB-Änderungen.
+Geplant ist eine zweistufige Logik:
 
+```text
+1–2 Zeichen:
+- exact nickname match
+- startsWith auf Namensbestandteile
+
+ab 3 Zeichen:
+- includes wie bisher
+```
+
+## Betroffene Wirkung
+
+Ein zentraler Fix reicht aus und wirkt automatisch in:
+- Wochenplan
+- Zusammenfassung
+- Buchhaltung
+- Lohnbüro-Portal
+
+Keine DB-Änderung nötig.
