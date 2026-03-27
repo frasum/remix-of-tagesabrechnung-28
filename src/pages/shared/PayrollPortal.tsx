@@ -1155,7 +1155,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                 );
               })}
             </tbody>
-            {employees.length > 0 && <BuchhaltungFooter grandTotals={grandTotals} sfnMode={sfnMode} showCommission={showCommission} totalCommission={totalCommission} />}
+            {employees.length > 0 && !searchTerm.trim() && <BuchhaltungFooter grandTotals={grandTotals} sfnMode={sfnMode} showCommission={showCommission} totalCommission={totalCommission} />}
           </table>
         </div>
       </Card>
