@@ -249,7 +249,7 @@ export default function ZtBuchhaltung() {
                 );
               })}
             </tbody>
-            {employeesWithShifts.length > 0 && <BuchhaltungFooter grandTotals={grandTotals} sfnMode={sfnMode} showSfn={showSfn} showCommission={showCommission} totalCommission={totalCommission} />}
+            {employeesWithShifts.length > 0 && !searchTerm.trim() && <BuchhaltungFooter grandTotals={grandTotals} sfnMode={sfnMode} showSfn={showSfn} showCommission={showCommission} totalCommission={totalCommission} />}
           </table>
         </div>
       </Card>

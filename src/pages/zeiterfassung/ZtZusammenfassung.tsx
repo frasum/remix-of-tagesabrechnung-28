@@ -346,7 +346,7 @@ export default function ZtZusammenfassung() {
               <td className="text-center p-2">{grandTotals.urlaubTage > 0 ? grandTotals.urlaubTage.toFixed(2).replace('.', ',') : ""}</td>
               <td className="text-center p-2">{grandTotals.krankTage > 0 ? grandTotals.krankTage : ""}</td>
             </tr>
-          </tfoot>
+          </tfoot>}
         </table>
       </div>
 
