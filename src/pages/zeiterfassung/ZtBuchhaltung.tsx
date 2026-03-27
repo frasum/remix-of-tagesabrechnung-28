@@ -90,7 +90,7 @@ export default function ZtBuchhaltung() {
     enabled: !cumulated && !isSearchActive && !!selectedPeriodId,
   });
 
-  const payrollNotes = cumulated ? (cumData.payrollNotes as PayrollNote[] | undefined) : singlePayrollNotes;
+  const payrollNotes = (cumulated || isSearchActive) ? (cumData.payrollNotes as PayrollNote[] | undefined) : singlePayrollNotes;
 
   const { data: singleAdvances } = useQuery({
     queryKey: ["buchhaltung-advances", restaurantId, selectedPeriodId],
