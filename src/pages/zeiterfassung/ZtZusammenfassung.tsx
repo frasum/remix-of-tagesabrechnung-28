@@ -144,9 +144,11 @@ export default function ZtZusammenfassung() {
       })
     : [];
 
-  const employeesWithShifts = sortedEmployees.filter((emp) =>
+  const employeesWithShiftsUnfiltered = sortedEmployees.filter((emp) =>
     shifts?.some((s) => s.employee_id === emp.id && s.department === emp.department && (Number(s.total_hours) > 0 || !!s.absence_type))
   );
+
+  const employeesWithShifts = filterEmployeesBySearch(employeesWithShiftsUnfiltered, searchTerm);
 
   const getEmployeeTotals = (empId: string, department?: string) => {
     const empShifts = shifts?.filter((s) => s.employee_id === empId && (!department || s.department === department)) ?? [];
