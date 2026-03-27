@@ -124,9 +124,11 @@ export default function ZtWochenplan() {
 
   const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
 
+  const isSearchActive = !!searchTerm.trim();
+
   // Cumulated data hook
   const cumData = useCumulatedZtData(
-    cumulated,
+    cumulated || isSearchActive,
     selectedPeriod ? { start_date: selectedPeriod.start_date, end_date: selectedPeriod.end_date } : undefined
   );
 
