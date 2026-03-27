@@ -130,6 +130,8 @@ export default function PayrollPortal() {
       return data.periods;
     },
     enabled: isAuthenticated,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   // Load cumulated data for selected period
@@ -145,6 +147,8 @@ export default function PayrollPortal() {
       return res.json();
     },
     enabled: isAuthenticated && !!selectedPeriod,
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
   });
 
   // Group periods by date range (must be before early returns)
