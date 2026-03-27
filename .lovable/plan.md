@@ -1,21 +1,22 @@
 
 
-## Auto-Refetch für Lohnbüro-Portal
+## Abteilungssummen & Gesamt-Footer bei aktiver Suche ausblenden
 
-### Änderung
+Wenn ein Suchbegriff eingegeben ist, werden die Abteilungs-Summenzeilen (SUMME KÜCHE, SUMME SERVICE) und die Gesamt-Zeile am Ende ausgeblendet — sie sind bei Einzelsuche nicht nützlich.
 
-**Datei: `src/pages/shared/PayrollPortal.tsx`**
+### Änderungen
 
-Beide `useQuery`-Aufrufe (Zeile 116 und 136) erhalten zwei zusätzliche Optionen:
+**1. `src/pages/zeiterfassung/ZtBuchhaltung.tsx`**
+- Footer (`BuchhaltungFooter`) nur rendern wenn `searchTerm` leer ist
+- Department-Header (`BuchhaltungDeptHeader`) nur rendern wenn `searchTerm` leer ist
 
-```typescript
-refetchInterval: 30_000,        // alle 30 Sekunden neu laden
-refetchOnWindowFocus: true,     // bei Tab-Wechsel sofort aktualisieren
-```
+**2. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
+- Abteilungs-Subtotal-Zeile (`showDeptSubtotal`-Block, Zeile 303-325) nur rendern wenn `searchTerm` leer ist
+- Department-Header (Zeile 265-270) nur rendern wenn `searchTerm` leer ist
+- Gesamt-Footer (`tfoot`, Zeile 330-349) nur rendern wenn `searchTerm` leer ist
 
-Das betrifft:
-1. **Perioden-Query** (`payroll-periods`, Zeile 116) — damit neue freigegebene Perioden automatisch erscheinen
-2. **Daten-Query** (`payroll-data`, Zeile 136) — damit Stunden und Schichten aktuell bleiben
+**3. `src/pages/shared/PayrollPortal.tsx`**
+- Gleiche Logik: `searchTerm` an die Buchhaltung/Zusammenfassung-Komponenten durchreichen (prüfen ob bereits vorhanden)
 
-Eine Datei, zwei Zeilen pro Query. Keine neuen Abhängigkeiten.
+3 Dateien, jeweils 1-2 Zeilen Bedingung ergänzen (`!searchTerm.trim()`).
 
