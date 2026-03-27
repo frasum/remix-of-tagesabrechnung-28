@@ -41,6 +41,7 @@ import BuchhaltungFooter from "@/pages/zeiterfassung/buchhaltung/BuchhaltungFoot
 import { useSfnMode, type SfnMode } from "@/hooks/useSfnMode";
 import { effectiveEveningHours, effectiveNightHours } from "@/lib/shiftCalculations";
 import EmployeeSearchFilter, { filterEmployeesBySearch } from "@/components/zeiterfassung/EmployeeSearchFilter";
+import RestaurantBadge from "@/components/zeiterfassung/RestaurantBadge";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
