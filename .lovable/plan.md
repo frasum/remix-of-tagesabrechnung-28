@@ -1,23 +1,45 @@
 
 
-## Fix: Doppelte Stunden im kumulierten Modus
+## Restaurant-Filter-Buttons in der ZtToolbar
 
-### Problem
-Im "Alle Restaurants"-Modus erscheinen Mitarbeiter, die in mehreren Restaurants arbeiten, als separate Zeilen (eine pro Restaurant+Abteilung). Die Shift-Filterung berücksichtigt die `restaurant_id` aber nur bei aktiver Suche (`isSearchActive`). Im kumulierten Modus ohne Suche werden deshalb **alle** Schichten in **jeder** Zeile gezählt → identische, doppelte Stunden.
+### Konzept
+Der einzelne "Alle Restaurants"-Toggle wird durch eine segmentierte Button-Gruppe ersetzt:
 
-### Lösung
-Die Restaurant-Filterung muss immer greifen wenn kumulierte Daten verwendet werden — also bei `cumulated || isSearchActive`.
+```text
+[Periode ▼]  [Gesperrt]  [ YUM | Spicery | Alle ]        [PDF] [Excel]
+```
+
+- Standardmäßig ist das aktuelle Restaurant (aus URL/Sidebar) vorausgewählt
+- Klick auf ein anderes Restaurant oder "Alle" wechselt auf kumulierte Daten mit entsprechendem Filter
+- Funktioniert unabhängig von der Sidebar-Navigation
 
 ### Änderungen
 
-**1. `src/pages/zeiterfassung/ZtBuchhaltung.tsx`**
-- Zeile 169 und 232: `isSearchActive` durch `(cumulated || isSearchActive)` ersetzen
+**1. `src/components/zeiterfassung/ZtToolbar.tsx`**
+- Alte Props `showCumulated`, `cumulated`, `onCumulatedToggle` durch neue Props ersetzen: `restaurants?: {id: string, name: string}[]`, `restaurantFilter?: string | 'all'`, `onRestaurantFilterChange?: (id: string | 'all') => void`
+- Segmentierte Button-Gruppe rendern: ein Button pro Restaurant + "Alle"
 
-**2. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
-- Gleiche Stellen: Restaurant-Filter auch im kumulierten Modus aktivieren
+**2. `src/pages/zeiterfassung/ZtBuchhaltung.tsx`**
+- `cumulated` boolean-State durch `restaurantFilter` State ersetzen (default = aktuelles `restaurantId`)
+- `cumulated` als abgeleiteter Wert: `restaurantFilter !== restaurantId`
+- `useRestaurants()` importieren, an Toolbar übergeben
+- Employees bei spezifischem fremden Restaurant zusätzlich filtern
 
-**3. `src/pages/zeiterfassung/ZtWochenplan.tsx`**
-- Gleiche Korrektur
+**3. `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
+- Gleiche Umstellung
 
-3 Dateien, jeweils 2 Stellen: `isSearchActive` → `(cumulated || isSearchActive)`.
+**4. `src/pages/zeiterfassung/ZtWochenplan.tsx`**
+- Gleiche Umstellung
+
+**5. `src/pages/shared/PayrollPortal.tsx`**
+- Prüfen ob dort der Toggle verwendet wird und ggf. anpassen
+
+### Filterlogik
+```text
+restaurantFilter = restaurantId  → lokale Daten (wie bisher, kein kumuliert)
+restaurantFilter = andere ID     → kumulierte Daten laden, nach diesem Restaurant filtern
+restaurantFilter = "all"         → kumulierte Daten laden, alle zeigen
+```
+
+5 Dateien, keine DB-Änderungen.
 
