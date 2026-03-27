@@ -1,47 +1,25 @@
 
 
-## Mitarbeiter-Datenkartei im Lohnbüro-Portal
+## Fix: Jean's Schichten fehlen in der Zusammenfassung bei YUM-Filter
 
-### Übersicht
-Beim Klick auf einen Mitarbeiternamen im Lohnbüro-Portal öffnet sich ein Dialog mit der vollständigen Lohnabrechnungsdatenkartei. Die Daten sind dort auch bearbeitbar.
+### Ursache
 
-### Änderungen
+**Wochenplan** und **Zusammenfassung** filtern Schichten unterschiedlich:
 
-#### 1. Edge Function erweitern (`supabase/functions/payroll-office-data/index.ts`)
+- **Wochenplan**: Lädt alle Schichten aller Wochen-IDs (beide Restaurants) und zeigt sie ohne Restaurant-Filter an → Jean's Schichten sind sichtbar
+- **Zusammenfassung**: Hat einen zusätzlichen Filter, der prüft ob die `week_id` der Schicht zum Restaurant des Mitarbeiters passt (`weekIdToRestaurantId[s.week_id] !== emp.restaurant_id`). Wenn Jean's Schichten unter Spicery's Wochen gespeichert sind (weil die Eingabe im Spicery-Kontext erfolgte), aber Jean einen staff_restaurants-Eintrag für YUM hat, werden die Schichten **ausgefiltert** → Jean erscheint nicht
 
-**Mehr Felder bei employees laden:**
-Die bestehende `staff`-Abfrage um alle lohnrelevanten Felder erweitern:
-- `date_of_birth`, `employment_start`, `employment_end`
-- `hourly_rate`, `contracted_hours_per_month`
-- `tax_id`, `tax_class`, `social_security_nr`
-- `health_insurance`, `nationality`, `personnel_group`
-- `is_minijob`, `is_sv_exempt`
-- `vacation_days_contractual`, `vacation_days_current`, `vacation_days_previous`, `vacation_days_taken`
-- `sick_days_total`
+### Lösung
 
-**Neue Action `update_staff`:**
-Ermöglicht das Bearbeiten der Stammdaten über das Portal (PIN-gesichert wie alle anderen Actions).
+In `ZtZusammenfassung.tsx` den Restaurant-basierten Schicht-Filter entfernen. Die Mitarbeiterliste ist bereits nach Restaurant gefiltert — es ist unnötig, zusätzlich zu prüfen ob die Wochen-ID zum Restaurant passt.
 
-#### 2. PayrollPortal erweitern (`src/pages/shared/PayrollPortal.tsx`)
+**3 Stellen in `ZtZusammenfassung.tsx`:**
 
-**Neue Komponente `StaffDetailDialog`:**
-- Dialog öffnet sich bei Klick auf Mitarbeiternamen (in allen Tabs: Wochenplan, Zusammenfassung, Buchhaltung)
-- Zeigt alle Stammdaten in übersichtlichen Sektionen:
-  - **Persönliche Daten**: Name, Vorname, Nachname, Geburtsdatum, Nationalität
-  - **Beschäftigung**: Perso-Nr, Rolle, Eintrittsdatum, Austrittsdatum, Personalgruppe
-  - **Vergütung**: Stundenlohn, Vertragsstunden/Monat, Minijob, SV-befreit
-  - **Steuer/SV**: Steuer-ID, Steuerklasse, SV-Nummer, Krankenkasse
-  - **Urlaub/Krankheit**: Vertragliche Urlaubstage, aktuell, Vorjahr, genommen, Krankheitstage gesamt
-- Alle Felder sind editierbar (Input-Felder)
-- Speichern-Button ruft die neue `update_staff` Action auf
+1. **`employeesWithShiftsUnfiltered`** (Zeile 173): Restaurant-Check auf Schichten entfernen
+2. **`getEmployeeTotals`** (Zeile 184): Restaurant-Check auf Schichten entfernen  
+3. **`getWeeklyHours`** (Zeile 235): Restaurant-Check auf Schichten entfernen
 
-**Klickbare Mitarbeiternamen:**
-- In allen Tabs (Wochenplan, Zusammenfassung, Buchhaltung) werden die Mitarbeiternamen klickbar gemacht (`cursor-pointer`, `hover:underline`)
-- Klick öffnet den `StaffDetailDialog`
+Konkret wird jeweils die Bedingung `cumData.weekIdToRestaurantId[s.week_id] !== (emp as any).restaurant_id` entfernt. Stattdessen reicht es, dass der Mitarbeiter bereits nach Restaurant gefiltert ist.
 
-### Technische Details
-- 2 Dateien: Edge Function + PayrollPortal
-- Dialog verwendet bestehende UI-Komponenten (Dialog, Input, Label, Switch)
-- Speichern über die Edge Function (PIN-Validierung wie bei allen anderen Actions)
-- Nach dem Speichern: Query-Invalidierung für automatisches Refresh
+1 Datei, keine DB-Änderung.
 
