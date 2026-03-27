@@ -160,13 +160,15 @@ export default function ZtBuchhaltung() {
       })
     : [];
 
-  const employeesWithShifts = sortedEmployees.filter((emp) =>
+  const employeesWithShiftsUnfiltered = sortedEmployees.filter((emp) =>
     shifts?.some((s) =>
       s.employee_id === emp.id &&
       s.department === emp.department &&
       (Number(s.total_hours) > 0 || s.absence_type)
     )
   );
+
+  const employeesWithShifts = filterEmployeesBySearch(employeesWithShiftsUnfiltered, searchTerm);
 
   const grandTotals = useMemo(() => {
     const t = { gesamt: 0, schichten: 0, soFeiStunden: 0, sonntagStunden: 0, feiertagStunden: 0, evening: 0, night: 0, urlaubTage: 0, krankTage: 0 };
