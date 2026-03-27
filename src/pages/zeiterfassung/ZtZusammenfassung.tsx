@@ -121,10 +121,10 @@ export default function ZtZusammenfassung() {
       if (error) throw error;
       return data as Shift[];
     },
-    enabled: !cumulated && weekIds.length > 0,
+    enabled: !cumulated && !isSearchActive && weekIds.length > 0,
   });
 
-  const shifts = cumulated ? (cumData.shifts as Shift[] | undefined) : singleShifts;
+  const shifts = (cumulated || isSearchActive) ? (cumData.shifts as Shift[] | undefined) : singleShifts;
 
   // Build a map: weekNumber -> weekIds
   const weekNumberToIds: Record<number, string[]> = cumulated
