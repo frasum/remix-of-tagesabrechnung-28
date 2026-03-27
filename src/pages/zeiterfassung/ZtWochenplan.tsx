@@ -279,8 +279,11 @@ export default function ZtWochenplan() {
       return globalShifts?.find(s =>
         s.employee_id === empId &&
         s.shift_date === date &&
-        s.week_id !== selectedWeekId &&
-        (s.start_time || s.absence_type || (s.total_hours ?? 0) > 0)
+        (s.start_time || s.absence_type || (s.total_hours ?? 0) > 0) &&
+        (
+          s.week_id !== selectedWeekId ||
+          (s.department || '') !== (dept || '')
+        )
       ) ?? null;
     },
     [globalShifts, selectedWeekId, cumulated]
