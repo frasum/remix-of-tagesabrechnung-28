@@ -108,7 +108,13 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, advances, is
         ) : (
           <AutoExpandTextarea
             defaultValue={besonderheitenValue}
-            onBlur={(e) => onUpsertNote({ employee_id: emp.id, field: "besonderheiten", value: e.target.value })}
+            onBlur={(e) => {
+              let val = e.target.value;
+              if (autoPrefix && val.startsWith(autoPrefix)) {
+                val = val.slice(autoPrefix.length).replace(/^\s*\|\s*/, "").trim();
+              }
+              onUpsertNote({ employee_id: emp.id, field: "besonderheiten", value: val });
+            }}
           />
         )}
       </td>
