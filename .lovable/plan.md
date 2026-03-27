@@ -1,28 +1,40 @@
 
 
-## Besonderheiten-Spalte: Volltext sichtbar machen
+## Prüfung: Mitarbeiter-Anzeige über alle Tabs
 
-### Problem
-Die Besonderheiten-Spalte nutzt ein `Textarea` mit fester Höhe (`h-7` = 28px). Bei langen Texten (Vorschüsse + Urlaub + manuelle Einträge) wird der Inhalt abgeschnitten.
+### Gefundene Probleme
 
-### Vorschlag: Auto-Height mit Text-Wrapping
+**1. Fehlender `is_active`-Filter im kumulierten Modus**
+- `useCumulatedZtData.ts` (Zeile 82): Lädt Mitarbeiter aus `staff_restaurants` ohne `is_active`-Filter. Inaktive Mitarbeiter mit bestehenden Schichten könnten doppelt oder fehlerhaft angezeigt werden.
+- `payroll-office-data` Edge Function (Zeile 243): Gleiches Problem — kein `is_active`-Filter auf dem Staff-Join.
 
-**In `BuchhaltungRow.tsx`:** Die Textarea bekommt `h-auto` statt `h-7` und `overflow-hidden` mit einer CSS-Klasse, die die Höhe automatisch an den Inhalt anpasst. Zusätzlich `whitespace-pre-wrap` für sauberen Zeilenumbruch.
+**2. Supabase 1000-Zeilen-Limit bei Schichtabfragen**
+Alle Schicht-Queries nutzen die Standardgrenze von 1000 Zeilen. Bei kumuliertem Modus (2 Restaurants × 5 Wochen × ~30 Mitarbeiter × ~30 Tage) können leicht über 1000 Schichten existieren. **Betroffene Stellen:**
+- `useCumulatedZtData.ts`: `zt_shifts` Query (Zeile 64-76)
+- `ZtBuchhaltung.tsx`: `zt_shifts` Query (Zeile 58-70)
+- `ZtZusammenfassung.tsx`: `zt_shifts` Query (Zeile 108-120)
+- `payroll-office-data/index.ts`: `zt_shifts` Query (Zeile 240-242)
 
-Konkret:
-- `min-h-[28px] h-7 resize-none` → `min-h-[28px] h-auto resize-none`
-- Beim initialen Render und nach Blur die Textarea-Höhe per `scrollHeight` setzen (via `useEffect` oder `ref`)
+Dies bedeutet: **Im kumulierten Modus könnten Schichten fehlen**, was zu falschen Stundensummen führt.
 
-Alternativ (einfacher, besonders für das Lohnbüro wo es read-only ist): Im Lohnbüro die Besonderheiten als **normalen Text mit Wrapping** rendern statt als Textarea — das spart den Input-Overhead und zeigt alles direkt an.
+**3. Konsistenz über die Tabs**
+Die Logik selbst (Sortierung, Filterung, Stunden-Berechnung) ist konsistent über Wochenplan, Zusammenfassung und Buchhaltung. Das Problem liegt ausschließlich bei den obigen zwei Punkten.
 
-### Empfehlung
-Beides kombinieren:
-- **Lohnbüro (read-only):** Einfacher `<td>` mit Text-Wrapping, kein Input-Element
-- **Manager-Ansicht (editierbar):** Auto-expanding Textarea
+### Lösung
 
-### Dateien
-- `src/pages/zeiterfassung/buchhaltung/BuchhaltungRow.tsx` — Auto-expanding Textarea (1 Zeile CSS + ref-basiertes Auto-Resize)
-- `src/pages/shared/PayrollPortal.tsx` — Falls die Buchhaltung dort die gleiche Row-Komponente nutzt, wird `isLocked` bereits übergeben. Wir können `isLocked` nutzen um zwischen Text-Anzeige und Textarea zu wechseln.
+**Datei 1: `src/hooks/useCumulatedZtData.ts`**
+- `is_active`-Filter hinzufügen: `.eq("staff.is_active", true)` bei der Mitarbeiter-Query
+- Schicht-Query mit `.limit(5000)` ergänzen (oder Pagination — aber Limit reicht für realistische Datenmengen)
 
-Minimale Änderung, keine neuen Abhängigkeiten.
+**Datei 2: `src/pages/zeiterfassung/ZtBuchhaltung.tsx`**
+- Schicht-Query mit `.limit(5000)` ergänzen
+
+**Datei 3: `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
+- Schicht-Query mit `.limit(5000)` ergänzen
+
+**Datei 4: `supabase/functions/payroll-office-data/index.ts`**
+- `is_active`-Filter auf Staff-Join hinzufügen
+- Schicht-Query mit `.limit(5000)` ergänzen
+
+4 Dateien, jeweils 1-2 Zeilen Änderung.
 
