@@ -227,7 +227,7 @@ export default function ZtZusammenfassung() {
     };
   })();
 
-  const getWeeklyHours = (empId: string, weekNumber: number, department?: string, restaurantId?: string) => {
+  const getWeeklyHours = (empId: string, weekNumber: number, department?: string, empRestaurantId?: string) => {
     const wIds = weekNumberToIds[weekNumber] ?? [];
     const weekShifts = shifts?.filter((s) => {
       if (s.employee_id !== empId || !wIds.includes(s.week_id)) return false;
