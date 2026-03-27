@@ -297,6 +297,7 @@ export default function SharedZtView() {
               isLocked={effectiveStatus === "locked"}
               onUpsertNote={(p) => upsertNote.mutate(p)}
               weekNumberToAllIds={effectiveWeekNumberToAllIds}
+              weekToRestaurant={effectiveRestaurant === "all" ? weekToRestaurant : undefined}
             />
           </TabsContent>
         </Tabs>
