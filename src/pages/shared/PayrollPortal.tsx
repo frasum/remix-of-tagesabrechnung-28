@@ -1159,6 +1159,16 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
 }) {
   const additive = sfnMode === "extended";
   const isExtended = sfnMode === "extended";
+
+  // Scope shifts to a specific employee's restaurant (for "Alle" mode)
+  const scopeShiftsForEmp = useCallback((empId: string, department: string, restaurantId?: string) => {
+    let s = shifts.filter(sh => sh.employee_id === empId && sh.department === department);
+    if (restaurantId && weekToRestaurant) {
+      s = s.filter(sh => weekToRestaurant[sh.week_id] === restaurantId);
+    }
+    return s;
+  }, [shifts, weekToRestaurant]);
+
   const advancesByName = useMemo(() => {
     const map: Record<string, AdvanceEntry[]> = {};
     advances.forEach(a => { (map[a.staff_name] ??= []).push(a); });
@@ -1168,13 +1178,14 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   const grandTotals = useMemo(() => {
     const t = { gesamt: 0, schichten: 0, soFeiStunden: 0, sonntagStunden: 0, feiertagStunden: 0, evening: 0, night: 0, urlaubTage: 0, krankTage: 0 };
     employees.forEach(emp => {
-      const row = getEmployeeTotals(emp.id, shifts, emp.department, additive);
+      const empShifts = scopeShiftsForEmp(emp.id, emp.department, emp.restaurant_id);
+      const row = getEmployeeTotals(emp.id, empShifts as any, undefined, additive);
       t.gesamt += row.gesamt; t.schichten += row.schichten; t.soFeiStunden += row.soFeiStunden;
       t.sonntagStunden += row.sonntagStunden; t.feiertagStunden += row.feiertagStunden;
       t.evening += row.evening; t.night += row.night; t.urlaubTage += row.urlaubTage; t.krankTage += row.krankTage;
     });
     return t;
-  }, [employees, shifts, additive]);
+  }, [employees, scopeShiftsForEmp, additive]);
 
   const totalCommission = useMemo(() => {
     if (!commissionMap) return 0;
