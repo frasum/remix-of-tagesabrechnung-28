@@ -487,7 +487,9 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {activeTab !== "provision" && <EmployeeSearchFilter value={searchTerm} onChange={setSearchTerm} />}
+
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSearchTerm(""); }}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="wochenplan">Wochenplan</TabsTrigger>
           <TabsTrigger value="zusammenfassung">Zusammenfassung</TabsTrigger>
@@ -499,7 +501,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
           <PayrollWochenplanTab
             weeks={weeks}
             shifts={filteredShifts}
-            employees={sortedEmployees}
+            employees={filterEmployeesBySearch(sortedEmployees, searchTerm)}
             holidays={holidayMap}
             periodLabel={period.label}
             selectedWeekId={selectedWeekId}
