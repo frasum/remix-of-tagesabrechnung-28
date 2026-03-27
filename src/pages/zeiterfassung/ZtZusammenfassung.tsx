@@ -327,7 +327,7 @@ export default function ZtZusammenfassung() {
               );
             })}
           </tbody>
-          <tfoot>
+          {!searchTerm.trim() && <tfoot>
             <tr className="border-t-2 font-bold bg-muted">
               <td className="p-2 uppercase text-xs sticky left-0 bg-muted z-10">Gesamt</td>
               {weeks?.map((w) => <td key={w.id} className="text-center p-2"></td>)}
