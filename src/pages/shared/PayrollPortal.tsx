@@ -1086,7 +1086,7 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
             {employees.map((emp, idx) => {
               const prevDept = idx > 0 ? employees[idx - 1].department : null;
               const showDeptHeader = emp.department !== prevDept;
-              const totals = getEmpTotals(emp.id, emp.department);
+              const totals = getEmpTotals(emp.id, emp.department, emp.restaurant_id);
 
               return (
                 <React.Fragment key={`${emp.id}-${emp.department}`}>
