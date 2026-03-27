@@ -25,6 +25,7 @@ import { useHolidayRates } from "@/hooks/useHolidayRates";
 import { useCommissionData } from "@/hooks/useCommissionData";
 import { useCommissionAddToGross } from "@/hooks/useSettings";
 import type { Shift, PayrollNote, AdvanceEntry } from "./buchhaltung/types";
+import EmployeeSearchFilter, { filterEmployeesBySearch } from "@/components/zeiterfassung/EmployeeSearchFilter";
 
 export default function ZtBuchhaltung() {
   const queryClient = useQueryClient();
@@ -32,6 +33,7 @@ export default function ZtBuchhaltung() {
   const { selectedPeriodId, setSelectedPeriodId, periods, weeks, isPeriodLocked } = useZt();
   const { data: restaurantEmployees } = useRestaurantEmployees(restaurantId);
   const [cumulated, setCumulated] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const outletContext = useOutletContext<{ sfnMode?: string }>();
   const sfnMode = (outletContext?.sfnMode as "simple" | "extended") ?? "simple";
   const isExtended = sfnMode === "extended";
@@ -158,13 +160,15 @@ export default function ZtBuchhaltung() {
       })
     : [];
 
-  const employeesWithShifts = sortedEmployees.filter((emp) =>
+  const employeesWithShiftsUnfiltered = sortedEmployees.filter((emp) =>
     shifts?.some((s) =>
       s.employee_id === emp.id &&
       s.department === emp.department &&
       (Number(s.total_hours) > 0 || s.absence_type)
     )
   );
+
+  const employeesWithShifts = filterEmployeesBySearch(employeesWithShiftsUnfiltered, searchTerm);
 
   const grandTotals = useMemo(() => {
     const t = { gesamt: 0, schichten: 0, soFeiStunden: 0, sonntagStunden: 0, feiertagStunden: 0, evening: 0, night: 0, urlaubTage: 0, krankTage: 0 };
@@ -206,6 +210,8 @@ export default function ZtBuchhaltung() {
           </>
         }
       />
+
+      {showSfn && <EmployeeSearchFilter value={searchTerm} onChange={setSearchTerm} />}
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">

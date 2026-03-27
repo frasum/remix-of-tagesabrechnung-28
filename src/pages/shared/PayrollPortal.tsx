@@ -40,6 +40,7 @@ import BuchhaltungRow from "@/pages/zeiterfassung/buchhaltung/BuchhaltungRow";
 import BuchhaltungFooter from "@/pages/zeiterfassung/buchhaltung/BuchhaltungFooter";
 import { useSfnMode, type SfnMode } from "@/hooks/useSfnMode";
 import { effectiveEveningHours, effectiveNightHours } from "@/lib/shiftCalculations";
+import EmployeeSearchFilter, { filterEmployeesBySearch } from "@/components/zeiterfassung/EmployeeSearchFilter";
 
 const PROJECT_ID = import.meta.env.VITE_SUPABASE_PROJECT_ID;
 const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -322,6 +323,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
   const [activeTab, setActiveTab] = useState("wochenplan");
   const [selectedWeekId, setSelectedWeekId] = useState<string>("");
   const [selectedRestaurant, setSelectedRestaurant] = useState<string>("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const { sfnMode, setSfnMode } = useSfnMode();
 
   // Commission data for Buchhaltung tab
@@ -485,7 +487,9 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
         </div>
       )}
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      {activeTab !== "provision" && <EmployeeSearchFilter value={searchTerm} onChange={setSearchTerm} />}
+
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setSearchTerm(""); }}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="wochenplan">Wochenplan</TabsTrigger>
           <TabsTrigger value="zusammenfassung">Zusammenfassung</TabsTrigger>
@@ -497,7 +501,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
           <PayrollWochenplanTab
             weeks={weeks}
             shifts={filteredShifts}
-            employees={sortedEmployees}
+            employees={filterEmployeesBySearch(sortedEmployees, searchTerm)}
             holidays={holidayMap}
             periodLabel={period.label}
             selectedWeekId={selectedWeekId}
@@ -515,7 +519,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             sfnMode={sfnMode}
             weeks={weeks}
             shifts={filteredShifts}
-            employees={employeesWithShifts}
+            employees={filterEmployeesBySearch(employeesWithShifts, searchTerm)}
             periodLabel={period.label}
             weekNumberToAllIds={effectiveWeekNumberToAllIds}
           />
@@ -525,7 +529,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
           <PayrollBuchhaltungTab
             key={`buch-${sfnMode}`}
             shifts={filteredShifts}
-            employees={employeesWithShifts}
+            employees={filterEmployeesBySearch(employeesWithShifts, searchTerm)}
             payrollNotes={filteredPayrollNotes}
             advances={filteredAdvances}
             periodLabel={period.label}

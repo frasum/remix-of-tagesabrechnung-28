@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useHolidayRates } from "@/hooks/useHolidayRates";
 import ShiftTimeOverride from "@/components/zeiterfassung/ShiftTimeOverride";
 import { useSfnMode } from "@/hooks/useSfnMode";
+import EmployeeSearchFilter, { filterEmployeesBySearch } from "@/components/zeiterfassung/EmployeeSearchFilter";
 
 type Shift = {
   id: string;
@@ -42,6 +43,7 @@ export default function ZtZusammenfassung() {
   const { selectedPeriodId, setSelectedPeriodId, periods, weeks: contextWeeks } = useZt();
   const { data: restaurantEmployees } = useRestaurantEmployees(restaurantId);
   const [cumulated, setCumulated] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const { hasPermission } = useAuth();
   const { data: holidayRates } = useHolidayRates();
   const { sfnMode } = useSfnMode();
@@ -142,9 +144,11 @@ export default function ZtZusammenfassung() {
       })
     : [];
 
-  const employeesWithShifts = sortedEmployees.filter((emp) =>
+  const employeesWithShiftsUnfiltered = sortedEmployees.filter((emp) =>
     shifts?.some((s) => s.employee_id === emp.id && s.department === emp.department && (Number(s.total_hours) > 0 || !!s.absence_type))
   );
+
+  const employeesWithShifts = filterEmployeesBySearch(employeesWithShiftsUnfiltered, searchTerm);
 
   const getEmployeeTotals = (empId: string, department?: string) => {
     const empShifts = shifts?.filter((s) => s.employee_id === empId && (!department || s.department === department)) ?? [];
@@ -221,6 +225,8 @@ export default function ZtZusammenfassung() {
           </>
         }
       />
+
+      {showSfn && <EmployeeSearchFilter value={searchTerm} onChange={setSearchTerm} />}
 
       <div className="overflow-x-auto border rounded-lg">
         <table className="w-full text-sm">

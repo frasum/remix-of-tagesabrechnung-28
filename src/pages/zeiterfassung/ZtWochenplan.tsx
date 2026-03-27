@@ -28,6 +28,7 @@ import { useZt } from "@/contexts/ZtContext";
 import { useRestaurantEmployees, type RestaurantEmployee } from "@/hooks/useRestaurantEmployees";
 import { useCumulatedZtData } from "@/hooks/useCumulatedZtData";
 import { useHolidayRates } from "@/hooks/useHolidayRates";
+import EmployeeSearchFilter, { filterEmployeesBySearch } from "@/components/zeiterfassung/EmployeeSearchFilter";
 
 type Shift = {
   id: string;
@@ -107,6 +108,7 @@ export default function ZtWochenplan() {
   const showSfn = hasPermission('admin');
 
   const [cumulated, setCumulated] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [editingTime, setEditingTime] = useState<Record<string, string>>({});
@@ -615,6 +617,8 @@ export default function ZtWochenplan() {
         }
       />
 
+      {showSfn && <EmployeeSearchFilter value={searchTerm} onChange={setSearchTerm} />}
+
       {selectedWeek && weekDays.length > 0 && (() => {
         const sundayHolidayDays = new Set(
           weekDays
@@ -673,8 +677,8 @@ export default function ZtWochenplan() {
                 </tr>
               </thead>
               <tbody>
-                {sortedEmployees.map((emp, idx) => {
-                  const prevDept = idx > 0 ? sortedEmployees[idx - 1].department : null;
+                {filterEmployeesBySearch(sortedEmployees, searchTerm).map((emp, idx, filteredArr) => {
+                  const prevDept = idx > 0 ? filteredArr[idx - 1].department : null;
                   const showDeptHeader = emp.department !== prevDept;
                   if (showDeptHeader) empIndexInDept = 0;
                   const isEvenRow = empIndexInDept % 2 === 1;
