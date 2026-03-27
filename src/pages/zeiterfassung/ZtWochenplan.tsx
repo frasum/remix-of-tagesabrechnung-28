@@ -29,6 +29,7 @@ import { useRestaurantEmployees, type RestaurantEmployee } from "@/hooks/useRest
 import { useCumulatedZtData } from "@/hooks/useCumulatedZtData";
 import { useHolidayRates } from "@/hooks/useHolidayRates";
 import EmployeeSearchFilter, { filterEmployeesBySearch } from "@/components/zeiterfassung/EmployeeSearchFilter";
+import RestaurantBadge from "@/components/zeiterfassung/RestaurantBadge";
 
 type Shift = {
   id: string;
