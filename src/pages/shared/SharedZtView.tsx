@@ -339,7 +339,7 @@ function handleTimeKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
   if (target >= 0 && target < allFields.length) { allFields[target].focus(); allFields[target].select(); }
 }
 
-function WochenplanTab({ weeks, shifts, employees, holidays, periodLabel, selectedWeekId, onSelectWeek, isLocked, token, onShiftsChanged, weekNumberToAllIds }: {
+function WochenplanTab({ weeks, shifts, employees, holidays, periodLabel, selectedWeekId, onSelectWeek, isLocked, token, onShiftsChanged, weekNumberToAllIds, weekToRestaurant }: {
   weeks: SharedData["weeks"];
   shifts: Shift[];
   employees: SharedData["employees"];
@@ -351,6 +351,7 @@ function WochenplanTab({ weeks, shifts, employees, holidays, periodLabel, select
   token: string;
   onShiftsChanged: () => void;
   weekNumberToAllIds?: Record<number, string[]>;
+  weekToRestaurant?: Record<string, string>;
 }) {
   const [editingTime, setEditingTime] = useState<Record<string, string>>({});
   const [absenceDialog, setAbsenceDialog] = useState<{
