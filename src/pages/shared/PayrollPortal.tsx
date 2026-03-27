@@ -603,6 +603,17 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
           />
         </TabsContent>
       </Tabs>
+
+      <StaffDetailDialog
+        employee={staffDetailEmployee}
+        onClose={() => setStaffDetailEmployee(null)}
+        onSave={(updates) => {
+          if (staffDetailEmployee) {
+            updateStaff.mutate({ staff_id: staffDetailEmployee.id, updates });
+          }
+        }}
+        isSaving={updateStaff.isPending}
+      />
     </div>
   );
 }
