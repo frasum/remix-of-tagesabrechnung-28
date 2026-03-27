@@ -341,6 +341,17 @@ export default function ZtBruttoNetto() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">Brutto-Netto-Rechner</h1>
 
+      {/* Batch-Berechnung für alle Restaurants */}
+      <BatchPayrollCalculation
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        sfnMode={sfnMode}
+        holidays={holidays}
+        calculationYear={calculationYear}
+        calculationMonth={calculationMonth}
+        onSelectEmployee={(staffId) => setEmployeeId(staffId)}
+      />
+
       {/* Eingabeformular */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
