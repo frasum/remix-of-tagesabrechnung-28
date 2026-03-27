@@ -268,7 +268,7 @@ export default function ZtBuchhaltung() {
                       showSfn={showSfn}
                       showCommission={showCommission}
                       commission={emp.department === "Service" ? (commissionMap.get(emp.id) ?? 0) : 0}
-                      showRestaurantBadge={isSearchActive}
+                      showRestaurantBadge={isSearchActive || (cumulated && restaurantFilter !== "all")}
                       onUpsertNote={(params) => upsertNote.mutate(params)}
                     />
                   </React.Fragment>
