@@ -154,8 +154,13 @@ export default function ZtZusammenfassung() {
 
   const employeesWithShifts = filterEmployeesBySearch(employeesWithShiftsUnfiltered, searchTerm);
 
-  const getEmployeeTotals = (empId: string, department?: string) => {
-    const empShifts = shifts?.filter((s) => s.employee_id === empId && (!department || s.department === department)) ?? [];
+  const getEmployeeTotals = (empId: string, department?: string, restaurantId?: string) => {
+    const empShifts = shifts?.filter((s) => {
+      if (s.employee_id !== empId) return false;
+      if (department && s.department !== department) return false;
+      if (isSearchActive && restaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== restaurantId) return false;
+      return true;
+    }) ?? [];
     return {
       gesamt: empShifts.reduce((sum, s) => sum + Number(s.total_hours), 0),
       soFeiStunden: empShifts.reduce((sum, s) => sum + Number(s.sunday_holiday_hours), 0),
