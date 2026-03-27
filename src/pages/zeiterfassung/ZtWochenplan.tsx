@@ -617,6 +617,8 @@ export default function ZtWochenplan() {
         }
       />
 
+      {showSfn && <EmployeeSearchFilter value={searchTerm} onChange={setSearchTerm} />}
+
       {selectedWeek && weekDays.length > 0 && (() => {
         const sundayHolidayDays = new Set(
           weekDays
