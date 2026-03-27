@@ -163,11 +163,12 @@ export default function ZtBuchhaltung() {
     : [];
 
   const employeesWithShiftsUnfiltered = sortedEmployees.filter((emp) =>
-    shifts?.some((s) =>
-      s.employee_id === emp.id &&
-      s.department === emp.department &&
-      (Number(s.total_hours) > 0 || s.absence_type)
-    )
+    shifts?.some((s) => {
+      if (s.employee_id !== emp.id || s.department !== emp.department) return false;
+      if (!(Number(s.total_hours) > 0 || s.absence_type)) return false;
+      if (isSearchActive && (emp as any).restaurant_id && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== (emp as any).restaurant_id) return false;
+      return true;
+    })
   );
 
   const employeesWithShifts = filterEmployeesBySearch(employeesWithShiftsUnfiltered, searchTerm);
@@ -226,9 +227,13 @@ export default function ZtBuchhaltung() {
                 const isEven = zebraIdx % 2 === 1;
                 zebraIdx++;
 
-                const totals = getEmployeeTotals(emp.id, shifts ?? [], emp.department, isExtended);
+                const empShifts = shifts?.filter(s => {
+                  if (s.employee_id !== emp.id || s.department !== emp.department) return false;
+                  if (isSearchActive && (emp as any).restaurant_id && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== (emp as any).restaurant_id) return false;
+                  return true;
+                }) ?? [];
+                const totals = getEmployeeTotals(emp.id, empShifts, emp.department, isExtended);
                 const note = payrollNotes?.find((n) => n.employee_id === emp.id);
-                const empShifts = shifts?.filter(s => s.employee_id === emp.id && s.department === emp.department) ?? [];
 
                 return (
                   <React.Fragment key={`${emp.id}-${emp.department}-${selectedPeriodId}`}>

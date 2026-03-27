@@ -149,13 +149,23 @@ export default function ZtZusammenfassung() {
     : [];
 
   const employeesWithShiftsUnfiltered = sortedEmployees.filter((emp) =>
-    shifts?.some((s) => s.employee_id === emp.id && s.department === emp.department && (Number(s.total_hours) > 0 || !!s.absence_type))
+    shifts?.some((s) => {
+      if (s.employee_id !== emp.id || s.department !== emp.department) return false;
+      if (!(Number(s.total_hours) > 0 || !!s.absence_type)) return false;
+      if (isSearchActive && (emp as any).restaurant_id && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== (emp as any).restaurant_id) return false;
+      return true;
+    })
   );
 
   const employeesWithShifts = filterEmployeesBySearch(employeesWithShiftsUnfiltered, searchTerm);
 
-  const getEmployeeTotals = (empId: string, department?: string) => {
-    const empShifts = shifts?.filter((s) => s.employee_id === empId && (!department || s.department === department)) ?? [];
+  const getEmployeeTotals = (empId: string, department?: string, restaurantId?: string) => {
+    const empShifts = shifts?.filter((s) => {
+      if (s.employee_id !== empId) return false;
+      if (department && s.department !== department) return false;
+      if (isSearchActive && restaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== restaurantId) return false;
+      return true;
+    }) ?? [];
     return {
       gesamt: empShifts.reduce((sum, s) => sum + Number(s.total_hours), 0),
       soFeiStunden: empShifts.reduce((sum, s) => sum + Number(s.sunday_holiday_hours), 0),
@@ -199,13 +209,14 @@ export default function ZtZusammenfassung() {
     };
   })();
 
-  const getWeeklyHours = (empId: string, weekNumber: number, department?: string) => {
-    // In cumulated mode, shifts are loaded for ALL weeks across restaurants
-    // We filter by week_number via the weekNumberToIds mapping
+  const getWeeklyHours = (empId: string, weekNumber: number, department?: string, restaurantId?: string) => {
     const wIds = weekNumberToIds[weekNumber] ?? [];
-    // But in cumulated mode, multiple weeks with same week_number exist across periods
-    // The shifts are loaded with ALL week IDs, so we need to find all shifts matching any of those week IDs
-    const weekShifts = shifts?.filter((s) => s.employee_id === empId && wIds.includes(s.week_id) && (!department || s.department === department)) ?? [];
+    const weekShifts = shifts?.filter((s) => {
+      if (s.employee_id !== empId || !wIds.includes(s.week_id)) return false;
+      if (department && s.department !== department) return false;
+      if (isSearchActive && restaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== restaurantId) return false;
+      return true;
+    }) ?? [];
     return weekShifts.reduce((sum, s) => sum + Number(s.total_hours), 0);
   };
 
@@ -262,7 +273,7 @@ export default function ZtZusammenfassung() {
               const showDeptHeader = emp.department !== prevDept;
               const nextDept = idx < employeesWithShifts.length - 1 ? employeesWithShifts[idx + 1].department : null;
               const showDeptSubtotal = emp.department !== nextDept;
-              const totals = getEmployeeTotals(emp.id, emp.department);
+              const totals = getEmployeeTotals(emp.id, emp.department, (emp as any).restaurant_id);
 
               return (
                 <React.Fragment key={`${emp.id}-${emp.department}`}>
@@ -287,7 +298,7 @@ export default function ZtZusammenfassung() {
                       <RestaurantBadge restaurantName={(emp as any).restaurant_name} department={emp.department} show={isSearchActive} />
                     </td>
                     {weeks?.map((w) => {
-                      const h = getWeeklyHours(emp.id, w.week_number, emp.department);
+                      const h = getWeeklyHours(emp.id, w.week_number, emp.department, (emp as any).restaurant_id);
                       return <td key={w.id} className="text-center p-2">{h > 0 ? formatHours(h) : ""}</td>;
                     })}
                     <td className="text-center p-2 font-medium">{formatHours(totals.gesamt)}</td>
