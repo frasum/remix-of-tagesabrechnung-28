@@ -544,6 +544,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             holidayRates={holidayRates}
             showCommission={showCommission}
             commissionMap={showCommission ? commissionMap : undefined}
+            searchTerm={searchTerm}
           />
         </TabsContent>
 
