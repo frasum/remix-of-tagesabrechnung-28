@@ -52,7 +52,8 @@ export default function ZtZusammenfassung() {
   const showSfn = hasPermission('admin');
 
   const selectedPeriod = periods?.find(p => p.id === selectedPeriodId);
-  const cumData = useCumulatedZtData(cumulated, selectedPeriod);
+  const isSearchActive = !!searchTerm.trim();
+  const cumData = useCumulatedZtData(cumulated || isSearchActive, selectedPeriod);
 
   // Load employees from ALL restaurants for ShiftTimeOverride
   const { data: allRestaurantEmployees } = useQuery({
