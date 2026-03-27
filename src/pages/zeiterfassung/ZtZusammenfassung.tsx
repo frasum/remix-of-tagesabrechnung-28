@@ -300,7 +300,7 @@ export default function ZtZusammenfassung() {
                     <td className="text-center p-2 text-green-600 font-medium">{totals.urlaubTage > 0 ? totals.urlaubTage.toFixed(2).replace('.', ',') : ""}</td>
                     <td className="text-center p-2 text-red-600 font-medium">{totals.krankTage > 0 ? totals.krankTage : ""}</td>
                   </tr>
-                  {showDeptSubtotal && (() => {
+                  {showDeptSubtotal && !searchTerm.trim() && (() => {
                     const dt = getDepartmentTotals(emp.department!);
                     return (
                       <tr className={`border-t-2 font-bold ${getDepartmentBgClass(emp.department)}`}>
