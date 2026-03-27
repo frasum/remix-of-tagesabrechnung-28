@@ -30,6 +30,14 @@ interface BatchResult {
   warning?: string;
 }
 
+interface PeriodOption {
+  id: string;
+  label: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+}
+
 interface BatchPayrollCalculationProps {
   dateFrom: string;
   dateTo: string;
@@ -37,6 +45,7 @@ interface BatchPayrollCalculationProps {
   holidays: Map<string, number> | undefined;
   calculationYear?: number;
   calculationMonth?: number;
+  periods?: PeriodOption[];
   onSelectEmployee?: (staffId: string) => void;
 }
 
