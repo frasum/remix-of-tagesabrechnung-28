@@ -283,6 +283,7 @@ export default function SharedZtView() {
               employees={employeesWithShifts}
               periodLabel={`${period.label} — ${restaurantLabel}`}
               weekNumberToAllIds={effectiveWeekNumberToAllIds}
+              weekToRestaurant={effectiveRestaurant === "all" ? weekToRestaurant : undefined}
             />
           </TabsContent>
 
