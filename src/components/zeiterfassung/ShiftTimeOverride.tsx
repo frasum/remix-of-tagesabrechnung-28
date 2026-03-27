@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Settings, Loader2, EyeOff, Eye, Search } from "lucide-react";
+import { Settings, Loader2, EyeOff, Eye, Search, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { calculateShiftHours } from "@/lib/shiftCalculations";
 import { toast } from "@/hooks/use-toast";
 
@@ -116,6 +117,7 @@ export default function ShiftTimeOverride({
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(loadHiddenIds);
   const [showHidden, setShowHidden] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const toggleHidden = useCallback((id: string) => {
@@ -543,15 +545,21 @@ export default function ShiftTimeOverride({
     );
   };
 
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Settings className="h-4 w-4" />
-          Schichtzeiten anpassen (Admin)
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Schichtzeiten anpassen (Admin)
+              <ChevronDown className={`h-4 w-4 ml-auto transition-transform ${isOpen ? "rotate-180" : ""}`} />
+            </CardTitle>
+          </CardHeader>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="space-y-4">
         <div className="text-sm text-muted-foreground space-y-1">
           <p>Unter der Woche: <span className="font-medium text-foreground">17:00 – 01:00</span></p>
           <p>Sonn-/Feiertage: <span className="font-medium text-foreground">15:00 – 02:00</span></p>
@@ -658,7 +666,9 @@ export default function ShiftTimeOverride({
             </div>
           </>
         )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
