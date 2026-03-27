@@ -1089,7 +1089,7 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
               const totals = getEmpTotals(emp.id, emp.department, emp.restaurant_id);
 
               return (
-                <React.Fragment key={`${emp.id}-${emp.department}`}>
+                <React.Fragment key={`${emp.id}-${emp.department}-${emp.restaurant_id || ''}`}>
                    {showDeptHeader && !searchTerm.trim() && (
                     <tr>
                       <td colSpan={weeks.length + (isExtended ? 9 : 8)} className={`p-2 font-bold text-xs uppercase tracking-wide ${getDepartmentBgClass(emp.department)}`}>
