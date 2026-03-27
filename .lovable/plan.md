@@ -1,31 +1,35 @@
 
 
-## Fix: Zusammenfassung zeigt falsche Summen bei Restaurant-Filter
+## Fix: Portal und SharedZtView zeigen falsche Stunden bei Restaurant-Filter
 
 ### Problem
-Bei Auswahl eines anderen Restaurants (z.B. YUM aus der Spicery-Ansicht) zeigt die **Zusammenfassung** falsche Gesamtsummen:
-- **YUM Zusammenfassung GESAMT**: 206,90 (falsch — enthält Spicery-Daten)
-- **YUM Buchhaltung GESAMT**: 132,75 (korrekt)
+Das Lohnbüro-Portal und die SharedZtView (Freigabe-Link) filtern Schichten nach `weekToRestaurant[s.week_id] === effectiveRestaurant`. Dies schließt Schichten aus, die unter einem anderen Restaurant-Kontext gespeichert wurden (z.B. Jean arbeitet bei YUM, aber Schichten sind unter Spicery-Wochen gespeichert).
 
-Die Differenz (74,15) entspricht exakt den Spicery-Daten.
+**Auswirkung**: YUM zeigt im Portal GESAMT 2644,58 (327 Schichten) statt 3163,37 (390 Schichten) — eine Differenz von 519 Stunden und 63 Schichten.
 
 ### Ursache
-In `ZtZusammenfassung.tsx` berechnen zwei Funktionen ihre Summen über **alle geladenen Schichten**, anstatt nur die Schichten der gefilterten Mitarbeiter zu berücksichtigen:
-
-1. **`getDepartmentTotals`** (Zeile 199): Filtert Schichten nur nach `department`, nicht nach den angezeigten Mitarbeitern → Spicery-Küchenschichten werden in die YUM-Küchensumme eingerechnet
-2. **`grandTotals`** (Zeile 214): Verwendet `shifts` komplett ungefiltert → alle Schichten beider Restaurants werden summiert
-
-Im Vergleich: Die **Buchhaltung** macht es richtig — sie iteriert über `employeesWithShifts` und ruft `getEmployeeTotals` pro Mitarbeiter auf.
+Identischer Bug wie zuvor im Admin (ZtZusammenfassung, ZtBuchhaltung), aber diesmal in den Portal-Dateien.
 
 ### Lösung
-**Datei: `src/pages/zeiterfassung/ZtZusammenfassung.tsx`**
+In beiden Dateien die `filteredShifts`-Logik ändern: Statt nach `weekToRestaurant` zu filtern, alle Schichten durchlassen (die Filterung passiert bereits über `filteredEmployees` → `employeesWithShifts`, die nur Mitarbeiter des gewählten Restaurants enthalten).
 
-1. **`getDepartmentTotals`** anpassen: Nur Schichten von Mitarbeitern berücksichtigen, die auch in `employeesWithShifts` enthalten sind
-2. **`grandTotals`** anpassen: Statt alle Schichten zu summieren, nur über die gefilterten Mitarbeiter iterieren (analog zur Buchhaltung)
+**Datei 1: `src/pages/shared/PayrollPortal.tsx`** (Zeile 381-384)
+- `filteredShifts`: Den `weekToRestaurant`-Filter entfernen, stattdessen nach `employee_id`s der `filteredEmployees` filtern
 
-Konkret:
-- `getDepartmentTotals`: Schichten zusätzlich filtern auf `employee_id`s, die in den angezeigten Mitarbeitern der jeweiligen Abteilung vorkommen
-- `grandTotals`: Über `employeesWithShifts` iterieren und `getEmployeeTotals` pro Mitarbeiter aufrufen, statt blind `allShifts` zu summieren
+**Datei 2: `src/pages/shared/SharedZtView.tsx`** (Zeile 143-147)
+- `filteredShifts`: Identische Änderung — nach `employee_id`s der `filteredEmployees` filtern statt nach `weekToRestaurant`
 
-1 Datei, keine DB-Änderung.
+Konkret wird in beiden Dateien:
+```typescript
+// ALT:
+return shifts.filter(s => weekToRestaurant[s.week_id] === effectiveRestaurant);
+
+// NEU:
+const empIds = new Set(filteredEmployees.map(e => e.id));
+return shifts.filter(s => empIds.has(s.employee_id));
+```
+
+**Hinweis**: Da `filteredShifts` von `filteredEmployees` abhängt, muss die `useMemo`-Dependency-Liste angepasst werden. Zudem muss in `SharedZtView` sichergestellt werden, dass `filteredEmployees` vor `filteredShifts` berechnet wird (ist bereits der Fall).
+
+2 Dateien, keine DB-Änderung.
 
