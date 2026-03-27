@@ -56,7 +56,11 @@ export default function ZtBuchhaltung() {
   );
   const showCommission = commissionAddToGross;
 
-  const employees = (cumulated || isSearchActive) ? cumData.employees : restaurantEmployees;
+  const allEmployees = (cumulated || isSearchActive) ? cumData.employees : restaurantEmployees;
+  const employees = allEmployees?.filter(emp => {
+    if (restaurantFilter === "all" || !cumulated) return true;
+    return (emp as any).restaurant_id === restaurantFilter;
+  });
   const weekIds = (cumulated || isSearchActive)
     ? (cumData.allWeekIds ?? [])
     : (weeks?.map(w => w.id) ?? []);

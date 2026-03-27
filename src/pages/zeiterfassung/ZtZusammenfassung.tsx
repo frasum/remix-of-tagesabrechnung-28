@@ -104,7 +104,11 @@ export default function ZtZusammenfassung() {
     enabled: !!selectedPeriod,
   });
 
-  const employees = (cumulated || isSearchActive) ? cumData.employees : restaurantEmployees;
+  const allEmployees = (cumulated || isSearchActive) ? cumData.employees : restaurantEmployees;
+  const employees = allEmployees?.filter(emp => {
+    if (restaurantFilter === "all" || !cumulated) return true;
+    return (emp as any).restaurant_id === restaurantFilter;
+  });
   const weeks = (cumulated || isSearchActive) ? cumData.weeks : contextWeeks;
 
   // Load all shifts for all weeks of the selected period
