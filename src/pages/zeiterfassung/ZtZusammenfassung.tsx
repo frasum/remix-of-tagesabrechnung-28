@@ -43,6 +43,7 @@ export default function ZtZusammenfassung() {
   const { selectedPeriodId, setSelectedPeriodId, periods, weeks: contextWeeks } = useZt();
   const { data: restaurantEmployees } = useRestaurantEmployees(restaurantId);
   const [cumulated, setCumulated] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const { hasPermission } = useAuth();
   const { data: holidayRates } = useHolidayRates();
   const { sfnMode } = useSfnMode();
