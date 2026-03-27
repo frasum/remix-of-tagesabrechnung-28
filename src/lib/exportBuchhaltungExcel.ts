@@ -1,5 +1,5 @@
 import type * as XLSXType from "xlsx";
-import { DEPARTMENT_ORDER, countVacationDays, countSickDays, formatHours, getSickDateRanges, getVacationDateRanges, formatSickRanges, effectiveEveningHours, effectiveNightHours } from "./shiftCalculations";
+import { DEPARTMENT_ORDER, countVacationDays, countSickDays, formatHours, getSickDateRanges, getVacationDateRanges, formatSickRanges, formatVacationRanges, effectiveEveningHours, effectiveNightHours } from "./shiftCalculations";
 import type { SfnMode } from "@/hooks/useSfnMode";
 
 interface Employee {
@@ -111,7 +111,7 @@ export async function exportBuchhaltungExcel(
     const sickRanges = getSickDateRanges(empShifts as any);
     const sickText = sickRanges.length > 0 ? `K: ${formatSickRanges(sickRanges).join(", ")}` : "";
     const vacRanges = getVacationDateRanges(empShifts as any);
-    const vacText = vacRanges.length > 0 ? `U: ${formatSickRanges(vacRanges).join(", ")}` : "";
+    const vacText = vacRanges.length > 0 ? `U: ${formatVacationRanges(vacRanges, empShifts as any).join(", ")}` : "";
     const besText = [note?.besonderheiten, vacText, sickText].filter(Boolean).join(" | ");
 
     const nicknameAlreadyInName = emp.nickname && (emp.first_name?.includes(emp.nickname) || emp.last_name?.includes(emp.nickname));
