@@ -666,7 +666,9 @@ export default function ShiftTimeOverride({
             </div>
           </>
         )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
