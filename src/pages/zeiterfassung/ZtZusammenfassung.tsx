@@ -177,11 +177,11 @@ export default function ZtZusammenfassung() {
 
   const employeesWithShifts = filterEmployeesBySearch(employeesWithShiftsUnfiltered, searchTerm);
 
-  const getEmployeeTotals = (empId: string, department?: string, restaurantId?: string) => {
+  const getEmployeeTotals = (empId: string, department?: string, empRestaurantId?: string) => {
     const empShifts = shifts?.filter((s) => {
       if (s.employee_id !== empId) return false;
       if (department && s.department !== department) return false;
-      if (isSearchActive && restaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== restaurantId) return false;
+      if (restaurantFilter !== "all" && (cumulated || isSearchActive) && empRestaurantId && cumData.weekIdToRestaurantId[s.week_id] && cumData.weekIdToRestaurantId[s.week_id] !== empRestaurantId) return false;
       return true;
     }) ?? [];
     return {
