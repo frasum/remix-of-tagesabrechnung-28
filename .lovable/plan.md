@@ -1,55 +1,80 @@
 
+## Plan: Doppeleinträge in der Batch-Brutto-Netto-Berechnung beseitigen
 
-# Plan: Batch-Brutto-Netto-Berechnung für ALLE Restaurants
+## Ursache
+Der Fehler sitzt sehr wahrscheinlich in `src/components/zeiterfassung/BatchPayrollCalculation.tsx`:
 
-## Übersicht
-Ein "Alle Mitarbeiter berechnen"-Button auf der Brutto-Netto-Seite, der für **alle Mitarbeiter aller Restaurants** (nicht nur des aktuellen) die Lohnberechnung durchführt und die Ergebnisse in einer Tabelle gruppiert nach Restaurant anzeigt.
+1. `staff_restaurants` liefert **eine Zeile pro Zuordnung**  
+   → also z.B. COCO einmal für Service und einmal für Küche.
 
-## Änderungen
+2. Die Schichten werden aktuell nur nach `employee_id` gruppiert  
+   → dadurch bekommt **jede Zuordnungszeile dieselben Gesamtstunden** des Mitarbeiters.
 
-### 1. Datei: `src/pages/zeiterfassung/ZtBruttoNetto.tsx`
+Das führt zu doppelten Einträgen mit identischen Stunden/Beträgen, obwohl es eigentlich nur **eine Berechnung pro Mitarbeiter und Restaurant** geben sollte.
 
-**Neue States & Imports:**
-- `batchResults` Array mit Ergebnissen pro Mitarbeiter (Name, Restaurant, Stunden, Brutto, Netto, SFN, Auszahlung, AG-Kosten)
-- `batchCalculating` Boolean + Fortschritt (z.B. "5/23")
-- Import `useRestaurants` für die Liste aller Restaurants
-- Import `Progress` Komponente
+## Umsetzung
 
-**Neue Funktion `handleBatchCalculate`:**
-1. Alle Restaurants laden (aus `useRestaurants`)
-2. Für jedes Restaurant: `staff_restaurants` mit `zt_hourly_rate` + `staff`-Stammdaten (tax_class, health_insurance, is_sv_exempt) laden
-3. Alle `zt_shifts` für die gewählte Periode laden (ein Query pro Restaurant-Periode-Kombination, da Perioden restaurant-spezifisch sind)
-4. Problem: Perioden sind pro Restaurant unterschiedlich → Lösung: Für jedes Restaurant die Periode finden, deren Datumsbereich mit der aktuell gewählten übereinstimmt (gleicher `start_date`/`end_date`), oder alternativ direkt nach `shift_date` Bereich filtern
-5. Pro Mitarbeiter: SFN-Stunden aggregieren (bestehende `aggregateSimple`/`aggregateExtended` wiederverwenden), dann sequentiell `calculate-payroll` aufrufen
-6. Ergebnisse in State speichern
-
-**Neue UI-Section (oberhalb des Einzelrechners):**
-- Button "Alle Mitarbeiter berechnen" mit Fortschrittsanzeige
-- Ergebnistabelle gruppiert nach Restaurant:
-  | Mitarbeiter | Abt. | Stunden | Brutto | Netto | SFN | Auszahlung | AG-Kosten |
-- Summenzeile pro Restaurant + Gesamtsumme
-- Info-Banner: "Standardwerte für Kinderfreibeträge (0), Kirchensteuer (nein), Bundesland (Bayern)"
-- Zeilen ohne Stundenlohn → Warnhinweis
-- Klick auf Zeile → füllt den Einzelrechner mit diesem Mitarbeiter
-
-### 2. Datenfluss
+### 1. Berechnungsbasis deduplizieren
+In `BatchPayrollCalculation.tsx` die geladenen `staff_restaurants`-Daten nicht 1:1 in `calcList` übernehmen, sondern vorher nach diesem Schlüssel zusammenfassen:
 
 ```text
-handleBatchCalculate()
-│
-├─ restaurants[] (aus useRestaurants Hook)
-│
-├─ Für jedes Restaurant:
-│   ├─ staff_restaurants + staff JOIN → Mitarbeiter mit Lohn/Steuer/SV
-│   ├─ scheduling_periods → passende Periode finden (gleicher Zeitraum)
-│   ├─ zt_shifts im Zeitraum → SFN-Stunden aggregieren
-│   └─ Pro Mitarbeiter: calculate-payroll Edge Function aufrufen
-│
-└─ Ergebnis: Array<{ restaurantName, staffName, dept, hours, gross, net, sfn, payout, agCost }>
+restaurant_id + staff_id
 ```
 
-### Hinweise
-- Die Perioden könnten pro Restaurant unterschiedliche IDs haben aber gleiche Datumsbereiche. Deshalb wird direkt nach `shift_date` BETWEEN `dateFrom` AND `dateTo` gefiltert statt nach `week_id`
-- Sequentielle API-Aufrufe mit kleinem Delay (50ms) um Rate-Limits zu vermeiden
-- Bestehender Einzelrechner bleibt unverändert
+Damit gibt es pro Restaurant und Mitarbeiter nur noch **einen** Batch-Eintrag.
 
+### 2. Abteilungen zusammenführen
+Wenn derselbe Mitarbeiter im selben Restaurant mehreren Abteilungen zugeordnet ist, werden die Abteilungen gesammelt und zusammen angezeigt, z.B.:
+
+```text
+Service, Küche
+```
+
+So bleibt sichtbar, warum es mehrere Zuordnungen gibt, aber ohne doppelte Ergebniszeilen.
+
+### 3. Schichten korrekt dem Restaurant zuordnen
+Zusätzlich die Batch-Logik so anpassen, dass Schichten nicht nur nach `employee_id`, sondern nach:
+
+```text
+employee_id + restaurant_id
+```
+
+gruppiert werden.
+
+Dafür wird `zt_shifts.week_id` über `weeks -> scheduling_periods` dem richtigen Restaurant zugeordnet. Sonst würden bei Mitarbeitern mit Einsätzen an mehreren Standorten dieselben Stunden fälschlich mehrfach verwendet.
+
+### 4. Stundenlohn sauber bestimmen
+Falls ein Mitarbeiter mehrere Zuordnungen im selben Restaurant hat, bleibt pro Mitarbeiter/Restaurant genau ein Stundenlohn übrig:
+- bevorzugt `staff_restaurants.zt_hourly_rate`
+- fallback `staff.hourly_rate`
+
+Wenn mehrere Zuordnungen unterschiedliche `zt_hourly_rate` haben, nehme ich konsistent den definierten Wert nach einer klaren Regel (z.B. erster gültiger oder höchster gültiger Wert), damit keine Zufallswerte entstehen.
+
+### 5. Tabellen-Rendering stabilisieren
+Die Ergebnisliste bekommt danach automatisch eindeutige Zeilen je Mitarbeiter/Restaurant.  
+Zusätzlich passe ich den Row-Key an die neue deduplizierte Struktur an, damit es keine React-Key-Kollisionen mehr gibt.
+
+## Betroffene Datei
+- `src/components/zeiterfassung/BatchPayrollCalculation.tsx`
+
+## Ergebnis
+Nach dem Fix gilt:
+- ein Mitarbeiter erscheint pro Restaurant nur noch **einmal**
+- mehrere Abteilungen werden nur noch als Sammeltext angezeigt
+- Stunden und Beträge werden nicht mehr identisch dupliziert
+- falls jemand wirklich in **zwei Restaurants** gearbeitet hat, erscheinen **zwei getrennte Zeilen mit jeweils eigenen Stunden**
+
+## Technische Kurzform
+
+```text
+staff_restaurants
+→ dedupe by (restaurant_id, staff_id)
+→ merge departments
+
+zt_shifts
+→ resolve week_id -> period -> restaurant_id
+→ group by (employee_id, restaurant_id)
+
+batch result
+→ one row per (restaurant_id, staff_id)
+```
