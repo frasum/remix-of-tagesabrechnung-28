@@ -1,25 +1,19 @@
 
 
-# Plan: Excel-Export für die Batch-Brutto-Netto-Berechnung
+# Fix: GESAMT-Zeile in Bargeldbestand-Tabelle zeigt falschen Wert
 
-## Übersicht
-Ein "Excel Export"-Button neben dem Berechnen-Button, der die Batch-Ergebnisse als `.xlsx`-Datei herunterlädt — gruppiert nach Restaurant mit Zwischensummen und Gesamtsumme.
+## Problem
+Die GESAMT-Zeile der Bargeld-Spalte nutzt eine Abschöpfungs-Simulation (`cumulativeCash`), während die Tageszeilen den einfachen `bargeld`-Wert zeigen. Das ergibt eine inkonsistente Tabelle (Tageswerte ~354 €, GESAMT 0,00 €).
 
-## Änderungen
+## Lösung
 
-### `src/components/zeiterfassung/BatchPayrollCalculation.tsx`
+### `src/pages/CashBalance.tsx`
+- **GESAMT Bargeld-Zelle** (Zeile 389-394): Statt `cumulativeCash` die einfache Summe der gefilterten Tageswerte verwenden:
+  ```tsx
+  filteredData.reduce((sum, row) => sum + row.bargeld, 0)
+  ```
+- Damit ist die GESAMT-Zeile konsistent mit allen anderen Spalten: einfache Summe der angezeigten Werte.
+- Die Abschöpfungs-Logik bleibt in der `CashBalanceSummary`-Card oben, wo sie hingehört.
 
-1. **Import**: `Download` Icon aus lucide-react, dynamischer Import von `xlsx`
-2. **Neue Funktion `handleExcelExport`**:
-   - Erstellt ein Worksheet mit denselben Spalten wie die Tabelle: Mitarbeiter, Perso-Nr, Abt., Stunden, €/h, Brutto, Netto, SFN, Auszahlung, AG-Kosten
-   - Gruppiert nach Restaurant mit Restaurant-Überschriften und Zwischensummen pro Restaurant
-   - Gesamtsumme am Ende
-   - Spaltenbreiten passend gesetzt
-   - Dateiname: `Brutto-Netto_{dateFrom}_{dateTo}.xlsx`
-3. **UI**: Neuer Button "Excel Export" (mit Download-Icon) neben dem Badge-Bereich, nur sichtbar wenn `batchResults.length > 0`
-
-## Technische Details
-- Verwendet die bereits im Projekt vorhandene `xlsx`-Bibliothek (dynamischer Import wie in anderen Export-Dateien)
-- Zahlenformatierung: Rohwerte in Excel (kein `formatCurrency`), damit Excel-Nutzer damit rechnen können
-- Fehlerhandling mit Toast-Feedback (analog zu bestehenden Exporten)
+Einzeilige Änderung, keine anderen Dateien betroffen.
 
