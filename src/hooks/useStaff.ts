@@ -101,6 +101,13 @@ export interface Staff {
   vacation_days_current?: number | null;
   vacation_days_taken?: number | null;
   sick_days_total?: number | null;
+  // Sofortmeldung fields
+  address_street?: string | null;
+  address_zip?: string | null;
+  address_city?: string | null;
+  work_start_time?: string | null;
+  employment_type?: string | null;
+  activity_description?: string | null;
 }
 
 export interface StaffInput {
