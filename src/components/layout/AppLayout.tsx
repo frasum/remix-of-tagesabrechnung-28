@@ -68,6 +68,7 @@ const allNavItems: NavItem[] = [
 
 const adminNavItems: NavItem[] = [
   { path: '/staff', label: 'Mitarbeiter', icon: UserCog, minLevel: 'admin' },
+  { path: '/sofortmeldung', label: 'Sofortmeldung', icon: ShieldCheck, minLevel: 'admin' },
   { path: '/telegram', label: 'Telegram', icon: Send, minLevel: 'admin' },
   { path: '/skill-settings', label: 'Farben', icon: Palette, minLevel: 'admin' },
   { path: 'chat', label: 'Chat', icon: MessageCircle, minLevel: 'admin' },
