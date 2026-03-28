@@ -387,7 +387,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
     });
     return new Set(
       Array.from(deptsByEmp.entries())
-        .filter(([, depts]) => depts.size > 1)
+        .filter(([, depts]) => depts.has("Küche") && depts.has("Service"))
         .map(([id]) => id)
     );
   }, [employees]);
