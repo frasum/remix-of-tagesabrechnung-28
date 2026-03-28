@@ -1,20 +1,18 @@
 
 
-# Fix: Bargeld-Spalte zeigt Tageswerte statt kumuliertes Defizit
+# Vorzeichen (-/+) aus der Bargeldbestand-Tabelle entfernen
 
 ## Problem
-Die Bargeld-Spalte in der Tabelle zeigt `bargeld` (= Tageswert + kumulierter Fehlbetrag aller Vortage). Dadurch sind fast alle Zeilen negativ, obwohl viele Tage einen positiven Bargeldumsatz hatten.
+Die roten Spalten zeigen ein `-` und die grüne Spalte ein `+` vor den Beträgen. Da die Farbe (rot/grün) bereits die Richtung signalisiert, sind die Vorzeichen redundant und machen die Tabelle unübersichtlicher.
 
 ## Lösung
 
 ### `src/pages/CashBalance.tsx`
-1. **Tabellenzeilen**: `row.bargeld` durch `row.rawBargeld` ersetzen — das ist der reine Tageswert ohne Deficit-Chaining
-2. **GESAMT-Zeile**: Ebenfalls auf `rawBargeld` umstellen, damit die Summe konsistent bleibt
-3. Die Deficit-Chaining-Logik bleibt für die Summary-Card (`CashBalanceSummary`) und den Wechselgeldbestand erhalten — dort gehört sie hin
+Alle manuell vorangestellten `-` und `+` Zeichen entfernen — sowohl in den **Tabellenzeilen** (Zeilen ~298–329) als auch in den **Footer-Summen** (Zeilen ~357–388):
 
-### Betroffene Stellen
-- Zeile ~330-337: Tabellenzeile `row.bargeld` → `row.rawBargeld`
-- Zeile ~389-399: Footer-Summe `row.bargeld` → `row.rawBargeld`
+- `-{formatCurrency(row.kreditkarten)}` → `{formatCurrency(row.kreditkarten)}`
+- `+{formatCurrency(row.gutscheineVK)}` → `{formatCurrency(row.gutscheineVK)}`
+- Analog für alle anderen Spalten mit Vorzeichen (ordersmart, wolt, gutscheineEL, finedine, einladung, offeneRE, vorschuss, ausgaben)
 
-Keine Änderungen an der Berechnungslogik in `useCashBalanceData.ts` nötig.
+Betrifft ca. 20 Stellen (10 Tabellenzeilen + 10 Footer-Zeilen). Keine Logik-Änderung, rein kosmetisch.
 
