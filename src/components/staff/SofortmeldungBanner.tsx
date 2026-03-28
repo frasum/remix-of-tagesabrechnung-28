@@ -1,10 +1,11 @@
-import { Zap, AlertTriangle, CheckCircle, Download, RefreshCw } from 'lucide-react';
+import { Zap, AlertTriangle, CheckCircle, Download, RefreshCw, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import type { Sofortmeldung, SofortmeldungStatus } from '@/types/sofortmeldung';
 import { SOFORTMELDUNG_STATUS_CONFIG, FIELD_LABELS } from '@/types/sofortmeldung';
 import { SofortmeldungService } from '@/lib/sofortmeldungService';
+import { exportSofortmeldungPdf } from '@/lib/exportSofortmeldungPdf';
 import { useUpdateSofortmeldungStatus, useRevalidateSofortmeldung } from '@/hooks/useSofortmeldung';
 
 interface SofortmeldungBannerProps {
