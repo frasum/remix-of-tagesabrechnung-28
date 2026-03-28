@@ -296,36 +296,36 @@ export default function CashBalance() {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{formatCurrency(row.kellnerUmsatz)}</TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
-                          -{formatCurrency(row.kreditkarten)}
+                          {formatCurrency(row.kreditkarten)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
-                          -{formatCurrency(row.ordersmart)}
+                          {formatCurrency(row.ordersmart)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
-                          -{formatCurrency(row.wolt)}
+                          {formatCurrency(row.wolt)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
-                          -{formatCurrency(row.gutscheineEL)}
+                          {formatCurrency(row.gutscheineEL)}
                         </TableCell>
                         {!isFieldHidden('finedine_vouchers') && (
                           <TableCell className="text-right tabular-nums text-destructive">
-                            -{formatCurrency(row.finedine)}
+                            {formatCurrency(row.finedine)}
                           </TableCell>
                         )}
                         <TableCell className="text-right tabular-nums text-success">
-                          +{formatCurrency(row.gutscheineVK)}
+                          {formatCurrency(row.gutscheineVK)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
-                          -{formatCurrency(row.einladung)}
+                          {formatCurrency(row.einladung)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
-                          -{formatCurrency(row.offeneRE)}
+                          {formatCurrency(row.offeneRE)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
-                          -{formatCurrency(row.vorschuss)}
+                          {formatCurrency(row.vorschuss)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
-                          -{formatCurrency(row.ausgaben)}
+                          {formatCurrency(row.ausgaben)}
                         </TableCell>
                         <TableCell
                           className={cn(
