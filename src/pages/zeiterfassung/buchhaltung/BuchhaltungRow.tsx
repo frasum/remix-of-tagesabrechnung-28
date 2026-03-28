@@ -67,6 +67,7 @@ export default function BuchhaltungRow({ emp, totals, note, shifts, advances, is
         </span>
         {persoStr && <span className="text-xs text-muted-foreground ml-1">{persoStr}</span>}
         <RestaurantBadge restaurantName={emp.restaurant_name} department={emp.department} show={showRestaurantBadge} />
+        {isDualDepartment && <Badge className="ml-1 text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-100" variant="outline">K+S</Badge>}
       </td>
       <td className="text-center px-1 py-1.5 font-semibold tabular-nums bg-primary/5 border-l border-border/40">
         {formatHours(totals.gesamt)}

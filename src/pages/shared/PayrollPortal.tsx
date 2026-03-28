@@ -1268,6 +1268,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                       commission={emp.department === "Service" ? (commissionMap?.get(emp.id) ?? 0) : 0}
                       onUpsertNote={onUpsertNote}
                       onEmployeeClick={onEmployeeClick}
+                      isDualDepartment={dualDeptIds?.has(emp.id)}
                     />
                   </React.Fragment>
                 );
