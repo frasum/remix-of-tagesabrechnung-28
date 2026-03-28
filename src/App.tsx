@@ -141,6 +141,7 @@ function AppContent() {
           <Route path="/telegram" element={<ProtectedRoute requiredLevel="admin"><TelegramSettings /></ProtectedRoute>} />
           <Route path="/kueche-plan" element={<ProtectedRoute requiredLevel="admin"><KuechePlan /></ProtectedRoute>} />
           <Route path="/skill-settings" element={<ProtectedRoute requiredLevel="admin"><SkillSettings /></ProtectedRoute>} />
+          <Route path="/sofortmeldung" element={<ProtectedRoute requiredLevel="admin"><SofortmeldungDashboard /></ProtectedRoute>} />
 
           {/* Redirect root to restaurant selection */}
           <Route path="/" element={<Navigate to="/select-restaurant" replace />} />

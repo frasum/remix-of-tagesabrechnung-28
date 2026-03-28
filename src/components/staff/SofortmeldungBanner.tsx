@@ -161,6 +161,34 @@ export function SofortmeldungBanner({ sofortmeldung, staffData, hasRestaurant, i
           <RefreshCw className="w-3 h-3" />
           Prüfen
         </Button>
+        <Button type="button" variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => {
+          const restaurants = (staffData as any).staff_restaurants?.map((r: any) => r.restaurants?.name).filter(Boolean).join(', ') || '—';
+          exportSofortmeldungPdf({
+            vorname: String(staffData.first_name || ''),
+            nachname: String(staffData.last_name || ''),
+            geburtsdatum: staffData.date_of_birth ? new Date(String(staffData.date_of_birth)).toLocaleDateString('de-DE') : '',
+            nationalitaet: String(staffData.nationality || ''),
+            strasse: String(staffData.address_street || ''),
+            plz: String(staffData.address_zip || ''),
+            ort: String(staffData.address_city || ''),
+            sozialversicherungsnr: String(staffData.social_security_nr || ''),
+            steuerId: String(staffData.tax_id || ''),
+            krankenkasse: String(staffData.health_insurance || ''),
+            eintrittsdatum: staffData.employment_start ? new Date(String(staffData.employment_start)).toLocaleDateString('de-DE') : '',
+            arbeitsbeginn: String(staffData.work_start_time || ''),
+            beschaeftigungsart: String(staffData.employment_type || ''),
+            taetigkeit: String(staffData.activity_description || ''),
+            minijob: Boolean(staffData.is_minijob),
+            restaurant: restaurants,
+          });
+          if (sofortmeldung) {
+            updateStatus.mutate({ sofortmeldungId: sofortmeldung.id, newStatus: sofortmeldung.status as SofortmeldungStatus, exportFormat: 'pdf' });
+          }
+          toast.success('PDF-Meldebogen heruntergeladen');
+        }}>
+          <FileText className="w-3 h-3" />
+          PDF-Meldebogen
+        </Button>
         <Button type="button" variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleExportJSON}>
           <Download className="w-3 h-3" />
           JSON-Export
