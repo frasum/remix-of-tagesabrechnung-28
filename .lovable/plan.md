@@ -1,18 +1,23 @@
 
 
-# Vorzeichen (-/+) aus der Bargeldbestand-Tabelle entfernen
+# Fix: "Bargeld bis März" zeigt einfache Summe der Tabellenwerte
 
 ## Problem
-Die roten Spalten zeigen ein `-` und die grüne Spalte ein `+` vor den Beträgen. Da die Farbe (rot/grün) bereits die Richtung signalisiert, sind die Vorzeichen redundant und machen die Tabelle unübersichtlicher.
+Die Summary-Card "Bargeld bis März 2026" zeigt aktuell den Wert aus einer Abschöpfungs-Simulation (Skimming auf Portokasse), nicht die Summe der Tageswerte aus der Tabelle. Dadurch steht dort -368,34 € statt der tatsächlichen Gesamtsumme aller angezeigten Tageswerte.
 
 ## Lösung
 
 ### `src/pages/CashBalance.tsx`
-Alle manuell vorangestellten `-` und `+` Zeichen entfernen — sowohl in den **Tabellenzeilen** (Zeilen ~298–329) als auch in den **Footer-Summen** (Zeilen ~357–388):
+Die `cumulativeCash`-Berechnung (Zeilen 55–69) vereinfachen: statt der Skimming-Simulation eine einfache Summe der `rawBargeld`-Werte bilden — konsistent mit der GESAMT-Zeile in der Tabelle.
 
-- `-{formatCurrency(row.kreditkarten)}` → `{formatCurrency(row.kreditkarten)}`
-- `+{formatCurrency(row.gutscheineVK)}` → `{formatCurrency(row.gutscheineVK)}`
-- Analog für alle anderen Spalten mit Vorzeichen (ordersmart, wolt, gutscheineEL, finedine, einladung, offeneRE, vorschuss, ausgaben)
+```tsx
+const cumulativeCash = useMemo(() => {
+  if (!data || !selectedMonth) return 0;
+  return data
+    .filter((row) => row.date <= `${selectedMonth}-31`)
+    .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
+}, [data, selectedMonth]);
+```
 
-Betrifft ca. 20 Stellen (10 Tabellenzeilen + 10 Footer-Zeilen). Keine Logik-Änderung, rein kosmetisch.
+Einzeilige Änderung, keine anderen Dateien betroffen. Die Abschöpfungs-Logik für den Wechselgeldbestand muss ggf. separat erhalten bleiben — prüfe ob `wechselgeldbestand` noch die Simulation braucht.
 
