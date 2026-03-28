@@ -17,6 +17,8 @@ import type { PermissionLevel } from '@/types/permissions';
 import { PERMISSION_LEVEL_INFO } from '@/types/permissions';
 import { useSkills, useEmployeeSkills, useToggleEmployeeSkill } from '@/hooks/useSkills';
 import { SkillBadge } from '@/components/dienstplan/SkillBadge';
+import { SofortmeldungBanner } from '@/components/staff/SofortmeldungBanner';
+import { useSofortmeldung } from '@/hooks/useSofortmeldung';
 interface StaffDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -109,6 +111,13 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
   const [vacDaysCurrent, setVacDaysCurrent] = useState('');
   const [vacDaysTaken, setVacDaysTaken] = useState('');
   const [sickDaysTotal, setSickDaysTotal] = useState('');
+  // Sofortmeldung fields
+  const [addressStreet, setAddressStreet] = useState('');
+  const [addressZip, setAddressZip] = useState('');
+  const [addressCity, setAddressCity] = useState('');
+  const [workStartTime, setWorkStartTime] = useState('');
+  const [employmentType, setEmploymentType] = useState('');
+  const [activityDescription, setActivityDescription] = useState('');
 
   const { data: restaurants = [] } = useRestaurants();
   const { data: unlinkedProfiles = [], isLoading: profilesLoading } = useUnlinkedProfiles();
@@ -116,6 +125,7 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
   const linkMutation = useAdminLinkAccount();
   const { data: currentRole } = useUserRole(staff?.id);
   const updateRoleMutation = useUpdateUserRole();
+  const { data: sofortmeldung } = useSofortmeldung(staff?.id ?? null);
 
   const didInitRef = useRef(false);
 
@@ -157,6 +167,13 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       setVacDaysCurrent(staff.vacation_days_current != null ? String(staff.vacation_days_current) : '');
       setVacDaysTaken(staff.vacation_days_taken != null ? String(staff.vacation_days_taken) : '');
       setSickDaysTotal(staff.sick_days_total != null ? String(staff.sick_days_total) : '');
+      // Sofortmeldung fields init
+      setAddressStreet((staff as any).address_street ?? '');
+      setAddressZip((staff as any).address_zip ?? '');
+      setAddressCity((staff as any).address_city ?? '');
+      setWorkStartTime((staff as any).work_start_time ?? '');
+      setEmploymentType((staff as any).employment_type ?? '');
+      setActivityDescription((staff as any).activity_description ?? '');
       // Build restaurantDepts from existing staff_restaurants
       const depts: Record<string, Set<string>> = {};
       for (const sr of staff.staff_restaurants ?? []) {
@@ -181,6 +198,9 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       setIsMinijob(false); setIsSvExempt(false);
       setVacDaysContractual(''); setVacDaysPrevious(''); setVacDaysCurrent('');
       setVacDaysTaken(''); setSickDaysTotal('');
+      // Sofortmeldung reset
+      setAddressStreet(''); setAddressZip(''); setAddressCity('');
+      setWorkStartTime(''); setEmploymentType(''); setActivityDescription('');
       // For new staff, select all restaurants with no departments yet
       const depts: Record<string, Set<string>> = {};
       restaurants.forEach((r) => { depts[r.id] = new Set(); });
@@ -272,6 +292,13 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       vacation_days_current: toInt(vacDaysCurrent),
       vacation_days_taken: toInt(vacDaysTaken),
       sick_days_total: toInt(sickDaysTotal),
+      // Sofortmeldung
+      address_street: addressStreet || null,
+      address_zip: addressZip || null,
+      address_city: addressCity || null,
+      work_start_time: workStartTime || null,
+      employment_type: employmentType || null,
+      activity_description: activityDescription || null,
     });
 
     // Update permission level for existing staff
@@ -510,6 +537,54 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
                   <Label htmlFor="pay-sv-exempt" className="text-sm">SV-befreit</Label>
                 </div>
               </div>
+
+              {/* Adresse */}
+              <Label className="text-base font-semibold">Adresse</Label>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <Label htmlFor="pay-street" className="text-xs">Straße & Hausnummer</Label>
+                  <Input id="pay-street" value={addressStreet} onChange={e => setAddressStreet(e.target.value)} placeholder="z.B. Musterstr. 12" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="pay-zip" className="text-xs">PLZ</Label>
+                    <Input id="pay-zip" value={addressZip} onChange={e => setAddressZip(e.target.value)} placeholder="z.B. 80331" />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="pay-city" className="text-xs">Ort</Label>
+                    <Input id="pay-city" value={addressCity} onChange={e => setAddressCity(e.target.value)} placeholder="z.B. München" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Beschäftigung */}
+              <Label className="text-base font-semibold">Beschäftigung</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="pay-work-start" className="text-xs">Uhrzeit Arbeitsbeginn</Label>
+                  <Input id="pay-work-start" type="time" value={workStartTime} onChange={e => setWorkStartTime(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="pay-emp-type" className="text-xs">Beschäftigungsart</Label>
+                  <select
+                    id="pay-emp-type"
+                    value={employmentType}
+                    onChange={e => setEmploymentType(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">— wählen —</option>
+                    <option value="Vollzeit">Vollzeit</option>
+                    <option value="Teilzeit">Teilzeit</option>
+                    <option value="Minijob">Minijob</option>
+                    <option value="Aushilfe">Aushilfe</option>
+                  </select>
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label htmlFor="pay-activity" className="text-xs">Tätigkeit / Rolle</Label>
+                  <Input id="pay-activity" value={activityDescription} onChange={e => setActivityDescription(e.target.value)} placeholder="z.B. Servicekraft, Koch" />
+                </div>
+              </div>
+
               <Label className="text-base font-semibold">Urlaubsdaten</Label>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -535,6 +610,23 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
               </div>
             </CollapsibleContent>
           </Collapsible>
+
+          {/* Sofortmeldung Banner */}
+          <Separator />
+          <SofortmeldungBanner
+            sofortmeldung={sofortmeldung ?? null}
+            staffData={{
+              first_name: firstName, last_name: lastName, date_of_birth: dateOfBirth,
+              employment_start: employmentStart, health_insurance: healthInsurance,
+              nationality, address_street: addressStreet, address_zip: addressZip,
+              address_city: addressCity, work_start_time: workStartTime,
+              employment_type: employmentType, activity_description: activityDescription,
+              social_security_nr: socialSecurityNr, tax_id: taxId,
+              is_minijob: isMinijob, name: name.trim(),
+            }}
+            hasRestaurant={selectedRestaurantIds.length > 0}
+            isNewStaff={!staff}
+          />
 
           {/* Permission Level Section - only for existing staff */}
           {staff && (

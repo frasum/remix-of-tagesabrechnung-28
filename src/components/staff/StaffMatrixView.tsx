@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { UserMinus, UserCheck } from 'lucide-react';
+import { UserMinus, UserCheck, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils';
 import type { Staff, PermissionLevel } from '@/hooks/useStaff';
 import { useSkills, useEmployeeSkills, useToggleEmployeeSkill } from '@/hooks/useSkills';
 import { useUpdateUserRole } from '@/hooks/useUserRole';
+import { useSofortmeldungList } from '@/hooks/useSofortmeldung';
+import { SOFORTMELDUNG_STATUS_CONFIG, type SofortmeldungStatus } from '@/types/sofortmeldung';
 
 interface Restaurant {
   id: string;
@@ -51,6 +53,17 @@ export function StaffMatrixView({ staff, restaurants, onEdit, onDelete, onReacti
   const { data: employeeSkills = [] } = useEmployeeSkills(staffIds);
   const toggleSkill = useToggleEmployeeSkill();
   const updateRole = useUpdateUserRole();
+  const { data: sofortmeldungen = [] } = useSofortmeldungList();
+
+  const sofortmeldungMap = useMemo(() => {
+    const map = new Map<string, { status: SofortmeldungStatus }>();
+    for (const sm of sofortmeldungen) {
+      if (!map.has(sm.staff_id)) {
+        map.set(sm.staff_id, { status: sm.status as SofortmeldungStatus });
+      }
+    }
+    return map;
+  }, [sofortmeldungen]);
 
   const deptMapByStaff = useMemo(() => {
     const map = new Map<string, Map<string, Set<string>>>();
@@ -195,21 +208,38 @@ export function StaffMatrixView({ staff, restaurants, onEdit, onDelete, onReacti
               const staffSkills = employeeSkillMap.get(s.id) ?? new Set();
               const staffDepts = allDeptsPerStaff.get(s.id) ?? new Set();
               const permLevel = (s.permission_level || 'staff') as PermissionLevel;
+              const sm = sofortmeldungMap.get(s.id);
+              const smConfig = sm ? SOFORTMELDUNG_STATUS_CONFIG[sm.status] : null;
 
               return (
                 <TableRow key={s.id} className={cn("group", !s.is_active && 'opacity-50')}>
                   {/* Name */}
                   <TableCell className="sticky left-0 bg-card z-10 font-medium">
-                    <button
-                      type="button"
-                      onClick={() => onEdit(s)}
-                      className="font-semibold hover:text-primary hover:underline underline-offset-2 transition-colors text-left text-sm"
-                    >
-                      {s.name}
-                    </button>
-                    {!s.is_active && (
-                      <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-1.5">Inaktiv</Badge>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => onEdit(s)}
+                        className="font-semibold hover:text-primary hover:underline underline-offset-2 transition-colors text-left text-sm"
+                      >
+                        {s.name}
+                      </button>
+                      {!s.is_active && (
+                        <Badge variant="secondary" className="text-[10px] px-1 py-0">Inaktiv</Badge>
+                      )}
+                      {sm && sm.status !== 'gemeldet' && smConfig && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0 text-[9px] font-semibold ${smConfig.bgClass} ${smConfig.textClass}`}>
+                              <Zap className="w-2.5 h-2.5" />
+                              {smConfig.label}
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Sofortmeldung: {smConfig.label}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
                   </TableCell>
 
                   {/* Permission */}

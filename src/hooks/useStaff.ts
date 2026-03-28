@@ -101,6 +101,13 @@ export interface Staff {
   vacation_days_current?: number | null;
   vacation_days_taken?: number | null;
   sick_days_total?: number | null;
+  // Sofortmeldung fields
+  address_street?: string | null;
+  address_zip?: string | null;
+  address_city?: string | null;
+  work_start_time?: string | null;
+  employment_type?: string | null;
+  activity_description?: string | null;
 }
 
 export interface StaffInput {
@@ -133,6 +140,13 @@ export interface StaffInput {
   vacation_days_current?: number | null;
   vacation_days_taken?: number | null;
   sick_days_total?: number | null;
+  // Sofortmeldung fields
+  address_street?: string | null;
+  address_zip?: string | null;
+  address_city?: string | null;
+  work_start_time?: string | null;
+  employment_type?: string | null;
+  activity_description?: string | null;
 }
 
 export function useStaff(role?: StaffRole, options?: { includeLinkedProfiles?: boolean }) {
@@ -339,7 +353,7 @@ export function useCreateStaff() {
       // Create the staff member
       const { data: staff, error } = await supabase
         .from('staff')
-        .insert({ ...staffData, nickname: staffData.name })
+        .insert({ ...staffData, nickname: staffData.name } as any)
         .select()
         .single();
       if (error) throw error;
@@ -378,11 +392,45 @@ export function useCreateStaff() {
           console.error('Failed to set PIN code');
         }
       }
+
+      // Create Sofortmeldung record automatically
+      try {
+        const { SofortmeldungService } = await import('@/lib/sofortmeldungService');
+        const validation = SofortmeldungService.validate(
+          staffData as Record<string, unknown>,
+          (assignments?.length ?? 0) > 0
+        );
+        const status = validation.isComplete ? 'bereit' : 'unvollstaendig';
+
+        const { data: smData } = await supabase
+          .from('sofortmeldung' as any)
+          .insert({
+            staff_id: staff.id,
+            status,
+            sofortmeldung_required: true,
+            missing_fields: validation.missingFields.length > 0 ? validation.missingFields : null,
+            validated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (smData) {
+          await supabase.from('sofortmeldung_log' as any).insert({
+            sofortmeldung_id: (smData as any).id,
+            action: 'created',
+            new_status: status,
+            details: { missing_fields: validation.missingFields, sofortmeldung_required: true },
+          });
+        }
+      } catch (e) {
+        console.error('Failed to create Sofortmeldung record:', e);
+      }
       
       return staff;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staff'] });
+      queryClient.invalidateQueries({ queryKey: ['sofortmeldung'] });
       toast.success('Mitarbeiter erfolgreich hinzugefügt');
     },
     onError: (error) => {
