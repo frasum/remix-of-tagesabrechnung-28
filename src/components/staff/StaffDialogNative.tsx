@@ -17,6 +17,8 @@ import type { PermissionLevel } from '@/types/permissions';
 import { PERMISSION_LEVEL_INFO } from '@/types/permissions';
 import { useSkills, useEmployeeSkills, useToggleEmployeeSkill } from '@/hooks/useSkills';
 import { SkillBadge } from '@/components/dienstplan/SkillBadge';
+import { SofortmeldungBanner } from '@/components/staff/SofortmeldungBanner';
+import { useSofortmeldung } from '@/hooks/useSofortmeldung';
 interface StaffDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
