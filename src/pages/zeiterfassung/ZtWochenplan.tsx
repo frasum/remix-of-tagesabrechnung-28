@@ -625,7 +625,7 @@ export default function ZtWochenplan() {
       <ZtToolbar
         periods={periods}
         selectedPeriodId={selectedPeriodId}
-        onPeriodChange={(v) => { setSelectedPeriodId(v); setSelectedWeekId(""); setCumSelectedWeekNum(null); }}
+        onPeriodChange={(v) => { setSelectedPeriodId(v); setCumSelectedWeekNum(null); }}
         isLocked={isLocked}
         restaurants={restaurants?.map(r => ({ id: r.id, name: r.name })) ?? []}
         restaurantFilter={restaurantFilter}
