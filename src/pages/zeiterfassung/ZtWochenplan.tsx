@@ -637,11 +637,11 @@ export default function ZtWochenplan() {
             ? weeks?.find(w => w.start_date <= today && w.end_date >= today) ?? weeks?.[0]
             : weeks?.[0];
 
-          if (v === "all") {
-            setCumSelectedWeekNum(targetWeek?.week_number ?? null);
-          } else {
+          if (v === restaurantId) {
             setCumSelectedWeekNum(null);
             setSelectedWeekId(targetWeek?.id ?? "");
+          } else {
+            setCumSelectedWeekNum(targetWeek?.week_number ?? null);
           }
         }}
         weeks={effectiveWeeks}
