@@ -1,37 +1,71 @@
 
+Problem gefunden: Der Fehler steckt sehr wahrscheinlich nicht mehr in `SharedZtView`, sondern im eigentlichen Lohnbüro-Portal `src/pages/shared/PayrollPortal.tsx` plus dessen Datenquelle `supabase/functions/payroll-office-data/index.ts`.
 
-# Fix: Appel erscheint weiterhin doppelt in Zusammenfassung
+Was gerade schiefläuft:
+1. Das Lohnbüro-Portal lädt seine Daten über `payroll-office-data`, nicht über `shared-zt-data`.
+2. Diese Funktion dedupliziert Mitarbeiter aktuell nach `id + department + restaurant_id` statt nach `id + department`.
+3. Dadurch kommen bei Auswahl `Alle` bewusst zwei Mitarbeiterobjekte zurück, wenn jemand in beiden Restaurants angelegt ist.
+4. In `PayrollPortal.tsx` werden diese zwei Datensätze dann unverändert in `Zusammenfassung` und `Buchhaltung` gerendert.
+5. Zusätzlich scopen `PayrollZusammenfassungTab` und `PayrollBuchhaltungTab` ihre Stunden noch mit `restaurant_id`, wodurch selbst eine UI-Deduplizierung die Werte nicht sauber kumulieren würde.
 
-## Analyse
+Warum du es noch doppelt siehst:
+- In deinem Screenshot ist das exakt das Verhalten von `PayrollPortal`:
+  - zwei Zeilen
+  - gleiche Personalnummer 117
+  - gleiche Abteilung Küche
+  - einmal 14 Schichten, einmal 2 Schichten
+- Das zeigt: die Daten werden restaurantweise getrennt geliefert und auch restaurantweise berechnet.
 
-Die Deduplizierung in beiden Views (Admin + Lohnportal) sieht im Code korrekt aus — `id + department` als Key. Trotzdem erscheint Appel doppelt. Mögliche Ursachen:
+Umsetzungsvorschlag:
+1. `supabase/functions/payroll-office-data/index.ts`
+   - Für die Ansicht `Alle` Mitarbeiter serverseitig nach `id + department` zusammenführen.
+   - Dabei genau einen kombinierten Datensatz pro Person/Abteilung zurückgeben.
+   - Optional die Restaurant-Zuordnung als Zusatzinfo behalten (z. B. Liste oder Flag), aber nicht mehr als getrennte Zeilen.
 
-1. Die Edge-Function `shared-zt-data` liefert Mitarbeiter **ohne** Deduplizierung — bei Mehrfachzuweisungen kommen Duplikate, die erst clientseitig gefiltert werden müssen
-2. In der Admin-Zusammenfassung (`ZtZusammenfassung`) und im Lohnportal (`SharedZtView`) wird die Deduplizierung zwar durchgeführt, aber möglicherweise in einer Race-Condition umgangen, wenn `cumulated` sich ändert
+2. `src/pages/shared/PayrollPortal.tsx`
+   - `filteredEmployees` bei `effectiveRestaurant === "all"` explizit nach `id + department` deduplizieren.
+   - `employeesWithShifts` darauf aufbauen, damit die Renderliste garantiert nur eine Zeile pro Person/Abteilung enthält.
 
-## Lösung: Dreifache Absicherung
+3. `PayrollZusammenfassungTab`
+   - Bei `Alle` die Funktionen `scopeShifts`, `getWeeklyHours` und `getEmpTotals` nicht mehr nach `restaurantId` einschränken.
+   - Stattdessen alle Schichten derselben Person/Abteilung über alle Restaurant-Wochen kumulieren.
 
-### 1. Edge-Function: `supabase/functions/shared-zt-data/index.ts`
-Employees **bereits serverseitig** nach `id + department` deduplizieren (Zeile 322–331), sodass bei "Alle" nur ein Eintrag pro Person+Abteilung ankommt.
+4. `PayrollBuchhaltungTab`
+   - Gleiches Prinzip wie in der Zusammenfassung:
+     - `scopeShiftsForEmp` darf bei `Alle` nicht pro Restaurant trennen
+     - `grandTotals` und Zeilenberechnung müssen über alle Schichten der Person/Abteilung laufen
+   - So entsteht eine einzige Zeile mit kumulierten Schichten und Stunden.
 
-### 2. Lohnportal: `src/pages/shared/SharedZtView.tsx` — `ZusammenfassungTab`
-Sicherheits-Dedup direkt in der Rendering-Komponente (Zeile 768), bevor `employees.map()` iteriert:
+5. Exporte angleichen
+   - PDF/Excel/CSV in `Zusammenfassung` und `Buchhaltung` ebenfalls auf dieselbe kumulierte Mitarbeiterliste und dieselben kumulierten Shift-Mengen umstellen, damit UI und Export identisch sind.
 
-```tsx
-const dedupedEmployees = useMemo(() => {
-  const seen = new Set<string>();
-  return employees.filter(e => {
-    const key = `${e.id}-${e.department}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}, [employees]);
-// Then use dedupedEmployees.map(...) instead of employees.map(...)
+Betroffene Dateien:
+- `supabase/functions/payroll-office-data/index.ts`
+- `src/pages/shared/PayrollPortal.tsx`
+
+Erwartetes Ergebnis nach dem Fix:
+- Bei Auswahl `YUM`: 1 Zeile mit nur YUM-Werten
+- Bei Auswahl `Spicery`: 1 Zeile mit nur Spicery-Werten
+- Bei Auswahl `Alle`: 1 Zeile mit Summe aus beiden Restaurants
+- Das gilt dann sowohl für `Zusammenfassung` als auch `Buchhaltung` im Lohnbüro-Portal
+
+Technischer Kern:
+```text
+Aktuell:
+employee key = id + department + restaurant_id
+=> 2 Zeilen
+
+Soll:
+employee key = id + department
+=> 1 Zeile
+
+Aktuell bei "Alle":
+totals = nur Schichten des employee.restaurant_id
+=> getrennte Werte
+
+Soll bei "Alle":
+totals = alle Schichten des employee_id + department
+=> kumulierte Werte
 ```
 
-### 3. Admin-Zusammenfassung: `src/pages/zeiterfassung/ZtZusammenfassung.tsx`
-Gleiche Sicherheits-Dedup in der Render-Schleife (Zeile 305), falls `employees` trotz vorheriger Filterung noch Duplikate enthält.
-
-**3 Dateien betroffen:** Edge-Function + SharedZtView + ZtZusammenfassung.
-
+Kurz gesagt: Das Problem ist eine zweite, separate Implementierung im Lohnbüro-Portal. Die bisherigen Fixes an anderen Stellen greifen dort nicht vollständig, weil dort eigene Datenbeschaffung und eigene Aggregationslogik existieren.
