@@ -24,11 +24,12 @@ interface BuchhaltungRowProps {
   showCommission?: boolean;
   commission?: number;
   showRestaurantBadge?: boolean;
+  isDualDepartment?: boolean;
   onUpsertNote: (params: { employee_id: string; field: string; value: any }) => void;
   onEmployeeClick?: (empId: string) => void;
 }
 
-export default function BuchhaltungRow({ emp, totals, note, shifts, advances, isEven, isLocked, sfnMode = "simple", showSfn = true, showCommission = false, commission = 0, showRestaurantBadge = false, onUpsertNote, onEmployeeClick }: BuchhaltungRowProps) {
+export default function BuchhaltungRow({ emp, totals, note, shifts, advances, isEven, isLocked, sfnMode = "simple", showSfn = true, showCommission = false, commission = 0, showRestaurantBadge = false, isDualDepartment = false, onUpsertNote, onEmployeeClick }: BuchhaltungRowProps) {
   const rowBg = isEven ? "bg-muted/30" : "";
   const isExtended = sfnMode === "extended";
 
