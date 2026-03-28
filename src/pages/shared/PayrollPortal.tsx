@@ -1150,7 +1150,7 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
                       <RestaurantBadge restaurantName={emp.restaurant_name} department={emp.department} show={!!searchTerm.trim()} />
                     </td>
                     {weeks.map(w => {
-                      const h = getWeeklyHours(emp.id, w.week_number, emp.department, emp.restaurant_id);
+                      const h = getWeeklyHours(emp.id, w.week_number, emp.department);
                       return <td key={w.id} className="text-center p-2">{h > 0 ? formatHours(h) : ""}</td>;
                     })}
                     <td className="text-center p-2 font-medium">{formatHours(totals.gesamt)}</td>
