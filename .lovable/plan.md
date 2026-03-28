@@ -1,19 +1,20 @@
 
 
-# Fix: GESAMT-Zeile in Bargeldbestand-Tabelle zeigt falschen Wert
+# Fix: Bargeld-Spalte zeigt Tageswerte statt kumuliertes Defizit
 
 ## Problem
-Die GESAMT-Zeile der Bargeld-Spalte nutzt eine Abschöpfungs-Simulation (`cumulativeCash`), während die Tageszeilen den einfachen `bargeld`-Wert zeigen. Das ergibt eine inkonsistente Tabelle (Tageswerte ~354 €, GESAMT 0,00 €).
+Die Bargeld-Spalte in der Tabelle zeigt `bargeld` (= Tageswert + kumulierter Fehlbetrag aller Vortage). Dadurch sind fast alle Zeilen negativ, obwohl viele Tage einen positiven Bargeldumsatz hatten.
 
 ## Lösung
 
 ### `src/pages/CashBalance.tsx`
-- **GESAMT Bargeld-Zelle** (Zeile 389-394): Statt `cumulativeCash` die einfache Summe der gefilterten Tageswerte verwenden:
-  ```tsx
-  filteredData.reduce((sum, row) => sum + row.bargeld, 0)
-  ```
-- Damit ist die GESAMT-Zeile konsistent mit allen anderen Spalten: einfache Summe der angezeigten Werte.
-- Die Abschöpfungs-Logik bleibt in der `CashBalanceSummary`-Card oben, wo sie hingehört.
+1. **Tabellenzeilen**: `row.bargeld` durch `row.rawBargeld` ersetzen — das ist der reine Tageswert ohne Deficit-Chaining
+2. **GESAMT-Zeile**: Ebenfalls auf `rawBargeld` umstellen, damit die Summe konsistent bleibt
+3. Die Deficit-Chaining-Logik bleibt für die Summary-Card (`CashBalanceSummary`) und den Wechselgeldbestand erhalten — dort gehört sie hin
 
-Einzeilige Änderung, keine anderen Dateien betroffen.
+### Betroffene Stellen
+- Zeile ~330-337: Tabellenzeile `row.bargeld` → `row.rawBargeld`
+- Zeile ~389-399: Footer-Summe `row.bargeld` → `row.rawBargeld`
+
+Keine Änderungen an der Berechnungslogik in `useCashBalanceData.ts` nötig.
 
