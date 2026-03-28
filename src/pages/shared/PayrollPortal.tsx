@@ -1041,12 +1041,9 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
     return shifts.filter(sh => sh.employee_id === empId && (!department || sh.department === department));
   }, [shifts]);
 
-  const getWeeklyHours = (empId: string, weekNumber: number, department?: string, restaurantId?: string) => {
+  const getWeeklyHours = (empId: string, weekNumber: number, department?: string) => {
     const wIds = weekNumberToAllIds[weekNumber] ?? weeks.filter(w => w.week_number === weekNumber).map(w => w.id);
-    const filteredWIds = restaurantId && weekToRestaurant
-      ? wIds.filter(id => weekToRestaurant[id] === restaurantId)
-      : wIds;
-    return shifts.filter(s => s.employee_id === empId && filteredWIds.includes(s.week_id) && (!department || s.department === department))
+    return shifts.filter(s => s.employee_id === empId && wIds.includes(s.week_id) && (!department || s.department === department))
       .reduce((sum, s) => sum + Number(s.total_hours), 0);
   };
 
