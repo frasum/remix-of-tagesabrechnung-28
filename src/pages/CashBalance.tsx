@@ -330,10 +330,10 @@ export default function CashBalance() {
                         <TableCell
                           className={cn(
                             'text-right tabular-nums font-bold',
-                            row.bargeld >= 0 ? 'text-success' : 'text-destructive'
+                            row.rawBargeld >= 0 ? 'text-success' : 'text-destructive'
                           )}
                         >
-                          {formatCurrency(row.bargeld)}
+                          {formatCurrency(row.rawBargeld)}
                         </TableCell>
                       </TableRow>
                     ))
@@ -387,7 +387,7 @@ export default function CashBalance() {
                         -{formatCurrency(filteredData.reduce((sum, row) => sum + row.ausgaben, 0))}
                       </TableCell>
                       {(() => {
-                        const totalBargeld = filteredData.reduce((sum, row) => sum + row.bargeld, 0);
+                        const totalBargeld = filteredData.reduce((sum, row) => sum + row.rawBargeld, 0);
                         return (
                           <TableCell className={cn(
                             'text-right tabular-nums font-bold',
