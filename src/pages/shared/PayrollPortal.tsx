@@ -378,6 +378,20 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
   // Filtering logic
   const effectiveRestaurant = hasMultipleRestaurants ? selectedRestaurant : "all";
 
+  // Identify employees working in both Küche and Service
+  const dualDeptIds = useMemo(() => {
+    const deptsByEmp = new Map<string, Set<string>>();
+    employees.forEach((e: any) => {
+      if (!deptsByEmp.has(e.id)) deptsByEmp.set(e.id, new Set());
+      deptsByEmp.get(e.id)!.add(e.department);
+    });
+    return new Set(
+      Array.from(deptsByEmp.entries())
+        .filter(([, depts]) => depts.size > 1)
+        .map(([id]) => id)
+    );
+  }, [employees]);
+
   const filteredEmployees = useMemo(() => {
     const enriched = employees.map((e: any) => ({
       ...e,
