@@ -1,31 +1,37 @@
 
 
-# Fix: Kumulierte Mitarbeiter-Anzeige im Lohnportal (SharedZtView)
+# Fix: Appel erscheint weiterhin doppelt in Zusammenfassung
 
-## Problem
-Im Lohnbüro-Portal erscheint Appel bei "Alle" zweimal (einmal mit 14 Schichten/YUM, einmal mit 2 Schichten/Spicery), statt einmal konsolidiert mit 16 Schichten. Der `exportShifts`-Filter in `ZusammenfassungTab` schließt Schichten aus, deren Restaurant nicht zur `restaurant_id` des (deduplizierten) Mitarbeiters passt.
+## Analyse
 
-## Ursache
-`exportShifts` (Zeile 709–719) filtert Schichten anhand `empRest === restId` — aber bei deduplizierten Mitarbeitern (eine Zeile pro id+department) wird nur die `restaurant_id` des **ersten** Eintrags behalten. Schichten vom zweiten Restaurant werden so ausgeschlossen.
+Die Deduplizierung in beiden Views (Admin + Lohnportal) sieht im Code korrekt aus — `id + department` als Key. Trotzdem erscheint Appel doppelt. Mögliche Ursachen:
 
-## Lösung
+1. Die Edge-Function `shared-zt-data` liefert Mitarbeiter **ohne** Deduplizierung — bei Mehrfachzuweisungen kommen Duplikate, die erst clientseitig gefiltert werden müssen
+2. In der Admin-Zusammenfassung (`ZtZusammenfassung`) und im Lohnportal (`SharedZtView`) wird die Deduplizierung zwar durchgeführt, aber möglicherweise in einer Race-Condition umgangen, wenn `cumulated` sich ändert
 
-### `src/pages/shared/SharedZtView.tsx` — ZusammenfassungTab
+## Lösung: Dreifache Absicherung
 
-**`getWeeklyHours` und `getEmpTotals`**: Statt `exportShifts` direkt `shifts` verwenden — da Mitarbeiter bereits auf eine Zeile pro id+department dedupliziert sind, werden alle ihre Schichten (über alle Restaurants) korrekt summiert. Kein Doppelzählungsrisiko.
+### 1. Edge-Function: `supabase/functions/shared-zt-data/index.ts`
+Employees **bereits serverseitig** nach `id + department` deduplizieren (Zeile 322–331), sodass bei "Alle" nur ein Eintrag pro Person+Abteilung ankommt.
+
+### 2. Lohnportal: `src/pages/shared/SharedZtView.tsx` — `ZusammenfassungTab`
+Sicherheits-Dedup direkt in der Rendering-Komponente (Zeile 768), bevor `employees.map()` iteriert:
 
 ```tsx
-// Zeile 724 + 729: "exportShifts" → "shifts"
-const getWeeklyHours = (...) => {
-  return shifts.filter(...).reduce(...);  // statt exportShifts
-};
-const getEmpTotals = (...) => {
-  const empShifts = shifts.filter(...);  // statt exportShifts
-  ...
-};
+const dedupedEmployees = useMemo(() => {
+  const seen = new Set<string>();
+  return employees.filter(e => {
+    const key = `${e.id}-${e.department}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}, [employees]);
+// Then use dedupedEmployees.map(...) instead of employees.map(...)
 ```
 
-**`exportShifts` bleibt für PDF/Excel-Exporte** — dort wird die bisherige Logik beibehalten, da die Export-Funktionen ihre eigene Mitarbeiter-Liste mitbekommen.
+### 3. Admin-Zusammenfassung: `src/pages/zeiterfassung/ZtZusammenfassung.tsx`
+Gleiche Sicherheits-Dedup in der Render-Schleife (Zeile 305), falls `employees` trotz vorheriger Filterung noch Duplikate enthält.
 
-Einzige Datei betroffen: `src/pages/shared/SharedZtView.tsx` (2 Zeilen ändern).
+**3 Dateien betroffen:** Edge-Function + SharedZtView + ZtZusammenfassung.
 
