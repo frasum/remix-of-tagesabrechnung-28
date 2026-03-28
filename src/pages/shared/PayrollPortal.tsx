@@ -1125,10 +1125,10 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
             {employees.map((emp, idx) => {
               const prevDept = idx > 0 ? employees[idx - 1].department : null;
               const showDeptHeader = emp.department !== prevDept;
-              const totals = getEmpTotals(emp.id, emp.department, emp.restaurant_id);
+              const totals = getEmpTotals(emp.id, emp.department);
 
               return (
-                <React.Fragment key={`${emp.id}-${emp.department}-${emp.restaurant_id || ''}`}>
+                <React.Fragment key={`${emp.id}-${emp.department}`}>
                    {showDeptHeader && !searchTerm.trim() && (
                     <tr>
                       <td colSpan={weeks.length + (isExtended ? 9 : 8)} className={`p-2 font-bold text-xs uppercase tracking-wide ${getDepartmentBgClass(emp.department)}`}>
