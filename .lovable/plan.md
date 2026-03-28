@@ -1,62 +1,35 @@
 
-Problem
 
-Ich habe die Daten geprüft: Für Appel (Perso 117, Küche) sind in der ausgewählten März-Periode tatsächlich 14 Schichten im YUM und 2 in der Spicery vorhanden. Die korrekte kumulierte Anzeige bei „Alle“ ist also 16 Schichten.
+# Fix: Appel fehlt bei Einzelrestaurant-Auswahl im Lohnportal
 
-Was ich im Code gefunden habe
+## Ursache
 
-- Die Rohdaten sind korrekt.
-- `payroll-office-data` dedupliziert Mitarbeiter serverseitig bereits nach `id + department`.
-- `PayrollPortal.tsx` dedupliziert zusätzlich bei `effectiveRestaurant === "all"` nochmals nach `id + department`.
+Die Edge-Function `payroll-office-data` (Zeile 318–324) dedupliziert Mitarbeiter nach `id + department` **ohne** `restaurant_id`. Dadurch kommt Appel nur **einmal** zurück — mit dem `restaurant_id` des zuerst gefundenen Eintrags (z.B. YUM). Wenn dann im Frontend Spicery ausgewählt wird, filtert Zeile 396 (`e.restaurant_id === effectiveRestaurant`) Appel heraus, weil sein einziger Eintrag `restaurant_id = YUM` hat.
 
-Das heißt: Der Fehler liegt sehr wahrscheinlich nicht mehr in der Datenmenge selbst, sondern darin, dass die Portal-Ansicht noch an mehreren Stellen eigene Mitarbeiter-/Schicht-Scoping-Logik benutzt. Dabei bleibt auf dem deduplizierten Mitarbeiterobjekt trotzdem noch ein einzelnes `restaurant_id` hängen, und genau diese Rest-Logik kann die Anzeige wieder in restaurantweise Zeilen aufspalten oder inkonsistent machen.
+Gleicher Fehler wie vorher, nur andersherum: Die serverseitige Deduplizierung ist zu aggressiv.
 
-Plan
+## Lösung
 
-1. In `src/pages/shared/PayrollPortal.tsx` eine einzige kanonische Merge-Schicht einführen
-- Direkt nach dem Laden der Daten eine zentrale `mergedEmployees`-Liste bauen, immer per Key `employee.id + department`.
-- Bei „Alle“ darf diese Liste genau eine Zeile pro Mitarbeiter/Abteilung enthalten.
-- Nicht mehr darauf vertrauen, dass mehrere spätere Filter dieselbe Deduplizierung zufällig korrekt reproduzieren.
+### 1. Edge-Function: `supabase/functions/payroll-office-data/index.ts`
 
-2. Restaurant-Scoping zentralisieren
-- Eine gemeinsame Helper-Funktion für Schichten einführen:
-  - bei Einzelauswahl: nur Schichten aus dem gewählten Restaurant
-  - bei „Alle“: alle Schichten für `employee_id + department`
-- Diese eine Funktion dann überall verwenden:
-  - `employeesWithShifts`
-  - Zusammenfassung
-  - Buchhaltung
-  - Wochenwerte pro Woche
-  - Gesamtsummen
+Deduplizierung auf `id + department + restaurant_id` ändern (wie in `useCumulatedZtData.ts`):
 
-3. `restaurant_id` nicht mehr als versteckte Entscheidungsgrundlage für die „Alle“-Zeile verwenden
-- In der All-Ansicht darf ein gemergter Mitarbeiter nicht implizit an genau ein Restaurant „gebunden“ bleiben.
-- Falls ein Badge/Text nötig ist, aus den tatsächlich vorhandenen Schichten bzw. Restaurantnamen ableiten, nicht aus dem zuerst gefundenen Datensatz.
+```typescript
+const key = `${row.staff.id}-${row.zt_department}-${row.restaurant_id}`;
+```
 
-4. Zusammenfassung und Buchhaltung auf dieselbe Quelle umstellen
-- Beide Tabs müssen dieselbe `mergedEmployees`-Liste und dieselbe Shift-Scoping-Funktion nutzen.
-- So ist ausgeschlossen, dass Appel in einer Ansicht 1 Zeile und in der anderen 2 Zeilen bekommt.
+So kommt Appel zweimal zurück: einmal mit YUM, einmal mit Spicery. Das Frontend kann dann korrekt filtern.
 
-5. Exporte an dieselbe Logik hängen
-- PDF/Excel/CSV ebenfalls auf die gleiche konsolidierte Mitarbeiterliste und dieselbe Shift-Quelle umstellen.
-- Damit UI und Export dieselben 16 Schichten zeigen.
+### 2. Frontend: `src/pages/shared/PayrollPortal.tsx`
 
-Technische Details
+Keine Änderung nötig — die bestehende Logik ist bereits korrekt:
+- Bei Einzelrestaurant: `e.restaurant_id === effectiveRestaurant` filtert den richtigen Eintrag
+- Bei "Alle": Dedup nach `id + department` konsolidiert zu einer Zeile
 
-Betroffene Datei:
-- `src/pages/shared/PayrollPortal.tsx`
+### Ergebnis
+- Spicery: Appel = 1 Zeile mit 2 Schichten
+- YUM: Appel = 1 Zeile mit 14 Schichten
+- Alle: Appel = 1 Zeile mit 16 Schichten (kumuliert)
 
-Optional nur als Absicherung:
-- `supabase/functions/payroll-office-data/index.ts` nur dann anfassen, wenn beim Test sichtbar wird, dass dort doch wieder doppelte Mitarbeiterobjekte zurückkommen. Nach meinem aktuellen Code-Check ist der Haupthebel aber jetzt die Vereinheitlichung im Frontend.
+**1 Datei betroffen:** `supabase/functions/payroll-office-data/index.ts` (1 Zeile ändern)
 
-Erwartetes Ergebnis nach dem Fix
-
-Für die März-Periode:
-- Spicery: Appel = 2 Schichten
-- YUM: Appel = 14 Schichten
-- Alle: Appel = 1 Zeile mit 16 Schichten
-
-Und zwar konsistent in:
-- Lohnbüro Zusammenfassung
-- Lohnbüro Buchhaltung
-- Exporten
