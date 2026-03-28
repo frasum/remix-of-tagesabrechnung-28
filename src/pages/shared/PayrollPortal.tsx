@@ -1217,7 +1217,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   const grandTotals = useMemo(() => {
     const t = { gesamt: 0, schichten: 0, soFeiStunden: 0, sonntagStunden: 0, feiertagStunden: 0, evening: 0, night: 0, urlaubTage: 0, krankTage: 0 };
     employees.forEach(emp => {
-      const empShifts = scopeShiftsForEmp(emp.id, emp.department, emp.restaurant_id);
+      const empShifts = scopeShiftsForEmp(emp.id, emp.department);
       const row = getEmployeeTotals(emp.id, empShifts as any, undefined, additive);
       t.gesamt += row.gesamt; t.schichten += row.schichten; t.soFeiStunden += row.soFeiStunden;
       t.sonntagStunden += row.sonntagStunden; t.feiertagStunden += row.feiertagStunden;
