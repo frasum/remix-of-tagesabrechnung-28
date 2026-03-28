@@ -256,7 +256,7 @@ export default function ZtBuchhaltung() {
 
                 const empShifts = shifts?.filter(s => {
                   if (s.employee_id !== emp.id || s.department !== emp.department) return false;
-                  return true;
+                  return isShiftInScope(s);
                 }) ?? [];
                 const totals = getEmployeeTotals(emp.id, empShifts, emp.department, isExtended);
                 const note = payrollNotes?.find((n) => n.employee_id === emp.id);
