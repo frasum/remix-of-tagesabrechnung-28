@@ -378,6 +378,20 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
   // Filtering logic
   const effectiveRestaurant = hasMultipleRestaurants ? selectedRestaurant : "all";
 
+  // Identify employees working in both Küche and Service
+  const dualDeptIds = useMemo(() => {
+    const deptsByEmp = new Map<string, Set<string>>();
+    employees.forEach((e: any) => {
+      if (!deptsByEmp.has(e.id)) deptsByEmp.set(e.id, new Set());
+      deptsByEmp.get(e.id)!.add(e.department);
+    });
+    return new Set(
+      Array.from(deptsByEmp.entries())
+        .filter(([, depts]) => depts.size > 1)
+        .map(([id]) => id)
+    );
+  }, [employees]);
+
   const filteredEmployees = useMemo(() => {
     const enriched = employees.map((e: any) => ({
       ...e,
@@ -586,6 +600,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             searchTerm={searchTerm}
             onEmployeeClick={handleEmployeeClick}
             weekToRestaurant={effectiveRestaurant === "all" ? weekToRestaurant : undefined}
+            dualDeptIds={dualDeptIds}
           />
         </TabsContent>
 
@@ -606,6 +621,7 @@ function CumulatedView({ data, pin, onBack, queryClient }: {
             searchTerm={searchTerm}
             onEmployeeClick={handleEmployeeClick}
             weekToRestaurant={effectiveRestaurant === "all" ? weekToRestaurant : undefined}
+            dualDeptIds={dualDeptIds}
           />
         </TabsContent>
 
@@ -1009,7 +1025,7 @@ function PayrollWochenplanTab({ weeks, shifts, employees, holidays, periodLabel,
 
 // =================== Zusammenfassung Tab ===================
 
-function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLabel, weekNumberToAllIds, searchTerm = "", onEmployeeClick, weekToRestaurant }: {
+function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLabel, weekNumberToAllIds, searchTerm = "", onEmployeeClick, weekToRestaurant, dualDeptIds }: {
   sfnMode: SfnMode;
   weeks: any[];
   shifts: Shift[];
@@ -1019,6 +1035,7 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
   searchTerm?: string;
   onEmployeeClick?: (empId: string) => void;
   weekToRestaurant?: Record<string, string>;
+  dualDeptIds?: Set<string>;
 }) {
   const additive = sfnMode === "extended";
   const isExtended = sfnMode === "extended";
@@ -1115,6 +1132,7 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
                       </span>
                       {emp.perso_nr && emp.perso_nr > 0 && <span className="text-xs text-muted-foreground ml-1">{emp.perso_nr}</span>}
                       <RestaurantBadge restaurantName={emp.restaurant_name} department={emp.department} show={!!searchTerm.trim()} />
+                      {dualDeptIds?.has(emp.id) && <Badge className="ml-1 text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-100" variant="outline">K+S</Badge>}
                     </td>
                     {weeks.map(w => {
                       const h = getWeeklyHours(emp.id, w.week_number, emp.department);
@@ -1147,7 +1165,7 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
 
 // =================== Buchhaltung Tab ===================
 
-function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple", holidayRates, showCommission = false, commissionMap, searchTerm = "", onEmployeeClick, weekToRestaurant }: {
+function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, periodLabel, isLocked, onUpsertNote, sfnMode = "simple", holidayRates, showCommission = false, commissionMap, searchTerm = "", onEmployeeClick, weekToRestaurant, dualDeptIds }: {
   shifts: Shift[];
   employees: any[];
   payrollNotes: PayrollNote[];
@@ -1162,6 +1180,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
   searchTerm?: string;
   onEmployeeClick?: (empId: string) => void;
   weekToRestaurant?: Record<string, string>;
+  dualDeptIds?: Set<string>;
 }) {
   const additive = sfnMode === "extended";
   const isExtended = sfnMode === "extended";
@@ -1249,6 +1268,7 @@ function PayrollBuchhaltungTab({ shifts, employees, payrollNotes, advances, peri
                       commission={emp.department === "Service" ? (commissionMap?.get(emp.id) ?? 0) : 0}
                       onUpsertNote={onUpsertNote}
                       onEmployeeClick={onEmployeeClick}
+                      isDualDepartment={dualDeptIds?.has(emp.id)}
                     />
                   </React.Fragment>
                 );
