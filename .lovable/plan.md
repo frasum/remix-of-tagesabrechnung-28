@@ -1,35 +1,24 @@
 
 
-# Fix: Appel fehlt bei Einzelrestaurant-Auswahl im Lohnportal
+# Badge für Mitarbeiter mit Küche + Service im Lohnportal
 
-## Ursache
+## Was passiert
 
-Die Edge-Function `payroll-office-data` (Zeile 318–324) dedupliziert Mitarbeiter nach `id + department` **ohne** `restaurant_id`. Dadurch kommt Appel nur **einmal** zurück — mit dem `restaurant_id` des zuerst gefundenen Eintrags (z.B. YUM). Wenn dann im Frontend Spicery ausgewählt wird, filtert Zeile 396 (`e.restaurant_id === effectiveRestaurant`) Appel heraus, weil sein einziger Eintrag `restaurant_id = YUM` hat.
+Mitarbeiter, die sowohl in der Küche als auch im Service Schichten haben, bekommen ein kleines Badge (z.B. "K+S") neben ihrem Namen — sowohl in der Zusammenfassung als auch in der Buchhaltung des Lohnbüro-Portals. So wird sofort sichtbar, dass bei der Abrechnung Stunden aus beiden Abteilungen zusammengerechnet werden müssen.
 
-Gleicher Fehler wie vorher, nur andersherum: Die serverseitige Deduplizierung ist zu aggressiv.
+## Umsetzung
 
-## Lösung
+### Datei: `src/pages/shared/PayrollPortal.tsx`
 
-### 1. Edge-Function: `supabase/functions/payroll-office-data/index.ts`
+1. **Dual-Department-Set berechnen** — ein `useMemo` in `PayrollPortal`, das alle `employees` durchgeht und prüft, welche `employee.id` in mehr als einer Abteilung vorkommt (also mindestens einmal Küche UND einmal Service). Das Ergebnis ist ein `Set<string>` mit den IDs dieser Mitarbeiter.
 
-Deduplizierung auf `id + department + restaurant_id` ändern (wie in `useCumulatedZtData.ts`):
+2. **Set als Prop durchreichen** an `PayrollZusammenfassungTab` und `PayrollBuchhaltungTab`.
 
-```typescript
-const key = `${row.staff.id}-${row.zt_department}-${row.restaurant_id}`;
-```
+3. **Badge rendern** — in beiden Tabs: neben dem Mitarbeiternamen ein kleines `<Badge>` mit Text "K+S" anzeigen, wenn die ID im Set enthalten ist. Styling: auffällig aber dezent, z.B. `bg-amber-100 text-amber-800 border-amber-300`.
 
-So kommt Appel zweimal zurück: einmal mit YUM, einmal mit Spicery. Das Frontend kann dann korrekt filtern.
+4. **Buchhaltung via BuchhaltungRow** — Da die Buchhaltung `BuchhaltungRow` nutzt, wird dort entweder ein neues Prop `isDualDepartment` hinzugefügt, oder das Badge direkt im PayrollBuchhaltungTab vor/nach der Row gerendert. Einfacher: neues optionales Prop `isDualDepartment` an `BuchhaltungRow` → zeigt Badge neben dem Namen.
 
-### 2. Frontend: `src/pages/shared/PayrollPortal.tsx`
-
-Keine Änderung nötig — die bestehende Logik ist bereits korrekt:
-- Bei Einzelrestaurant: `e.restaurant_id === effectiveRestaurant` filtert den richtigen Eintrag
-- Bei "Alle": Dedup nach `id + department` konsolidiert zu einer Zeile
-
-### Ergebnis
-- Spicery: Appel = 1 Zeile mit 2 Schichten
-- YUM: Appel = 1 Zeile mit 14 Schichten
-- Alle: Appel = 1 Zeile mit 16 Schichten (kumuliert)
-
-**1 Datei betroffen:** `supabase/functions/payroll-office-data/index.ts` (1 Zeile ändern)
+### Betroffene Dateien
+- `src/pages/shared/PayrollPortal.tsx` (Set berechnen, Props, Zusammenfassung-Badge)
+- `src/pages/zeiterfassung/buchhaltung/BuchhaltungRow.tsx` (optionales `isDualDepartment`-Prop → Badge)
 
