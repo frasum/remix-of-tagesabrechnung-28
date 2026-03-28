@@ -167,6 +167,13 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       setVacDaysCurrent(staff.vacation_days_current != null ? String(staff.vacation_days_current) : '');
       setVacDaysTaken(staff.vacation_days_taken != null ? String(staff.vacation_days_taken) : '');
       setSickDaysTotal(staff.sick_days_total != null ? String(staff.sick_days_total) : '');
+      // Sofortmeldung fields init
+      setAddressStreet((staff as any).address_street ?? '');
+      setAddressZip((staff as any).address_zip ?? '');
+      setAddressCity((staff as any).address_city ?? '');
+      setWorkStartTime((staff as any).work_start_time ?? '');
+      setEmploymentType((staff as any).employment_type ?? '');
+      setActivityDescription((staff as any).activity_description ?? '');
       // Build restaurantDepts from existing staff_restaurants
       const depts: Record<string, Set<string>> = {};
       for (const sr of staff.staff_restaurants ?? []) {
@@ -191,6 +198,9 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       setIsMinijob(false); setIsSvExempt(false);
       setVacDaysContractual(''); setVacDaysPrevious(''); setVacDaysCurrent('');
       setVacDaysTaken(''); setSickDaysTotal('');
+      // Sofortmeldung reset
+      setAddressStreet(''); setAddressZip(''); setAddressCity('');
+      setWorkStartTime(''); setEmploymentType(''); setActivityDescription('');
       // For new staff, select all restaurants with no departments yet
       const depts: Record<string, Set<string>> = {};
       restaurants.forEach((r) => { depts[r.id] = new Set(); });
