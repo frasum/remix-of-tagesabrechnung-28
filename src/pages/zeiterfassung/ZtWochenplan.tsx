@@ -629,7 +629,18 @@ export default function ZtWochenplan() {
         isLocked={isLocked}
         restaurants={restaurants?.map(r => ({ id: r.id, name: r.name })) ?? []}
         restaurantFilter={restaurantFilter}
-        onRestaurantFilterChange={(v) => { setRestaurantFilter(v); setCumSelectedWeekNum(null); }}
+        onRestaurantFilterChange={(v) => {
+          setRestaurantFilter(v);
+          setCumSelectedWeekNum(null);
+          const today = format(new Date(), "yyyy-MM-dd");
+          const isCurrentPeriod = selectedPeriod && selectedPeriod.start_date <= today && selectedPeriod.end_date >= today;
+          if (isCurrentPeriod && weeks?.length) {
+            const currentWeek = weeks.find(w => w.start_date <= today && w.end_date >= today);
+            setSelectedWeekId(currentWeek?.id ?? weeks[0]?.id ?? "");
+          } else if (weeks?.length) {
+            setSelectedWeekId(weeks[0]?.id ?? "");
+          }
+        }}
         weeks={effectiveWeeks}
         selectedWeekId={selectedWeekId}
         cumSelectedWeekNum={cumSelectedWeekNum}
