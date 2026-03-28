@@ -1,6 +1,7 @@
 import { useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { formatHours, getSickDateRanges, getVacationDateRanges, formatSickRanges, formatVacationRanges } from "@/lib/shiftCalculations";
 import { displayNum } from "./utils";
