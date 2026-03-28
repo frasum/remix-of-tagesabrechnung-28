@@ -45,6 +45,7 @@ const SharedZtView = lazy(() => import("./pages/shared/SharedZtView"));
 const PayrollPortal = lazy(() => import("./pages/shared/PayrollPortal"));
 const KuechePlan = lazy(() => import("./pages/KuechePlan"));
 const SkillSettings = lazy(() => import("./pages/SkillSettings"));
+const SofortmeldungDashboard = lazy(() => import("./pages/SofortmeldungDashboard"));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-screen">
