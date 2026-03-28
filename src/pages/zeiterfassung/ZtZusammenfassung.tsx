@@ -211,7 +211,7 @@ export default function ZtZusammenfassung() {
     const deptEmployeeIds = new Set(
       employeesWithShifts.filter(e => e.department === department).map(e => e.id)
     );
-    const deptShifts = shifts?.filter((s) => s.department === department && deptEmployeeIds.has(s.employee_id)) ?? [];
+    const deptShifts = shifts?.filter((s) => s.department === department && deptEmployeeIds.has(s.employee_id) && isShiftInScope(s)) ?? [];
     return {
       gesamt: deptShifts.reduce((sum, s) => sum + Number(s.total_hours), 0),
       soFeiStunden: deptShifts.reduce((sum, s) => sum + Number(s.sunday_holiday_hours), 0),
