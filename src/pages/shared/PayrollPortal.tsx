@@ -1047,8 +1047,8 @@ function PayrollZusammenfassungTab({ sfnMode, weeks, shifts, employees, periodLa
       .reduce((sum, s) => sum + Number(s.total_hours), 0);
   };
 
-  const getEmpTotals = (empId: string, department?: string, restaurantId?: string) => {
-    const empShifts = scopeShifts(empId, department, restaurantId);
+  const getEmpTotals = (empId: string, department?: string) => {
+    const empShifts = scopeShifts(empId, department);
     return {
       gesamt: empShifts.reduce((sum, s) => sum + Number(s.total_hours), 0),
       soFeiStunden: empShifts.reduce((sum, s) => sum + Number(s.sunday_holiday_hours), 0),
