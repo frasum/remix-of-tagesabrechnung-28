@@ -17,7 +17,7 @@ export function useSofortmeldung(staffId: string | null) {
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return data as Sofortmeldung | null;
+      return data as unknown as Sofortmeldung | null;
     },
     enabled: !!staffId,
   });
