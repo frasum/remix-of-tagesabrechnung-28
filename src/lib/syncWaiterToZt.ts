@@ -200,7 +200,7 @@ export async function syncWaiterShiftToZt(params: SyncParams): Promise<SyncResul
         startTime: params.shiftStart,
         endTime: params.shiftEnd,
         isSundayOrHoliday,
-        isHoliday: holiday,
+        isHoliday: holidayFlag,
       });
       result.synced.push(name);
     }));
