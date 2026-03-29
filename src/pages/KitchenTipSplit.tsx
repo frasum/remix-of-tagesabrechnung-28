@@ -188,7 +188,14 @@ export default function KitchenTipSplit() {
         {/* Session Content */}
         {session && (
           <div className="space-y-6">
-            {locked && <SessionLockedBanner />}
+            {(locked || !!(session as any)?.is_unlocked) && (
+              <SessionLockedBanner
+                isUnlocked={!!(session as any)?.is_unlocked}
+                permissionLevel={user?.permissionLevel || 'staff'}
+                onUnlock={() => handleToggleLock(true)}
+                onLock={() => handleToggleLock(false)}
+              />
+            )}
 
             {/* Summary Stats */}
             <div className="grid sm:grid-cols-3 gap-4">

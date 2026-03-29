@@ -1164,7 +1164,14 @@ export default function DailySummary() {
         {/* Session Content */}
         {session && (
           <>
-            {locked && <SessionLockedBanner />}
+            {(locked || !!(session as any)?.is_unlocked) && (
+              <SessionLockedBanner
+                isUnlocked={!!(session as any)?.is_unlocked}
+                permissionLevel={user?.permissionLevel || 'staff'}
+                onUnlock={() => handleToggleLock(true)}
+                onLock={() => handleToggleLock(false)}
+              />
+            )}
             {renderExcelLayout()}
 
             {/* Settings for admins only */}

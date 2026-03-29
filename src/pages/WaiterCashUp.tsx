@@ -305,7 +305,14 @@ export default function WaiterCashUp() {
         {/* Session Content */}
         {session && <div className="space-y-6">
 
-            {locked && <SessionLockedBanner />}
+            {(locked || !!(session as any)?.is_unlocked) && (
+              <SessionLockedBanner
+                isUnlocked={!!(session as any)?.is_unlocked}
+                permissionLevel={user?.permissionLevel || 'staff'}
+                onUnlock={() => handleToggleLock(true)}
+                onLock={() => handleToggleLock(false)}
+              />
+            )}
 
             <div className="grid lg:grid-cols-2 gap-6">
             {/* Add/Edit Waiter Form */}
