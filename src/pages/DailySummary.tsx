@@ -51,7 +51,7 @@ export default function DailySummary() {
   const { restaurantId, restaurantName, restaurant } = useRestaurant();
   const { settings } = useTelegramSettings();
   const { user } = useAuth();
-  const locked = isSessionLocked(selectedDate, !!(session as any)?.is_unlocked);
+  
 
   const handleToggleLock = async (unlock: boolean) => {
     if (!session?.id || !restaurantId) return;
