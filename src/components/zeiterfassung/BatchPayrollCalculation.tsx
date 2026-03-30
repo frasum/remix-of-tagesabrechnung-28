@@ -371,21 +371,32 @@ export default function BatchPayrollCalculation({
       if (srErr) throw srErr;
 
       const activeRaw = (allStaffRest || []).filter((sr: any) => sr.staff?.is_active === true);
+      const restMap = new Map(restaurants.map(r => [r.id, r.name]));
       const dedupMap = new Map<string, any>();
       for (const sr of activeRaw) {
-        const key = `${sr.restaurant_id}::${sr.staff_id}`;
+        const key = sr.staff_id;
         const existing = dedupMap.get(key);
         if (existing) {
+          // Merge departments
           const existingDept = existing.zt_department || "";
           const newDept = sr.zt_department || "";
           if (newDept && !existingDept.includes(newDept)) {
             existing.zt_department = existingDept ? `${existingDept}, ${newDept}` : newDept;
           }
+          // Merge restaurant names
+          const restName = restMap.get(sr.restaurant_id) || "";
+          const existingRestNames: string[] = existing._restaurant_names || [];
+          if (restName && !existingRestNames.includes(restName)) {
+            existingRestNames.push(restName);
+            existing._restaurant_names = existingRestNames;
+          }
+          // Keep highest hourly rate
           if ((sr.zt_hourly_rate || 0) > (existing.zt_hourly_rate || 0)) {
             existing.zt_hourly_rate = sr.zt_hourly_rate;
           }
         } else {
-          dedupMap.set(key, { ...sr });
+          const restName = restMap.get(sr.restaurant_id) || "";
+          dedupMap.set(key, { ...sr, _restaurant_names: restName ? [restName] : [] });
         }
       }
       const activeStaffRest = Array.from(dedupMap.values());
@@ -406,7 +417,7 @@ export default function BatchPayrollCalculation({
         shiftsByEmployee.set(s.employee_id, arr);
       }
 
-      const restMap = new Map(restaurants.map(r => [r.id, r.name]));
+      
 
       const calcList: Array<{
         staffId: string;
@@ -432,7 +443,7 @@ export default function BatchPayrollCalculation({
           staffName: staff.name,
           persoNr: staff.perso_nr,
           restaurantId: sr.restaurant_id,
-          restaurantName: restMap.get(sr.restaurant_id) || "Unbekannt",
+          restaurantName: (sr._restaurant_names || []).join(", ") || restMap.get(sr.restaurant_id) || "Unbekannt",
           department: sr.zt_department || "",
           hourlyRate: hrRate,
           taxClass: staff.tax_class || "I",
