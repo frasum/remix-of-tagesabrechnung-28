@@ -67,6 +67,8 @@ function aggregateSimple(data: SfnShiftRow[]) {
   const agg = { total: 0, night: 0, nightDeep: 0, sunday: 0, evening: 0, sundayEvening: 0, sundayNightDeep: 0 };
   for (const s of data) {
     agg.total += s.total_hours || 0;
+    // Absence rows (Urlaub, Feiertag, Krank) contribute hours but no SFN surcharges
+    if (s.absence_type) continue;
     agg.night += s.night_hours || 0;
     agg.nightDeep += s.night_deep_hours || 0;
     agg.evening += s.evening_hours || 0;
