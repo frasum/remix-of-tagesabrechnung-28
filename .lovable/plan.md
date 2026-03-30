@@ -1,68 +1,78 @@
 
 
-# Batch-Berechnungen speichern & löschen
+# Lohnbüro-PDF hochladen & automatisch vergleichen
 
 ## Konzept
 
-Eine neue Tabelle `payroll_calculations` speichert die Ergebnisse einer Batch-Berechnung als Snapshot. Der Nutzer kann nach einer Berechnung auf „Speichern" klicken und später gespeicherte Berechnungen laden oder löschen.
+Bei jeder gespeicherten Batch-Berechnung kann ein PDF vom Lohnbüro hochgeladen werden. Das PDF enthält einzelne Lohnabrechnungen pro Mitarbeiter. Eine Edge Function nutzt KI (Gemini), um die relevanten Werte (Name, Brutto, Netto, SFN-Zuschläge, Auszahlung) aus jeder Seite zu extrahieren. Die extrahierten Werte werden mit der eigenen Berechnung verglichen und Abweichungen farblich markiert.
 
 ## Änderungen
 
-### 1. DB-Migration — neue Tabelle `payroll_calculations`
+### 1. Storage-Bucket `payroll-pdfs`
+
+Migration erstellt einen öffentlichen Bucket für die hochgeladenen Lohnbüro-PDFs + RLS-Policies.
+
+### 2. DB-Migration — neue Spalten in `payroll_calculations`
 
 ```sql
-CREATE TABLE public.payroll_calculations (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  period_id uuid NOT NULL,
-  sfn_mode text NOT NULL DEFAULT 'simple',
-  date_from date NOT NULL,
-  date_to date NOT NULL,
-  label text,                          -- z.B. "März 2026"
-  results jsonb NOT NULL DEFAULT '[]', -- Array der BatchResult-Objekte
-  created_at timestamptz NOT NULL DEFAULT now(),
-  created_by_name text
-);
-
-ALTER TABLE public.payroll_calculations ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow payroll_calculations access via app"
-  ON public.payroll_calculations FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE public.payroll_calculations
+  ADD COLUMN pdf_path text,              -- Storage-Pfad des hochgeladenen PDFs
+  ADD COLUMN external_results jsonb;     -- KI-extrahierte Werte [{name, brutto, netto, sfn, auszahlung}, ...]
 ```
 
-### 2. UI-Erweiterungen in `BatchPayrollCalculation.tsx`
+### 3. Neue Edge Function `parse-payroll-pdf`
 
-- **Nach Berechnung**: Neuer Button „Berechnung speichern" (Save-Icon) → speichert die `batchResults` als JSON in `payroll_calculations` mit Perioden-Label, Datum und SFN-Modus.
-- **Dropdown „Gespeicherte Berechnungen"**: Lädt alle gespeicherten Berechnungen für die aktuelle Periode. Beim Auswählen werden die Ergebnisse aus dem JSON geladen und angezeigt (ohne Neuberechnung).
-- **Löschen-Button**: Neben jeder gespeicherten Berechnung ein Trash-Icon → löscht den Eintrag nach Bestätigung.
+- Empfängt die `calculationId` und den Storage-Pfad
+- Lädt das PDF aus dem Bucket
+- Sendet es an Gemini (via Lovable AI) mit einem strukturierten Prompt:
+  *"Extrahiere aus jeder Lohnabrechnung: Mitarbeitername, Brutto-Gehalt, Netto-Gehalt, steuerfreie SFN-Zuschläge, Auszahlungsbetrag. Antworte als JSON-Array."*
+- Speichert das Ergebnis in `payroll_calculations.external_results`
+- Gibt die extrahierten Daten zurück
 
-### 3. Ablauf
+### 4. UI-Erweiterungen in `BatchPayrollCalculation.tsx`
+
+- **Upload-Button** (📎) neben jeder gespeicherten Berechnung → öffnet File-Input für PDF
+- **Status-Anzeige**: Während KI parst → Spinner; danach → grünes Häkchen
+- **Vergleichsansicht**: Wenn `external_results` vorhanden, wird pro Mitarbeiter eine zusätzliche Zeile/Spalte angezeigt:
+  - Eigener Wert vs. Lohnbüro-Wert
+  - Abweichungen > 1 € werden rot markiert
+  - Übereinstimmungen grün
+- **Matching**: Mitarbeiter werden per Namensähnlichkeit (Levenshtein oder normalisierter Vergleich) zugeordnet, nicht zugeordnete Einträge werden separat aufgelistet
+
+### 5. Ablauf
 
 ```text
-┌─────────────────────────┐
-│  Batch berechnen        │
-│  [Alle berechnen]       │
-└──────┬──────────────────┘
-       │ Ergebnisse vorhanden
+┌───────────────────────────────────────┐
+│  Gespeicherte Berechnungen            │
+│  ● März 2026 (30.03.)  📎 🗑          │
+│                         ↑             │
+│                    PDF hochladen      │
+└──────┬────────────────────────────────┘
+       │ Upload + KI-Parsing
        ▼
-┌─────────────────────────┐
-│  [💾 Speichern]  [📥 Excel] │
-└──────┬──────────────────┘
-       │
-       ▼
-┌─────────────────────────┐
-│  Gespeicherte:          │
-│  ● März 2026 (30.03.)  🗑│
-│  ● März 2026 (28.03.)  🗑│
-└─────────────────────────┘
+┌───────────────────────────────────────┐
+│  Vergleich: Eigene vs. Lohnbüro      │
+│                                       │
+│  Name      │ Eigen │ Lohnb. │ Diff   │
+│  ──────────┼───────┼────────┼──────  │
+│  Max M.    │ 2.450 │ 2.450  │  ✓     │
+│  Lisa K.   │ 1.890 │ 1.920  │ -30 ⚠ │
+│  ...       │       │        │        │
+└───────────────────────────────────────┘
 ```
 
 ### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| Migration | Neue Tabelle `payroll_calculations` |
-| `src/components/zeiterfassung/BatchPayrollCalculation.tsx` | Speichern-Button, Laden-Dropdown, Löschen-Button + Queries |
+| Migration | Bucket + 2 neue Spalten |
+| `supabase/functions/parse-payroll-pdf/index.ts` | **NEU** — KI-gestütztes PDF-Parsing |
+| `src/components/zeiterfassung/BatchPayrollCalculation.tsx` | Upload-Button, Vergleichsansicht |
 
-### Props-Erweiterung
+### Technische Details
 
-`BatchPayrollCalculation` erhält zusätzlich `periodId` und `periodLabel` aus `ZtBruttoNetto.tsx`, damit der Snapshot der richtigen Periode zugeordnet wird.
+- **KI-Modell**: `google/gemini-2.5-flash` (gut für Dokument-Analyse, schnell, kostengünstig)
+- **PDF → Base64**: Die Edge Function liest das PDF aus Storage und sendet es als Base64-encoded Image/Document an Gemini
+- **Matching-Logik**: Normalisierter Name-Vergleich (lowercase, trim, Umlaute) + optionaler Perso-Nr-Match
+- **Fehlerbehandlung**: Wenn KI einen Mitarbeiter nicht zuordnen kann, wird er unter "Nicht zugeordnet" gelistet
 
