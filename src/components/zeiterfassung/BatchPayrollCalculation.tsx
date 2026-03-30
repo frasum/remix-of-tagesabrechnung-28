@@ -593,7 +593,7 @@ export default function BatchPayrollCalculation({
           </div>
         )}
 
-
+        {batchResults.length > 0 && (
           <div className="space-y-6">
             {Object.entries(groupedResults).map(([restName, items]) => {
               const subtotals = items.reduce(
