@@ -57,5 +57,8 @@ verify_jwt = false
 [functions.sync-thaitime-staff]
 verify_jwt = false
 
+[functions.parse-payroll-pdf]
+verify_jwt = false
+
 [functions.update-telegram-schedule]
 verify_jwt = false
