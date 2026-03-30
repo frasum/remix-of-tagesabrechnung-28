@@ -350,6 +350,8 @@ export default function ZtBruttoNetto() {
         calculationYear={calculationYear}
         calculationMonth={calculationMonth}
         onSelectEmployee={(staffId) => setEmployeeId(staffId)}
+        periodId={localPeriodId}
+        periodLabel={selectedLocalPeriod?.label}
       />
 
       {/* Eingabeformular */}
