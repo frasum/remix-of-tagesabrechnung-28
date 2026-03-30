@@ -36,6 +36,8 @@ interface ExternalEmployee {
   netto: number | null;
   sfn: number | null;
   auszahlung: number | null;
+  stunden: number | null;
+  stundenlohn: number | null;
 }
 
 interface BatchPayrollCalculationProps {
