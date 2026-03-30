@@ -1,78 +1,56 @@
 
 
-# Lohnbüro-PDF hochladen & automatisch vergleichen
+# Matching über Personalnummer statt Namensvergleich
 
-## Konzept
+## Problem
 
-Bei jeder gespeicherten Batch-Berechnung kann ein PDF vom Lohnbüro hochgeladen werden. Das PDF enthält einzelne Lohnabrechnungen pro Mitarbeiter. Eine Edge Function nutzt KI (Gemini), um die relevanten Werte (Name, Brutto, Netto, SFN-Zuschläge, Auszahlung) aus jeder Seite zu extrahieren. Die extrahierten Werte werden mit der eigenen Berechnung verglichen und Abweichungen farblich markiert.
+Der aktuelle Matching-Algorithmus vergleicht Namen fuzzy — das scheitert bei Spitznamen vs. bürgerlichen Namen. Die Personalnummer (`perso_nr`) ist eindeutig und steht sowohl intern als auch auf jeder Lohnabrechnung.
 
 ## Änderungen
 
-### 1. Storage-Bucket `payroll-pdfs`
+### 1. Edge Function `parse-payroll-pdf` — Personalnummer mit extrahieren
 
-Migration erstellt einen öffentlichen Bucket für die hochgeladenen Lohnbüro-PDFs + RLS-Policies.
+Den Gemini-Prompt und das Tool-Schema erweitern, damit auch die **Personalnummer** (`perso_nr`) aus jeder Lohnabrechnung extrahiert wird. Das Feld heißt auf deutschen Abrechnungen typischerweise "Personalnummer", "Pers.-Nr." oder "P.-Nr.".
 
-### 2. DB-Migration — neue Spalten in `payroll_calculations`
-
-```sql
-ALTER TABLE public.payroll_calculations
-  ADD COLUMN pdf_path text,              -- Storage-Pfad des hochgeladenen PDFs
-  ADD COLUMN external_results jsonb;     -- KI-extrahierte Werte [{name, brutto, netto, sfn, auszahlung}, ...]
+```typescript
+// Neues Feld im Tool-Schema:
+perso_nr: { type: "number", description: "Personalnummer des Mitarbeiters" }
 ```
 
-### 3. Neue Edge Function `parse-payroll-pdf`
+### 2. `ExternalEmployee` Interface erweitern
 
-- Empfängt die `calculationId` und den Storage-Pfad
-- Lädt das PDF aus dem Bucket
-- Sendet es an Gemini (via Lovable AI) mit einem strukturierten Prompt:
-  *"Extrahiere aus jeder Lohnabrechnung: Mitarbeitername, Brutto-Gehalt, Netto-Gehalt, steuerfreie SFN-Zuschläge, Auszahlungsbetrag. Antworte als JSON-Array."*
-- Speichert das Ergebnis in `payroll_calculations.external_results`
-- Gibt die extrahierten Daten zurück
+```typescript
+interface ExternalEmployee {
+  name: string;
+  perso_nr: number | null;  // NEU
+  brutto: number | null;
+  netto: number | null;
+  sfn: number | null;
+  auszahlung: number | null;
+}
+```
 
-### 4. UI-Erweiterungen in `BatchPayrollCalculation.tsx`
+### 3. `matchExternal` — Primär über `perso_nr` matchen
 
-- **Upload-Button** (📎) neben jeder gespeicherten Berechnung → öffnet File-Input für PDF
-- **Status-Anzeige**: Während KI parst → Spinner; danach → grünes Häkchen
-- **Vergleichsansicht**: Wenn `external_results` vorhanden, wird pro Mitarbeiter eine zusätzliche Zeile/Spalte angezeigt:
-  - Eigener Wert vs. Lohnbüro-Wert
-  - Abweichungen > 1 € werden rot markiert
-  - Übereinstimmungen grün
-- **Matching**: Mitarbeiter werden per Namensähnlichkeit (Levenshtein oder normalisierter Vergleich) zugeordnet, nicht zugeordnete Einträge werden separat aufgelistet
+Neuer Algorithmus:
+1. **Perso-Nr-Match** (exakt) → eindeutig, sofort zuordnen
+2. **Name-Fallback** nur für Einträge ohne Perso-Nr-Match (bisherige Logik als Backup)
 
-### 5. Ablauf
-
-```text
-┌───────────────────────────────────────┐
-│  Gespeicherte Berechnungen            │
-│  ● März 2026 (30.03.)  📎 🗑          │
-│                         ↑             │
-│                    PDF hochladen      │
-└──────┬────────────────────────────────┘
-       │ Upload + KI-Parsing
-       ▼
-┌───────────────────────────────────────┐
-│  Vergleich: Eigene vs. Lohnbüro      │
-│                                       │
-│  Name      │ Eigen │ Lohnb. │ Diff   │
-│  ──────────┼───────┼────────┼──────  │
-│  Max M.    │ 2.450 │ 2.450  │  ✓     │
-│  Lisa K.   │ 1.890 │ 1.920  │ -30 ⚠ │
-│  ...       │       │        │        │
-└───────────────────────────────────────┘
+```typescript
+function matchExternal(internal, external) {
+  // 1. Pass: Match by perso_nr (exact)
+  // 2. Pass: Remaining unmatched → fuzzy name match (existing logic)
+}
 ```
 
 ### Betroffene Dateien
 
 | Datei | Änderung |
 |---|---|
-| Migration | Bucket + 2 neue Spalten |
-| `supabase/functions/parse-payroll-pdf/index.ts` | **NEU** — KI-gestütztes PDF-Parsing |
-| `src/components/zeiterfassung/BatchPayrollCalculation.tsx` | Upload-Button, Vergleichsansicht |
+| `supabase/functions/parse-payroll-pdf/index.ts` | `perso_nr` ins Tool-Schema + Prompt |
+| `src/components/zeiterfassung/BatchPayrollCalculation.tsx` | `ExternalEmployee` erweitern, `matchExternal` auf Perso-Nr-first umbauen |
 
-### Technische Details
+### Ergebnis
 
-- **KI-Modell**: `google/gemini-2.5-flash` (gut für Dokument-Analyse, schnell, kostengünstig)
-- **PDF → Base64**: Die Edge Function liest das PDF aus Storage und sendet es als Base64-encoded Image/Document an Gemini
-- **Matching-Logik**: Normalisierter Name-Vergleich (lowercase, trim, Umlaute) + optionaler Perso-Nr-Match
-- **Fehlerbehandlung**: Wenn KI einen Mitarbeiter nicht zuordnen kann, wird er unter "Nicht zugeordnet" gelistet
+Eindeutiges Matching über Personalnummer. Kein Fuzzy-Name-Raten mehr nötig. Fallback auf Namen bleibt für den seltenen Fall, dass die KI keine Personalnummer findet.
 
