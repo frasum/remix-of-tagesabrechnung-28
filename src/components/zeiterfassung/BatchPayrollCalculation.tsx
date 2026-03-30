@@ -95,6 +95,8 @@ function aggregateExtended(data: SfnShiftRow[], hols: Map<string, number>) {
   const agg = { total: 0, night: 0, nightDeep: 0, evening: 0, sunday: 0, holiday: 0, holiday150: 0 };
   for (const s of data) {
     agg.total += s.total_hours || 0;
+    // Absence rows contribute hours but no SFN surcharges
+    if (s.absence_type) continue;
     agg.night += s.night_hours || 0;
     agg.nightDeep += s.night_deep_hours || 0;
     agg.evening += s.evening_hours || 0;
