@@ -31,6 +31,7 @@ interface BatchResult {
 
 interface ExternalEmployee {
   name: string;
+  perso_nr: number | null;
   brutto: number | null;
   netto: number | null;
   sfn: number | null;
