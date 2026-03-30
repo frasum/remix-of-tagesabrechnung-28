@@ -371,6 +371,7 @@ export default function BatchPayrollCalculation({
       if (srErr) throw srErr;
 
       const activeRaw = (allStaffRest || []).filter((sr: any) => sr.staff?.is_active === true);
+      const restMap = new Map(restaurants.map(r => [r.id, r.name]));
       const dedupMap = new Map<string, any>();
       for (const sr of activeRaw) {
         const key = sr.staff_id;
