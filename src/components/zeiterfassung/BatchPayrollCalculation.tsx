@@ -60,6 +60,7 @@ interface SfnShiftRow {
   is_holiday: boolean;
   evening_hours: number;
   shift_date: string;
+  absence_type?: string | null;
 }
 
 function aggregateSimple(data: SfnShiftRow[]) {
