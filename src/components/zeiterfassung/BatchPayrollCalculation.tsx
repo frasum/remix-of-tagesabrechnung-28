@@ -525,10 +525,18 @@ export default function BatchPayrollCalculation({
               : "Alle Mitarbeiter berechnen"}
           </Button>
           {batchResults.length > 0 && (
-            <Button variant="outline" size="lg" onClick={handleExcelExport}>
-              <Download className="h-4 w-4 mr-2" />
-              Excel Export
-            </Button>
+            <>
+              <Button variant="outline" size="lg" onClick={handleExcelExport}>
+                <Download className="h-4 w-4 mr-2" />
+                Excel Export
+              </Button>
+              {periodId && (
+                <Button variant="outline" size="lg" onClick={handleSave} disabled={saving}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? "Speichere..." : "Speichern"}
+                </Button>
+              )}
+            </>
           )}
           {dateFrom && dateTo && (
             <span className="text-sm text-muted-foreground">
