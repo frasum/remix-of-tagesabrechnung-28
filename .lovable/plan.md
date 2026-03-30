@@ -1,47 +1,47 @@
 
 
-# Lohnbüro-PDF: Keine Daten werden extrahiert
+# Warum Brutto-Unterschiede entstehen — Analyse & Fix
 
-## Problem
+## Das Problem
 
-Die Lohnbüro-PDFs werden wahrscheinlich als gescannte Bilder (nicht als Text-PDFs) generiert. Das aktuelle System sendet das PDF direkt an Gemini, aber das `file`-Format funktioniert möglicherweise nicht zuverlässig für die Datenextraktion. Außerdem könnte das Ergebnis leer zurückkommen, ohne dass der Nutzer eine Fehlermeldung sieht.
+Die interne Brutto-Berechnung ist: `Stundenlohn × Gesamtstunden = Brutto`
 
-## Änderungen
+Das ist korrekt — aber es gibt **drei konkrete Fehlerquellen**, die zu Abweichungen führen:
 
-### 1. Edge Function `parse-payroll-pdf` verbessern
+### 1. Falscher Stundenlohn (häufigste Ursache)
 
-**Problem 1 — Content-Format**: Das `file`-Format mit `file_data` ist möglicherweise nicht optimal. Stattdessen `inline_data` im `parts`-Array verwenden, was zuverlässiger für PDF-Dokumente funktioniert.
+**Code-Logik** (Zeile 423):
+```
+hrRate = zt_hourly_rate > 0 ? zt_hourly_rate : staff.hourly_rate
+```
 
-**Problem 2 — Leeres Ergebnis**: Wenn die KI keine Mitarbeiter extrahiert, wird trotzdem ein leeres Array gespeichert. Der Nutzer sieht keine Fehlermeldung.
+Problem: Bei Ann z.B. ist `zt_hourly_rate = 0.00` im Restaurant "Spicery". Der Fallback nimmt dann `staff.hourly_rate = 14.00`. Wenn das Lohnbüro aber z.B. 14.50 € abrechnet, entsteht sofort eine Differenz über alle Stunden.
 
-**Problem 3 — Debugging**: Kein Logging, was die KI tatsächlich zurückgibt.
+**Lösung**: Die neuen Spalten "Stundenlohn (Intern)" vs. "Stundenlohn (Lohnbüro)" in der Vergleichstabelle zeigen genau diese Abweichung. Wo der interne Stundenlohn falsch ist, muss er in den Mitarbeiter-Stammdaten korrigiert werden.
 
-Konkrete Änderungen:
-- PDF als `inline_data` (mit `mime_type: "application/pdf"`) statt als `file`-Typ senden
-- Logging hinzufügen: Anzahl extrahierter Mitarbeiter und ggf. raw response bei leerem Ergebnis
-- Wenn 0 Mitarbeiter extrahiert werden: Fehler zurückgeben statt leeres Array zu speichern
-- Fallback: Wenn Tool-Call leer ist, versuchen den `content`-Text der Antwort zu parsen
+### 2. Abweichende Stundenzahl
 
-### 2. Frontend — Fehlermeldung bei leerem Ergebnis
+Die Stunden kommen aus `zt_shifts.total_hours`. Wenn Schichten fehlen oder falsch erfasst sind, weicht die Summe ab. Auch hier zeigen die neuen Spalten "Stunden (Intern)" vs. "Stunden (Lohnbüro)" die Differenz.
 
-In `BatchPayrollCalculation.tsx`: Wenn die Edge Function 0 Mitarbeiter zurückgibt, eine Toast-Warnung anzeigen ("Keine Mitarbeiter im PDF erkannt").
+### 3. Bezahlte Abwesenheiten fehlen
 
-### Betroffene Dateien
+Die Query filtert mit `.is("absence_type", null)` — das heißt **alle** Abwesenheiten werden ausgeschlossen, auch bezahlte (Feiertage, bezahlter Urlaub). Das Lohnbüro rechnet diese Stunden aber zum Brutto dazu.
+
+## Vorgeschlagene Maßnahmen
+
+### Sofort: Stundenlohn-Abgleich sichtbar machen
+
+Die Vergleichstabelle mit Stunden + Stundenlohn ist bereits implementiert. Wenn nach dem PDF-Upload die Lohnbüro-Daten angezeigt werden, kann man **pro Mitarbeiter** sofort sehen:
+- Stimmt der Stundenlohn überein? → Falls nein: Stammdaten korrigieren
+- Stimmen die Stunden überein? → Falls nein: Fehlende Schichten prüfen
+
+### Optional: Bezahlte Abwesenheiten einrechnen
+
+Für Mitarbeiter mit bezahltem Urlaub oder Feiertagslohn die Stunden aus `zt_shifts` auch mit `absence_type IN ('urlaub', 'feiertag')` einbeziehen, sofern sie als "bezahlt" markiert sind.
 
 | Datei | Änderung |
 |---|---|
-| `supabase/functions/parse-payroll-pdf/index.ts` | `inline_data` statt `file`, Logging, Fehler bei leerem Ergebnis |
-| `src/components/zeiterfassung/BatchPayrollCalculation.tsx` | Toast-Warnung bei 0 extrahierten Mitarbeitern |
+| `src/components/zeiterfassung/BatchPayrollCalculation.tsx` | Optional: Bezahlte Abwesenheiten in Stundensumme einbeziehen |
 
-### Technische Details
-
-```text
-Vorher:
-  content: [{ type: "file", file: { filename: "...", file_data: "data:application/pdf;base64,..." } }]
-
-Nachher:
-  content: [{ type: "text", text: "Extrahiere..." }, { type: "image_url", image_url: { url: "data:application/pdf;base64,..." } }]
-```
-
-Das `image_url`-Format mit `data:application/pdf;base64,...` ist das in der Lovable AI Gateway Dokumentation empfohlene Format für Dokument-Analyse und funktioniert sowohl für Text- als auch für gescannte PDFs.
+Soll ich die bezahlten Abwesenheiten in die Brutto-Berechnung einbeziehen, oder reicht der aktuelle Stundenlohn/Stunden-Vergleich über die PDF-Extraktion?
 
