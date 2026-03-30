@@ -83,15 +83,14 @@ Die Personalnummer ist besonders wichtig für die Zuordnung — extrahiere sie i
             role: "user",
             content: [
               {
-                type: "file",
-                file: {
-                  filename: "lohnabrechnungen.pdf",
-                  file_data: `data:application/pdf;base64,${base64}`,
-                },
-              },
-              {
                 type: "text",
                 text: "Extrahiere aus jeder Lohnabrechnung in diesem PDF die Daten aller Mitarbeiter.",
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:application/pdf;base64,${base64}`,
+                },
               },
             ],
           },
@@ -156,6 +155,7 @@ Die Personalnummer ist besonders wichtig für die Zuordnung — extrahiere sie i
     }
 
     const aiData = await aiResponse.json();
+    console.log("AI response choices:", JSON.stringify(aiData.choices?.length));
     
     // Extract tool call arguments
     let employees: any[] = [];
@@ -165,10 +165,35 @@ Die Personalnummer ist besonders wichtig für die Zuordnung — extrahiere sie i
         const parsed = JSON.parse(toolCall.function.arguments);
         employees = parsed.employees || [];
       } catch {
-        console.error("Failed to parse tool call arguments");
+        console.error("Failed to parse tool call arguments:", toolCall.function.arguments?.substring(0, 200));
       }
     }
 
+    // Fallback: try to parse from content text if tool call yielded nothing
+    if (employees.length === 0) {
+      const contentText = aiData.choices?.[0]?.message?.content;
+      if (contentText) {
+        console.log("Tool call empty, trying content fallback. Content preview:", contentText.substring(0, 500));
+        try {
+          const jsonMatch = contentText.match(/\{[\s\S]*"employees"[\s\S]*\}/);
+          if (jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            employees = parsed.employees || [];
+          }
+        } catch {
+          console.error("Content fallback parsing also failed");
+        }
+      }
+    }
+
+    console.log(`Extracted ${employees.length} employees from PDF`);
+
+    if (employees.length === 0) {
+      return new Response(JSON.stringify({ error: "Keine Mitarbeiter im PDF erkannt. Bitte prüfen Sie, ob das PDF Lohnabrechnungen enthält.", employees: [], count: 0 }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     // Save results to DB
     const { error: updateError } = await supabase
       .from("payroll_calculations")
