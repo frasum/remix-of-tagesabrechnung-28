@@ -337,7 +337,11 @@ export default function BatchPayrollCalculation({
       if (fnErr) throw fnErr;
 
       queryClient.invalidateQueries({ queryKey: ["payroll-calculations", periodId] });
-      toast.success(`${data.count} Mitarbeiter aus PDF erkannt`);
+      if (!data.count || data.count === 0) {
+        toast.warning("Keine Mitarbeiter im PDF erkannt. Bitte prüfen Sie das PDF.");
+      } else {
+        toast.success(`${data.count} Mitarbeiter aus PDF erkannt`);
+      }
       setShowComparison(calcId);
     } catch (e: any) {
       toast.error("PDF-Verarbeitung fehlgeschlagen: " + (e.message || "Unbekannt"));
