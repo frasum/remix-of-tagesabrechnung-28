@@ -554,8 +554,46 @@ export default function BatchPayrollCalculation({
             <AlertDescription>{batchError}</AlertDescription>
           </Alert>
         )}
+        {/* Gespeicherte Berechnungen */}
+        {savedCalcs.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium flex items-center gap-1.5">
+              <FolderOpen className="h-4 w-4" />
+              Gespeicherte Berechnungen
+            </h4>
+            <div className="space-y-1">
+              {savedCalcs.map((calc) => (
+                <div
+                  key={calc.id}
+                  className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${loadedSnapshotId === calc.id ? "border-primary bg-primary/5" : "border-border"}`}
+                >
+                  <button
+                    className="flex-1 text-left hover:underline"
+                    onClick={() => handleLoadSnapshot(calc.id)}
+                  >
+                    <span className="font-medium">{calc.label || "Berechnung"}</span>
+                    <span className="text-muted-foreground ml-2">
+                      ({new Date(calc.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })})
+                    </span>
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {calc.sfn_mode === "extended" ? "§3b" : "Einfach"}
+                    </Badge>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(calc.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {batchResults.length > 0 && (
+
           <div className="space-y-6">
             {Object.entries(groupedResults).map(([restName, items]) => {
               const subtotals = items.reduce(
