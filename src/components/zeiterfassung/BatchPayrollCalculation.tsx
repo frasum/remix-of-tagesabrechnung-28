@@ -1,12 +1,13 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRestaurants } from "@/hooks/useRestaurant";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Calculator, Info, AlertTriangle, Users, Download } from "lucide-react";
+import { Calculator, Info, AlertTriangle, Users, Download, Save, Trash2, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 import { SFN_RATES } from "@/lib/sfnRates";
 import type { SfnMode } from "@/hooks/useSfnMode";
@@ -37,6 +38,8 @@ interface BatchPayrollCalculationProps {
   calculationYear?: number;
   calculationMonth?: number;
   onSelectEmployee?: (staffId: string) => void;
+  periodId?: string;
+  periodLabel?: string;
 }
 
 interface SfnShiftRow {
@@ -115,14 +118,87 @@ export default function BatchPayrollCalculation({
   calculationYear,
   calculationMonth,
   onSelectEmployee,
+  periodId,
+  periodLabel,
 }: BatchPayrollCalculationProps) {
   const { data: restaurants = [] } = useRestaurants();
+  const queryClient = useQueryClient();
   const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
   const [batchCalculating, setBatchCalculating] = useState(false);
   const [batchProgress, setBatchProgress] = useState({ current: 0, total: 0 });
   const [batchError, setBatchError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loadedSnapshotId, setLoadedSnapshotId] = useState<string | null>(null);
 
   const isExtended = sfnMode === "extended";
+
+  // Fetch saved calculations for the current period
+  const { data: savedCalcs = [] } = useQuery({
+    queryKey: ["payroll-calculations", periodId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payroll_calculations")
+        .select("id, label, sfn_mode, created_at, created_by_name")
+        .eq("period_id", periodId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!periodId,
+  });
+
+  const handleSave = useCallback(async () => {
+    if (!periodId || batchResults.length === 0) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("payroll_calculations").insert({
+        period_id: periodId,
+        sfn_mode: sfnMode,
+        date_from: dateFrom,
+        date_to: dateTo,
+        label: periodLabel || null,
+        results: batchResults as any,
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["payroll-calculations", periodId] });
+      toast.success("Berechnung gespeichert");
+    } catch (e: any) {
+      toast.error("Speichern fehlgeschlagen: " + (e.message || "Unbekannt"));
+    } finally {
+      setSaving(false);
+    }
+  }, [periodId, batchResults, sfnMode, dateFrom, dateTo, periodLabel, queryClient]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase.from("payroll_calculations").delete().eq("id", id);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["payroll-calculations", periodId] });
+      if (loadedSnapshotId === id) {
+        setLoadedSnapshotId(null);
+        setBatchResults([]);
+      }
+      toast.success("Berechnung gelöscht");
+    } catch (e: any) {
+      toast.error("Löschen fehlgeschlagen: " + (e.message || "Unbekannt"));
+    }
+  }, [periodId, loadedSnapshotId, queryClient]);
+
+  const handleLoadSnapshot = useCallback(async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("payroll_calculations")
+        .select("results")
+        .eq("id", id)
+        .single();
+      if (error) throw error;
+      setBatchResults((data.results as any) || []);
+      setLoadedSnapshotId(id);
+      toast.success("Gespeicherte Berechnung geladen");
+    } catch (e: any) {
+      toast.error("Laden fehlgeschlagen: " + (e.message || "Unbekannt"));
+    }
+  }, []);
 
   const handleBatchCalculate = useCallback(async () => {
     if (!dateFrom || !dateTo) return;
@@ -449,10 +525,18 @@ export default function BatchPayrollCalculation({
               : "Alle Mitarbeiter berechnen"}
           </Button>
           {batchResults.length > 0 && (
-            <Button variant="outline" size="lg" onClick={handleExcelExport}>
-              <Download className="h-4 w-4 mr-2" />
-              Excel Export
-            </Button>
+            <>
+              <Button variant="outline" size="lg" onClick={handleExcelExport}>
+                <Download className="h-4 w-4 mr-2" />
+                Excel Export
+              </Button>
+              {periodId && (
+                <Button variant="outline" size="lg" onClick={handleSave} disabled={saving}>
+                  <Save className="h-4 w-4 mr-2" />
+                  {saving ? "Speichere..." : "Speichern"}
+                </Button>
+              )}
+            </>
           )}
           {dateFrom && dateTo && (
             <span className="text-sm text-muted-foreground">
@@ -469,6 +553,44 @@ export default function BatchPayrollCalculation({
           <Alert variant="destructive">
             <AlertDescription>{batchError}</AlertDescription>
           </Alert>
+        )}
+        {/* Gespeicherte Berechnungen */}
+        {savedCalcs.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium flex items-center gap-1.5">
+              <FolderOpen className="h-4 w-4" />
+              Gespeicherte Berechnungen
+            </h4>
+            <div className="space-y-1">
+              {savedCalcs.map((calc) => (
+                <div
+                  key={calc.id}
+                  className={`flex items-center justify-between rounded-md border px-3 py-2 text-sm ${loadedSnapshotId === calc.id ? "border-primary bg-primary/5" : "border-border"}`}
+                >
+                  <button
+                    className="flex-1 text-left hover:underline"
+                    onClick={() => handleLoadSnapshot(calc.id)}
+                  >
+                    <span className="font-medium">{calc.label || "Berechnung"}</span>
+                    <span className="text-muted-foreground ml-2">
+                      ({new Date(calc.created_at).toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })})
+                    </span>
+                    <Badge variant="outline" className="ml-2 text-xs">
+                      {calc.sfn_mode === "extended" ? "§3b" : "Einfach"}
+                    </Badge>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:text-destructive"
+                    onClick={() => handleDelete(calc.id)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {batchResults.length > 0 && (
