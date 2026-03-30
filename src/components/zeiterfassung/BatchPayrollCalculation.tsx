@@ -811,6 +811,10 @@ export default function BatchPayrollCalculation({
                             <thead>
                               <tr className="border-b border-border text-muted-foreground">
                                 <th className="text-left py-1.5 pr-2">Mitarbeiter</th>
+                                <th className="text-right py-1.5 px-2">Std. (eigen)</th>
+                                <th className="text-right py-1.5 px-2">Std. (Lohnb.)</th>
+                                <th className="text-right py-1.5 px-2">€/h (eigen)</th>
+                                <th className="text-right py-1.5 px-2">€/h (Lohnb.)</th>
                                 <th className="text-right py-1.5 px-2">Brutto (eigen)</th>
                                 <th className="text-right py-1.5 px-2">Brutto (Lohnb.)</th>
                                 <th className="text-right py-1.5 px-2">Netto (eigen)</th>
