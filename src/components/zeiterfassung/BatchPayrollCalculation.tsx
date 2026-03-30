@@ -416,7 +416,7 @@ export default function BatchPayrollCalculation({
         shiftsByEmployee.set(s.employee_id, arr);
       }
 
-      const restMap = new Map(restaurants.map(r => [r.id, r.name]));
+      
 
       const calcList: Array<{
         staffId: string;
