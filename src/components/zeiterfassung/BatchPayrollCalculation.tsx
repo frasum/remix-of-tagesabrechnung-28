@@ -60,12 +60,15 @@ interface SfnShiftRow {
   is_holiday: boolean;
   evening_hours: number;
   shift_date: string;
+  absence_type?: string | null;
 }
 
 function aggregateSimple(data: SfnShiftRow[]) {
   const agg = { total: 0, night: 0, nightDeep: 0, sunday: 0, evening: 0, sundayEvening: 0, sundayNightDeep: 0 };
   for (const s of data) {
     agg.total += s.total_hours || 0;
+    // Absence rows (Urlaub, Feiertag, Krank) contribute hours but no SFN surcharges
+    if (s.absence_type) continue;
     agg.night += s.night_hours || 0;
     agg.nightDeep += s.night_deep_hours || 0;
     agg.evening += s.evening_hours || 0;
@@ -92,6 +95,8 @@ function aggregateExtended(data: SfnShiftRow[], hols: Map<string, number>) {
   const agg = { total: 0, night: 0, nightDeep: 0, evening: 0, sunday: 0, holiday: 0, holiday150: 0 };
   for (const s of data) {
     agg.total += s.total_hours || 0;
+    // Absence rows contribute hours but no SFN surcharges
+    if (s.absence_type) continue;
     agg.night += s.night_hours || 0;
     agg.nightDeep += s.night_deep_hours || 0;
     agg.evening += s.evening_hours || 0;
@@ -387,10 +392,9 @@ export default function BatchPayrollCalculation({
 
       const { data: allShifts, error: shiftErr } = await supabase
         .from("zt_shifts")
-        .select("employee_id, total_hours, night_hours, night_deep_hours, sunday_holiday_hours, is_holiday, evening_hours, shift_date")
+        .select("employee_id, total_hours, night_hours, night_deep_hours, sunday_holiday_hours, is_holiday, evening_hours, shift_date, absence_type")
         .gte("shift_date", dateFrom)
         .lte("shift_date", dateTo)
-        .is("absence_type", null)
         .limit(5000);
 
       if (shiftErr) throw shiftErr;
