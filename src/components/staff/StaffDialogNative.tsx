@@ -209,6 +209,8 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       // Sofortmeldung reset
       setAddressStreet(''); setAddressZip(''); setAddressCity('');
       setWorkStartTime(''); setEmploymentType(''); setActivityDescription('');
+      // Bank reset
+      setBankName(''); setIban(''); setBic('');
       // For new staff, select all restaurants with no departments yet
       const depts: Record<string, Set<string>> = {};
       restaurants.forEach((r) => { depts[r.id] = new Set(); });
