@@ -178,6 +178,10 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       setWorkStartTime((staff as any).work_start_time ?? '');
       setEmploymentType((staff as any).employment_type ?? '');
       setActivityDescription((staff as any).activity_description ?? '');
+      // Bank fields init
+      setBankName((staff as any).bank_name ?? '');
+      setIban((staff as any).iban ?? '');
+      setBic((staff as any).bic ?? '');
       // Build restaurantDepts from existing staff_restaurants
       const depts: Record<string, Set<string>> = {};
       for (const sr of staff.staff_restaurants ?? []) {
