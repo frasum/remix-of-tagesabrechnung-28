@@ -1,24 +1,26 @@
 
 
-# Küchen-Trinkgeld Monatsübersicht: Alle Restaurants anzeigen
+# Bankverbindung unter Lohndaten-Sektion
 
-## Problem
+## Änderungen
 
-Die `MonthlyKitchenTipCard` übergibt nur die aktuelle `restaurantId` an den Hook. Küchenmitarbeiter, die in beiden Restaurants arbeiten, sehen daher nur das Trinkgeld eines Standorts.
+### 1. Datenbank-Migration
+Drei neue Spalten zur `staff`-Tabelle: `bank_name`, `iban`, `bic` (alle text, nullable).
 
-## Lösung
+### 2. `useStaff.ts`
+`Staff` und `StaffInput` Interfaces um die drei Felder erweitern. Select-Query und Save-Logik anpassen.
 
-Alle verfügbaren Restaurant-IDs an `useCurrentMonthTips` übergeben, statt nur die aktuelle.
+### 3. `StaffDialogNative.tsx`
+Neue Untersektion **"Bankverbindung"** innerhalb der bestehenden Collapsible "Lohnabrechnungsdaten" — nach der Adresse und vor der Beschäftigung. Drei Felder:
+- Bankname (text)
+- IBAN (text, Platzhalter: DE89...)
+- BIC (text)
 
-### Änderung in `MonthlyKitchenTipCard.tsx`
-
-1. `useRestaurants()` importieren und alle Restaurant-IDs sammeln
-2. Statt `[restaurantId]` alle IDs an `useCurrentMonthTips` übergeben
-3. Optional: Neben dem Mitarbeiternamen ein kleines Badge zeigen, wenn der Mitarbeiter in mehreren Restaurants Stunden hat (analog zur Batch-Berechnung)
-
-### Betroffene Datei
+State-Variablen + Init/Reset wie bei den anderen Payroll-Feldern.
 
 | Datei | Änderung |
 |---|---|
-| `src/components/kitchen/MonthlyKitchenTipCard.tsx` | `useRestaurants` nutzen, alle Restaurant-IDs übergeben |
+| Migration (SQL) | 3 Spalten hinzufügen |
+| `src/hooks/useStaff.ts` | Interfaces + Query erweitern |
+| `src/components/staff/StaffDialogNative.tsx` | Bankverbindung-Felder unter Adresse einfügen |
 
