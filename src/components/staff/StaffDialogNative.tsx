@@ -309,6 +309,10 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
       work_start_time: workStartTime || null,
       employment_type: employmentType || null,
       activity_description: activityDescription || null,
+      // Bank
+      bank_name: bankName || null,
+      iban: iban || null,
+      bic: bic || null,
     });
 
     // Update permission level for existing staff
