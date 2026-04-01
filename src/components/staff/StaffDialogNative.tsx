@@ -118,6 +118,10 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
   const [workStartTime, setWorkStartTime] = useState('');
   const [employmentType, setEmploymentType] = useState('');
   const [activityDescription, setActivityDescription] = useState('');
+  // Bank fields
+  const [bankName, setBankName] = useState('');
+  const [iban, setIban] = useState('');
+  const [bic, setBic] = useState('');
 
   const { data: restaurants = [] } = useRestaurants();
   const { data: unlinkedProfiles = [], isLoading: profilesLoading } = useUnlinkedProfiles();
