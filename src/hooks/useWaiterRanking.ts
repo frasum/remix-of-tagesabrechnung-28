@@ -18,7 +18,7 @@ export function useWaiterRanking() {
       // 1. Load staff for canonical names and id mapping
       const [sessionsResult, shiftsResult, staffResult] = await Promise.all([
         supabase.from('sessions').select('id, session_date').order('session_date', { ascending: false }),
-        supabase.from('waiter_shifts').select('session_id, waiter_name, staff_id, pos_sales, hilf_mahl, open_invoices, card_total, cash_handed_in, kitchen_tip, participates_in_pool'),
+        supabase.from('waiter_shifts').select('session_id, waiter_name, staff_id, pos_sales, kassiert_brutto, hilf_mahl, open_invoices, card_total, cash_handed_in, kitchen_tip, participates_in_pool'),
         supabase.from('staff').select('id, name'),
       ]);
 
@@ -66,7 +66,7 @@ export function useWaiterRanking() {
         for (const shift of sessionShifts) {
           const key = waiterKey(shift);
           const sales = shift.pos_sales || 0;
-          const expected = (shift.pos_sales || 0) + (shift.hilf_mahl || 0) - (shift.open_invoices || 0) - (shift.card_total || 0);
+          const expected = (shift.kassiert_brutto || 0) + (shift.hilf_mahl || 0) - (shift.open_invoices || 0) - (shift.card_total || 0);
           const totalTip = (shift.cash_handed_in || 0) - expected;
           const tipPercent = sales > 0 ? (totalTip / sales) * 100 : 0;
 
