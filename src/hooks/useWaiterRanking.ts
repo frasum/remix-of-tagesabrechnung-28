@@ -18,7 +18,7 @@ export function useWaiterRanking() {
       // 1. Load staff for canonical names and id mapping
       const [sessionsResult, shiftsResult, staffResult] = await Promise.all([
         supabase.from('sessions').select('id, session_date').order('session_date', { ascending: false }),
-        supabase.from('waiter_shifts').select('session_id, waiter_name, staff_id, pos_sales, hilf_mahl, open_invoices, card_total, cash_handed_in, kitchen_tip, participates_in_pool'),
+        supabase.from('waiter_shifts').select('session_id, waiter_name, staff_id, pos_sales, kassiert_brutto, hilf_mahl, open_invoices, card_total, cash_handed_in, kitchen_tip, participates_in_pool'),
         supabase.from('staff').select('id, name'),
       ]);
 
