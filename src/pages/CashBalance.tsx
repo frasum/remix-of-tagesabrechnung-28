@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
@@ -67,18 +69,19 @@ export default function CashBalance() {
       .reduce((sum, d) => sum + d.amount, 0);
   }, [deposits, selectedMonth]);
 
-  // Carry-over into the selected month: cash from prior days minus deposits already made in prior months
-  const previousMonthCarryOver = useMemo(() => {
-    if (!data || !selectedMonth) return 0;
-    const monthStart = `${selectedMonth}-01`;
-    const priorCash = data
-      .filter((row) => row.date < monthStart)
-      .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
-    const priorDeposits = (deposits || [])
-      .filter((d) => d.deposit_date < monthStart)
-      .reduce((sum, d) => sum + d.amount, 0);
-    return priorCash - priorDeposits;
-  }, [data, deposits, selectedMonth]);
+  // Carry-over from prior months: use authoritative DB function (covers full history, transfers & deposits)
+  const { data: previousMonthCarryOver = 0 } = useQuery({
+    queryKey: ['cash-carry-over', restaurantId, selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('compute_carry_over', {
+        p_restaurant_id: restaurantId!,
+        p_before_date: `${selectedMonth}-01`,
+      });
+      if (error) throw error;
+      return Number(data) || 0;
+    },
+    enabled: !!restaurantId && !!selectedMonth,
+  });
 
   // Get month label for display
   const selectedMonthLabel = useMemo(() => {
