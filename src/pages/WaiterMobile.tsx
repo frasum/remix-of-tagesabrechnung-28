@@ -23,7 +23,7 @@ import { useShowTipRanking } from '@/hooks/useSettings';
 import { AccountLinkingDialog } from '@/components/auth/AccountLinkingDialog';
 import { SecondWaiterSelect } from '@/components/shared/SecondWaiterSelect';
 import { WebAuthnRegistrationPrompt, shouldShowWebAuthnPrompt } from '@/components/auth/WebAuthnRegistrationPrompt';
-import { WebAuthnSettings } from '@/components/settings/WebAuthnSettings';
+
 
 export default function WaiterMobile() {
   const today = getBusinessDate();
@@ -350,8 +350,6 @@ export default function WaiterMobile() {
           />
         )}
 
-        {/* Biometric Settings */}
-        <WebAuthnSettings />
       </div>
 
       {/* Account Linking Dialog */}
