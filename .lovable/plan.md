@@ -1,42 +1,56 @@
 
 
-# Bargeldbestand-Überschuss zum 31.03.2026 für Spicery erfassen
+# „Bargeld bis April 2026" auf reine Monatssumme umstellen
 
-## Ausgangslage
-- Tatsächlicher Kassenbestand Spicery zum 31.03.2026: **2.866 €** (inkl. 2.000 € Wechselgeld)
-- Effektiver Überschuss über Wechselgeld: **+866 €**
-- System aktuell: `initial_cash_deficit = 0`, Carry-Over zum 01.04. = 0 €
-- Problem: Die `compute_carry_over`-Logik kappt jeden positiven Übertrag auf 0 (`carryOver = bargeld < 0 ? bargeld : 0`). Ein positiver Anfangsbestand kann derzeit gar nicht abgebildet werden.
+## Problem
+Die große Kennzahl oben links in der `CashBalanceSummary` zeigt aktuell **12.019,55 €** — das ist die kumulierte Bargeld-Summe **aller Tage bis Ende des ausgewählten Monats** (seit Beginn des Datenfensters, Standard: 6 Monate zurück).
 
-## Lösung: Kassentransfer als Korrekturbuchung am 31.03.2026
+Gewünscht ist stattdessen die **Tages-Bargeld-Summe nur für den ausgewählten Monat** — derselbe Wert, der unten in der Tabelle in der GESAMT-Zeile (Spalte „Bargeld") steht: **2.212,62 €** für April 2026.
 
-Wir buchen den 866 € Überschuss als einmaligen **Kassentransfer** (`register_transfers`) ein. Das ist die sauberste Lösung, weil:
+## Lösung
+Eine einzeilige Logik-Änderung in `src/pages/CashBalance.tsx`.
 
-- Die Tabelle `register_transfers` ist **bereits in der Carry-Over-Logik** integriert (sowohl im DB-Function `compute_carry_over` als auch im Hook `useCashBalanceData`).
-- Transfers werden korrekt mit Vorzeichen verarbeitet (`to_restaurant` = +, sonst = −).
-- Die Buchung ist auditierbar (mit `created_by_name` und `reason`).
-- Keine Code- oder Schema-Änderung nötig.
+### Aktuell (Zeilen 55–60)
+```ts
+const cumulativeCash = useMemo(() => {
+  if (!data || !selectedMonth) return 0;
+  return data
+    .filter((row) => row.date <= `${selectedMonth}-31`)   // ← alle Tage bis Monatsende
+    .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
+}, [data, selectedMonth]);
+```
 
-### Konkrete Buchung
+### Neu
+```ts
+const cumulativeCash = useMemo(() => {
+  if (!data || !selectedMonth) return 0;
+  return data
+    .filter((row) => row.date.startsWith(selectedMonth))   // ← nur Tage im gewählten Monat
+    .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
+}, [data, selectedMonth]);
+```
 
-```sql
-INSERT INTO register_transfers (
-  restaurant_id, transfer_date, amount, direction, reason, created_by_name
-) VALUES (
-  'a1710390-ea4d-4bc2-b869-c0c047056b15',  -- Spicery
-  '2026-03-31',
-  866.00,
-  'to_restaurant',
-  'Anfangsbestand-Korrektur: tatsächlicher Kassenbestand 2.866 € (inkl. 2.000 € Wechselgeld) zum 31.03.2026',
-  'Lasse'
-);
+Variablenname kann zur Klarheit von `cumulativeCash` zu `monthlyCash` umbenannt werden (inkl. Übergabe an `<CashBalanceSummary totalCash={…} />`).
+
+## Folge-Anpassungen (gleiche Datei, gleiche Logik)
+Damit „Verbleibendes Bargeld" und „Wechselgeldbestand" weiter konsistent sind, muss auch `cumulativeDeposits` (Zeilen 63–68) auf den **gewählten Monat** beschränkt werden:
+
+```ts
+const cumulativeDeposits = useMemo(() => {
+  if (!deposits || !selectedMonth) return 0;
+  return deposits
+    .filter((d) => d.deposit_date.startsWith(selectedMonth))
+    .reduce((sum, d) => sum + d.amount, 0);
+}, [deposits, selectedMonth]);
 ```
 
 ## Auswirkung
-- Bargeld-Tag 31.03. erhöht sich um +866 €
-- Carry-Over zum 01.04. enthält den Überschuss (wird beim Skim auf 2.000 € Wechselgeld zurückgeführt → 866 € fließen in „Verbleibendes Bargeld" / Bankeinzahlungs-Topf)
-- Bankeinzahlungen ab April reduzieren diesen Bestand korrekt
+- Kennzahl oben links zeigt für April 2026: **2.212,62 €** (statt 12.019,55 €)
+- Label bleibt „Bargeld bis April 2026" — passt weiterhin sprachlich
+- Bankeinzahlungen, Verbleibendes Bargeld und Wechselgeldbestand beziehen sich konsistent auf den ausgewählten Monat
+- Tabelle und PDF/Excel-Export sind nicht betroffen (nutzen bereits monatsgefilterte `filteredData`)
 
-## Hinweis
-Falls Sie den Überschuss lieber einem anderen Datum zuordnen möchten (z. B. 01.04. statt 31.03.), oder als separaten Datensatz in der Liste sichtbar machen wollen statt als Transfer — bitte vor der Umsetzung kurz Bescheid geben.
+## Keine weiteren Änderungen
+- Keine DB-Änderung
+- Keine Änderung an `CashBalanceSummary.tsx` selbst — nur die übergebenen Props ändern sich
 
