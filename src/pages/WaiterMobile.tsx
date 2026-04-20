@@ -350,8 +350,6 @@ export default function WaiterMobile() {
           />
         )}
 
-        {/* Biometric Settings */}
-        <WebAuthnSettings />
       </div>
 
       {/* Account Linking Dialog */}
