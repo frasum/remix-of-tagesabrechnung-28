@@ -52,7 +52,7 @@ export function CashBalanceSummary({
 
             <div className="space-y-3">
                 <PettyCashSetting />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                   <div>
                      <p className="text-sm text-muted-foreground">
                        {monthLabel ? `Bargeld im ${monthLabel}` : 'Bargeld gesamt'}
@@ -68,6 +68,13 @@ export function CashBalanceSummary({
                        {carryOverFromPreviousMonth >= 0 ? '+' : ''}{formatCurrency(carryOverFromPreviousMonth)}
                      </p>
                    </div>
+                  <div>
+                    <Separator orientation="horizontal" className="sm:hidden mb-2" />
+                    <p className="text-sm text-muted-foreground">Gesamt verfügbar</p>
+                    <p className={`text-xl font-semibold tabular-nums ${(totalCash + carryOverFromPreviousMonth) >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {(totalCash + carryOverFromPreviousMonth) >= 0 ? '+' : ''}{formatCurrency(totalCash + carryOverFromPreviousMonth)}
+                    </p>
+                  </div>
                   <div>
                     <Separator orientation="horizontal" className="sm:hidden mb-2" />
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
