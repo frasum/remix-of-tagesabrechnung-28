@@ -55,7 +55,7 @@ export default function CashBalance() {
   const cumulativeCash = useMemo(() => {
     if (!data || !selectedMonth) return 0;
     return data
-      .filter((row) => row.date <= `${selectedMonth}-31`)
+      .filter((row) => row.date.startsWith(selectedMonth))
       .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
   }, [data, selectedMonth]);
 
