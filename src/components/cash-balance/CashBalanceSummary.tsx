@@ -18,6 +18,7 @@ interface CashBalanceSummaryProps {
   totalDeposits: number;
   pettyCash: number;
   wechselgeldbestand: number;
+  carryOverFromPreviousMonth?: number;
   latestDeposit: { deposit_date: string; amount: number } | null;
   monthLabel?: string;
   onAddDeposit: () => void;
@@ -28,11 +29,12 @@ export function CashBalanceSummary({
   totalDeposits,
   pettyCash,
   wechselgeldbestand,
+  carryOverFromPreviousMonth = 0,
   latestDeposit,
   monthLabel,
   onAddDeposit,
 }: CashBalanceSummaryProps) {
-  const remainingCash = pettyCash + totalCash - totalDeposits;
+  const remainingCash = pettyCash + totalCash + carryOverFromPreviousMonth - totalDeposits;
 
   return (
     <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
@@ -50,7 +52,7 @@ export function CashBalanceSummary({
 
             <div className="space-y-3">
                 <PettyCashSetting />
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
                   <div>
                      <p className="text-sm text-muted-foreground">
                        {monthLabel ? `Bargeld bis ${monthLabel}` : 'Bargeld gesamt'}
@@ -59,7 +61,15 @@ export function CashBalanceSummary({
                        {formatCurrency(totalCash)}
                      </p>
                    </div>
+                   <div>
+                     <Separator orientation="horizontal" className="sm:hidden mb-2" />
+                     <p className="text-sm text-muted-foreground">Übertrag aus Vormonat</p>
+                     <p className={`text-xl font-semibold tabular-nums ${carryOverFromPreviousMonth >= 0 ? 'text-success' : 'text-destructive'}`}>
+                       {carryOverFromPreviousMonth >= 0 ? '+' : ''}{formatCurrency(carryOverFromPreviousMonth)}
+                     </p>
+                   </div>
                   <div>
+                    <Separator orientation="horizontal" className="sm:hidden mb-2" />
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <Landmark className="h-3 w-3" />
                       Bankeinzahlungen

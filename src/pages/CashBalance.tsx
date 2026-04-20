@@ -67,6 +67,14 @@ export default function CashBalance() {
       .reduce((sum, d) => sum + d.amount, 0);
   }, [deposits, selectedMonth]);
 
+  // Carry-over from all days BEFORE the selected month (within the loaded data window)
+  const previousMonthCarryOver = useMemo(() => {
+    if (!data || !selectedMonth) return 0;
+    return data
+      .filter((row) => row.date < `${selectedMonth}-01`)
+      .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
+  }, [data, selectedMonth]);
+
   // Get month label for display
   const selectedMonthLabel = useMemo(() => {
     if (!selectedMonth) return '';
@@ -181,7 +189,8 @@ export default function CashBalance() {
           totalCash={cumulativeCash}
           totalDeposits={cumulativeDeposits}
           pettyCash={pettyCash}
-          wechselgeldbestand={pettyCash + cumulativeCash}
+          wechselgeldbestand={pettyCash + cumulativeCash + previousMonthCarryOver}
+          carryOverFromPreviousMonth={previousMonthCarryOver}
           latestDeposit={latestDeposit}
           monthLabel={selectedMonthLabel}
           onAddDeposit={() => setDepositDialogOpen(true)}
