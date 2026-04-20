@@ -1,30 +1,42 @@
 
 
-# Trinkgeld-Berechnung korrigieren: kassiert_brutto statt pos_sales
+# Bargeldbestand-Überschuss zum 31.03.2026 für Spicery erfassen
 
-## Problem
-Bei Tisch-Transfers weicht `kassiert_brutto` (was der Kellner tatsächlich kassiert) von `pos_sales` (was er boniert hat) ab. Die Expected-Cash-Berechnung verwendet fälschlicherweise `pos_sales`, was zu falschen Trinkgeld-Werten führt — bei Joy am 7. April sogar ein Minus von -59,54 € statt korrekt +5,46 €.
+## Ausgangslage
+- Tatsächlicher Kassenbestand Spicery zum 31.03.2026: **2.866 €** (inkl. 2.000 € Wechselgeld)
+- Effektiver Überschuss über Wechselgeld: **+866 €**
+- System aktuell: `initial_cash_deficit = 0`, Carry-Over zum 01.04. = 0 €
+- Problem: Die `compute_carry_over`-Logik kappt jeden positiven Übertrag auf 0 (`carryOver = bargeld < 0 ? bargeld : 0`). Ein positiver Anfangsbestand kann derzeit gar nicht abgebildet werden.
 
-## Betroffene Dateien (6 Stellen)
+## Lösung: Kassentransfer als Korrekturbuchung am 31.03.2026
 
-| Datei | Zeile | Aktuell | Fix |
-|-------|-------|---------|-----|
-| `src/pages/DailySummary.tsx` | 252 | `w.pos_sales` | `w.kassiert_brutto` |
-| `src/pages/WaiterCashUp.tsx` | 215 | `shift.pos_sales` | `shift.kassiert_brutto` |
-| `src/pages/WaiterMobile.tsx` | 82 | `formData.pos_sales` | `formData.kassiert_brutto` |
-| `src/hooks/useStatistics.ts` | 225 | `shift.pos_sales` | `shift.kassiert_brutto` |
-| `src/hooks/useStatisticsComparison.ts` | 80 | `shift.pos_sales` | `shift.kassiert_brutto` |
-| `src/hooks/useMonthlyStaffTips.ts` | 136 | `s.pos_sales` | `s.kassiert_brutto` |
-| `src/hooks/useWaiterRanking.ts` | 69 | `shift.pos_sales` | `shift.kassiert_brutto` |
-| `src/hooks/useSession.ts` | 594 | `shift.pos_sales` | `shift.kassiert_brutto` |
+Wir buchen den 866 € Überschuss als einmaligen **Kassentransfer** (`register_transfers`) ein. Das ist die sauberste Lösung, weil:
 
-`ExcelLayout.tsx` verwendet bereits korrekt `kassiert_brutto` — keine Änderung nötig.
+- Die Tabelle `register_transfers` ist **bereits in der Carry-Over-Logik** integriert (sowohl im DB-Function `compute_carry_over` als auch im Hook `useCashBalanceData`).
+- Transfers werden korrekt mit Vorzeichen verarbeitet (`to_restaurant` = +, sonst = −).
+- Die Buchung ist auditierbar (mit `created_by_name` und `reason`).
+- Keine Code- oder Schema-Änderung nötig.
 
-## Wichtig
-- `pos_sales` bleibt weiterhin für die **Leistungs-Anzeige** und **TG%-Berechnung** (Performance-Kennzahl) erhalten
-- Nur die **Expected-Cash-Formel** wird umgestellt: `kassiert_brutto + hilf_mahl - open_invoices - card_total`
-- Das betrifft die Bargeld-Soll-Berechnung und damit Trinkgeld, Differenz und Pool-Berechnung
+### Konkrete Buchung
 
-## Kein Datenbank-Änderung nötig
-Reine Code-Änderung in 8 Dateien, jeweils eine Zeile.
+```sql
+INSERT INTO register_transfers (
+  restaurant_id, transfer_date, amount, direction, reason, created_by_name
+) VALUES (
+  'a1710390-ea4d-4bc2-b869-c0c047056b15',  -- Spicery
+  '2026-03-31',
+  866.00,
+  'to_restaurant',
+  'Anfangsbestand-Korrektur: tatsächlicher Kassenbestand 2.866 € (inkl. 2.000 € Wechselgeld) zum 31.03.2026',
+  'Lasse'
+);
+```
+
+## Auswirkung
+- Bargeld-Tag 31.03. erhöht sich um +866 €
+- Carry-Over zum 01.04. enthält den Überschuss (wird beim Skim auf 2.000 € Wechselgeld zurückgeführt → 866 € fließen in „Verbleibendes Bargeld" / Bankeinzahlungs-Topf)
+- Bankeinzahlungen ab April reduzieren diesen Bestand korrekt
+
+## Hinweis
+Falls Sie den Überschuss lieber einem anderen Datum zuordnen möchten (z. B. 01.04. statt 31.03.), oder als separaten Datensatz in der Liste sichtbar machen wollen statt als Transfer — bitte vor der Umsetzung kurz Bescheid geben.
 
