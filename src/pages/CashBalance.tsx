@@ -1,6 +1,4 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
@@ -68,20 +66,6 @@ export default function CashBalance() {
       .filter((d) => d.deposit_date.startsWith(selectedMonth))
       .reduce((sum, d) => sum + d.amount, 0);
   }, [deposits, selectedMonth]);
-
-  // Carry-over from prior months: use authoritative DB function (covers full history, transfers & deposits)
-  const { data: previousMonthCarryOver = 0 } = useQuery({
-    queryKey: ['cash-carry-over', restaurantId, selectedMonth],
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc('compute_carry_over', {
-        p_restaurant_id: restaurantId!,
-        p_before_date: `${selectedMonth}-01`,
-      });
-      if (error) throw error;
-      return Number(data) || 0;
-    },
-    enabled: !!restaurantId && !!selectedMonth,
-  });
 
   // Get month label for display
   const selectedMonthLabel = useMemo(() => {
@@ -197,8 +181,7 @@ export default function CashBalance() {
           totalCash={cumulativeCash}
           totalDeposits={cumulativeDeposits}
           pettyCash={pettyCash}
-          wechselgeldbestand={pettyCash + cumulativeCash + previousMonthCarryOver}
-          carryOverFromPreviousMonth={previousMonthCarryOver}
+          wechselgeldbestand={pettyCash + cumulativeCash}
           latestDeposit={latestDeposit}
           monthLabel={selectedMonthLabel}
           onAddDeposit={() => setDepositDialogOpen(true)}
@@ -265,7 +248,7 @@ export default function CashBalance() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="sticky left-0 bg-background z-10 min-w-[100px]">Datum</TableHead>
-                    <TableHead className="text-right min-w-[100px]" title="Brutto-Kassenumsatz aus dem Z-Bon der Session (sessions.pos_total)">Kassenumsatz (Brutto)</TableHead>
+                    <TableHead className="text-right min-w-[100px]">Tagesumsatz</TableHead>
                     <TableHead className="text-right min-w-[100px]">Kreditkarten</TableHead>
                     <TableHead className="text-right min-w-[100px]">{getLabel('ordersmart_revenue')}</TableHead>
                     <TableHead className="text-right min-w-[90px]">{getLabel('wolt_revenue')}</TableHead>
@@ -302,7 +285,7 @@ export default function CashBalance() {
                         <TableCell className="sticky left-0 bg-background z-10 font-medium">
                           {formatDate(row.date)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums text-success">{formatCurrency(row.kellnerUmsatz)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatCurrency(row.kellnerUmsatz)}</TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
                           {formatCurrency(row.kreditkarten)}
                         </TableCell>
@@ -359,7 +342,7 @@ export default function CashBalance() {
                       <TableCell className="sticky left-0 bg-muted/50 z-10 font-bold">
                         GESAMT
                       </TableCell>
-                      <TableCell className="text-right tabular-nums font-bold text-success">
+                      <TableCell className="text-right tabular-nums font-bold">
                         {formatCurrency(filteredData.reduce((sum, row) => sum + row.kellnerUmsatz, 0))}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-bold text-destructive">

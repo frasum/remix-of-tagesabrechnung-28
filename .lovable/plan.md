@@ -1,59 +1,56 @@
 
 
-# Diskrepanz Gesamtumsatz: Statistiken (94.479,90 €) vs. Bargeldbestand (101.126,10 €)
+# „Bargeld bis April 2026" auf reine Monatssumme umstellen
 
-## Befund
+## Problem
+Die große Kennzahl oben links in der `CashBalanceSummary` zeigt aktuell **12.019,55 €** — das ist die kumulierte Bargeld-Summe **aller Tage bis Ende des ausgewählten Monats** (seit Beginn des Datenfensters, Standard: 6 Monate zurück).
 
-Beide Werte beziehen sich auf YUM, 01.–21.04.2026, und sollten identisch sein. Die Differenz beträgt **6.646,20 €**.
+Gewünscht ist stattdessen die **Tages-Bargeld-Summe nur für den ausgewählten Monat** — derselbe Wert, der unten in der Tabelle in der GESAMT-Zeile (Spalte „Bargeld") steht: **2.212,62 €** für April 2026.
 
-## Ursache
+## Lösung
+Eine einzeilige Logik-Änderung in `src/pages/CashBalance.tsx`.
 
-Beide Seiten lesen `sessions.pos_total` als „Tagesumsatz" — aber **mit unterschiedlicher Datums-Definition**:
+### Aktuell (Zeilen 55–60)
+```ts
+const cumulativeCash = useMemo(() => {
+  if (!data || !selectedMonth) return 0;
+  return data
+    .filter((row) => row.date <= `${selectedMonth}-31`)   // ← alle Tage bis Monatsende
+    .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
+}, [data, selectedMonth]);
+```
 
-| Seite | Datums-Spalte | Was gefiltert wird |
-|---|---|---|
-| **Bargeldbestand** (`useCashBalanceData`) | `session_date` | Geschäftstag (3-Uhr-Rollover beachtet) |
-| **Statistiken** (`useStatistics`) | vermutlich `created_at` oder anderer Filter, oder zusätzliche Aggregation pro Schicht | weicht ab |
+### Neu
+```ts
+const cumulativeCash = useMemo(() => {
+  if (!data || !selectedMonth) return 0;
+  return data
+    .filter((row) => row.date.startsWith(selectedMonth))   // ← nur Tage im gewählten Monat
+    .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
+}, [data, selectedMonth]);
+```
 
-Außerdem möglich:
-- Statistiken zählen `pos_total` **nur einmal pro Session**, Bargeldbestand ebenfalls — aber wenn `useStatistics` über `waiter_shifts` summiert (`sum(pos_sales)`) statt `pos_total`, ergibt sich genau diese Art von Lücke.
-- Eine Session enthält Umsatz, aber keine zugeordneten Schichten → Bargeldbestand zählt sie, Statistiken nicht (umgekehrter Fall: 6.646 € fehlen in Statistik).
+Variablenname kann zur Klarheit von `cumulativeCash` zu `monthlyCash` umbenannt werden (inkl. Übergabe an `<CashBalanceSummary totalCash={…} />`).
 
-## Diagnose-Schritt (vor jeder Korrektur)
+## Folge-Anpassungen (gleiche Datei, gleiche Logik)
+Damit „Verbleibendes Bargeld" und „Wechselgeldbestand" weiter konsistent sind, muss auch `cumulativeDeposits` (Zeilen 63–68) auf den **gewählten Monat** beschränkt werden:
 
-Pro Tag (01.–21.04.2026, YUM) vergleichen:
-- `sessions.pos_total`
-- Σ `waiter_shifts.pos_sales` derselben Session
-- Differenz markieren
+```ts
+const cumulativeDeposits = useMemo(() => {
+  if (!deposits || !selectedMonth) return 0;
+  return deposits
+    .filter((d) => d.deposit_date.startsWith(selectedMonth))
+    .reduce((sum, d) => sum + d.amount, 0);
+}, [deposits, selectedMonth]);
+```
 
-So wird sichtbar, an welchem Tag (oder welchen Tagen) die 6.646,20 € entstehen und ob die Ursache fehlende Schicht-Zuordnung, doppelte Sessions oder ein Filter-Bug ist.
-
-## Anschließende Korrektur (abhängig vom Diagnose-Ergebnis)
-
-Genau **eine** der folgenden Maßnahmen:
-
-### A — `useStatistics` auf `sessions.pos_total` vereinheitlichen
-Statistiken summieren künftig `sessions.pos_total` (gleiche Quelle wie Bargeldbestand). Werte sind dann immer identisch. **Konsequenz**: Tage ohne Schichten fließen in Durchschnitte ein (siehe `mem://features/statistics/data-logic-ui-behavior` — die bisherige Ausschluss-Logik wird hinfällig).
-
-### B — `useCashBalanceData` auf Σ `waiter_shifts.pos_sales` umstellen
-Bargeldbestand zeigt künftig den kellner-zugeordneten Umsatz. **Nicht empfohlen**: bricht die Bargeld-Plausibilisierung, wenn Schichten den Brutto-Umsatz nicht vollständig abbilden.
-
-### C — Datenkorrektur in den Schichten
-Falls die Diagnose zeigt, dass an konkreten Tagen Schichten fehlen oder `pos_sales` falsch eingetragen wurde: Schichten ergänzen / `pos_sales` anpassen. **Empfohlen**, wenn die Differenz auf wenige Tage konzentriert ist.
-
-### D — Label-Klarstellung (additiv zu A/B/C)
-- Bargeldbestand: „Tagesumsatz" → **„Kassenumsatz (Brutto)"**
-- Statistiken: „Gesamtumsatz" → **„Kellner-Umsatz (Σ Schichten)"**
-
-Reine UI-Änderung, macht zwei verschiedene Kennzahlen unmissverständlich.
-
-## Empfohlener Ablauf
-
-1. **Diagnose-Query** ausführen (Tag-für-Tag-Vergleich `pos_total` vs. Σ `pos_sales` für YUM, 01.–21.04.2026).
-2. Ergebnis bewerten: Ist es ein **Daten-Loch** (→ C) oder ein **systematischer Logik-Unterschied** (→ A oder D)?
-3. Entsprechende Korrektur umsetzen.
+## Auswirkung
+- Kennzahl oben links zeigt für April 2026: **2.212,62 €** (statt 12.019,55 €)
+- Label bleibt „Bargeld bis April 2026" — passt weiterhin sprachlich
+- Bankeinzahlungen, Verbleibendes Bargeld und Wechselgeldbestand beziehen sich konsistent auf den ausgewählten Monat
+- Tabelle und PDF/Excel-Export sind nicht betroffen (nutzen bereits monatsgefilterte `filteredData`)
 
 ## Keine weiteren Änderungen
-- Keine Layout-/Style-Änderung
-- Keine DB-Migration in der Diagnose-Phase
+- Keine DB-Änderung
+- Keine Änderung an `CashBalanceSummary.tsx` selbst — nur die übergebenen Props ändern sich
 
