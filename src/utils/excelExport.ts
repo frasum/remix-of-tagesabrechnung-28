@@ -31,8 +31,13 @@ const formatDateFull = (dateStr: string): string => {
   return format(date, 'dd.MM.yyyy', { locale: de });
 };
 
+const n = (value: unknown): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
 export function generateCashBalanceExcel({ rows, deposits, month, year, restaurantName, labels, hiddenFields }: ExcelExportParams): void {
-  const l = (key: string, fallback: string) => labels?.[key] || fallback;
+  const l = (key: string, fallback: string) => labels?.[key] ?? fallback;
   const isHidden = (key: string) => hiddenFields?.includes(key) ?? false;
   const showFinedine = !isHidden('finedine_vouchers');
   const monthDate = new Date(year, month);
@@ -76,36 +81,36 @@ export function generateCashBalanceExcel({ rows, deposits, month, year, restaura
   rows.forEach((row) => {
     wsData.push([
       formatDateShort(row.date),
-      row.kellnerUmsatz,
-      row.kreditkarten,
-      row.ordersmart,
-      row.wolt,
-      row.gutscheineEL,
-      ...(showFinedine ? [row.finedine] : []),
-      row.gutscheineVK,
-      row.einladung,
-      row.offeneRE,
-      row.vorschuss,
-      row.ausgaben,
-      row.rawBargeld,
+      n(row.kellnerUmsatz),
+      n(row.kreditkarten),
+      n(row.ordersmart),
+      n(row.wolt),
+      n(row.gutscheineEL),
+      ...(showFinedine ? [n(row.finedine)] : []),
+      n(row.gutscheineVK),
+      n(row.einladung),
+      n(row.offeneRE),
+      n(row.vorschuss),
+      n(row.ausgaben),
+      n(row.rawBargeld),
     ]);
   });
 
   // Totals row
   const totals = rows.reduce(
     (acc, row) => ({
-      kellnerUmsatz: acc.kellnerUmsatz + row.kellnerUmsatz,
-      kreditkarten: acc.kreditkarten + row.kreditkarten,
-      ordersmart: acc.ordersmart + row.ordersmart,
-      wolt: acc.wolt + row.wolt,
-      gutscheineEL: acc.gutscheineEL + row.gutscheineEL,
-      finedine: acc.finedine + row.finedine,
-      gutscheineVK: acc.gutscheineVK + row.gutscheineVK,
-      einladung: acc.einladung + row.einladung,
-      offeneRE: acc.offeneRE + row.offeneRE,
-      vorschuss: acc.vorschuss + row.vorschuss,
-      ausgaben: acc.ausgaben + row.ausgaben,
-      bargeld: acc.bargeld + row.rawBargeld,
+      kellnerUmsatz: acc.kellnerUmsatz + n(row.kellnerUmsatz),
+      kreditkarten: acc.kreditkarten + n(row.kreditkarten),
+      ordersmart: acc.ordersmart + n(row.ordersmart),
+      wolt: acc.wolt + n(row.wolt),
+      gutscheineEL: acc.gutscheineEL + n(row.gutscheineEL),
+      finedine: acc.finedine + n(row.finedine),
+      gutscheineVK: acc.gutscheineVK + n(row.gutscheineVK),
+      einladung: acc.einladung + n(row.einladung),
+      offeneRE: acc.offeneRE + n(row.offeneRE),
+      vorschuss: acc.vorschuss + n(row.vorschuss),
+      ausgaben: acc.ausgaben + n(row.ausgaben),
+      bargeld: acc.bargeld + n(row.rawBargeld),
     }),
     {
       kellnerUmsatz: 0,
@@ -148,11 +153,11 @@ export function generateCashBalanceExcel({ rows, deposits, month, year, restaura
   wsData.push(['Datum', 'Betrag']);
 
   filteredDeposits.forEach((deposit) => {
-    wsData.push([formatDateFull(deposit.deposit_date), deposit.amount]);
+    wsData.push([formatDateFull(deposit.deposit_date), n(deposit.amount)]);
   });
 
   // Deposits total
-  const depositsTotal = filteredDeposits.reduce((sum, d) => sum + d.amount, 0);
+  const depositsTotal = filteredDeposits.reduce((sum, d) => sum + n(d.amount), 0);
   wsData.push(['Gesamt', depositsTotal]);
 
   // Create worksheet
@@ -179,8 +184,26 @@ export function generateCashBalanceExcel({ rows, deposits, month, year, restaura
   XLSX.utils.book_append_sheet(wb, ws, 'Bargeldbestand');
 
   // Generate filename
-  const fileName = `Bargeldbestand_${format(monthDate, 'yyyy-MM', { locale: de })}${restaurantName ? `_${restaurantName}` : ''}.xlsx`;
+  const safeRestaurant = restaurantName ? `_${restaurantName}` : '';
+  const fileName = `Bargeldbestand_${format(monthDate, 'yyyy-MM', { locale: de })}${safeRestaurant}.xlsx`;
 
-  // Trigger download
-  XLSX.writeFile(wb, fileName);
+  // Reliable browser-safe download via Blob (works in sandboxed iframes & PWAs)
+  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  const blob = new Blob([wbout], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export function getCashBalanceExcelFileName(month: number, year: number, restaurantName?: string): string {
+  const monthDate = new Date(year, month);
+  const safeRestaurant = restaurantName ? `_${restaurantName}` : '';
+  return `Bargeldbestand_${format(monthDate, 'yyyy-MM', { locale: de })}${safeRestaurant}.xlsx`;
 }
