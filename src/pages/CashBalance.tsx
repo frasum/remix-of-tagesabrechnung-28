@@ -359,7 +359,7 @@ export default function CashBalance() {
                       <TableCell className="sticky left-0 bg-muted/50 z-10 font-bold">
                         GESAMT
                       </TableCell>
-                      <TableCell className="text-right tabular-nums font-bold">
+                      <TableCell className="text-right tabular-nums font-bold text-success">
                         {formatCurrency(filteredData.reduce((sum, row) => sum + row.kellnerUmsatz, 0))}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-bold text-destructive">
