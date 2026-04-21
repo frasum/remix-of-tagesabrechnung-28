@@ -55,7 +55,7 @@ export default function CashBalance() {
   const cumulativeCash = useMemo(() => {
     if (!data || !selectedMonth) return 0;
     return data
-      .filter((row) => row.date.startsWith(selectedMonth))
+      .filter((row) => row.date <= `${selectedMonth}-31`)
       .reduce((sum, row) => sum + (row.rawBargeld ?? row.bargeld), 0);
   }, [data, selectedMonth]);
 
@@ -63,7 +63,7 @@ export default function CashBalance() {
   const cumulativeDeposits = useMemo(() => {
     if (!deposits || !selectedMonth) return 0;
     return deposits
-      .filter((d) => d.deposit_date.startsWith(selectedMonth))
+      .filter((d) => d.deposit_date <= `${selectedMonth}-31`)
       .reduce((sum, d) => sum + d.amount, 0);
   }, [deposits, selectedMonth]);
 
