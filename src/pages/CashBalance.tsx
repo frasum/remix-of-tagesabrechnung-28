@@ -394,13 +394,14 @@ export default function CashBalance() {
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={13} className="text-center text-muted-foreground">
-                        Keine Daten vorhanden
-                      </TableCell>
-                    </TableRow>
-                  )}
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={colCount} className="text-center text-muted-foreground">
+                          Keine Daten vorhanden
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })()}
                 </TableBody>
                 {filteredData && filteredData.length > 0 && !isLoading && (
                   <TableFooter>
