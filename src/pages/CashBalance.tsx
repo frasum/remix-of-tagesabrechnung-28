@@ -302,7 +302,7 @@ export default function CashBalance() {
                         <TableCell className="sticky left-0 bg-background z-10 font-medium">
                           {formatDate(row.date)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">{formatCurrency(row.kellnerUmsatz)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-success">{formatCurrency(row.kellnerUmsatz)}</TableCell>
                         <TableCell className="text-right tabular-nums text-destructive">
                           {formatCurrency(row.kreditkarten)}
                         </TableCell>
