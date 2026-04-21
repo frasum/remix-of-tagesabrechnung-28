@@ -1,61 +1,55 @@
 
 
-# Variante C — Spalten + Tooltip für volle Transparenz
+# Bargeldbestand: Excel-Export reparieren
 
-## Ziel
-Die GESAMT-Bargeld-Zahl soll vollständig nachvollziehbar sein. Dafür werden **versteckte Posten als eigene Spalten** sichtbar gemacht UND zusätzlich ein **Breakdown-Tooltip** auf die GESAMT-„Bargeld"-Zelle gelegt.
+## Problem
+Der Klick auf **„Excel Export"** im Dropdown der Bargeldbestand-Seite löst keinen Download aus — keine Datei, keine Fehlermeldung. Ursachen:
 
-## Änderungen
+1. **`XLSX.writeFile(...)`** triggert den Download über einen internen Mechanismus, der in der Lovable-Preview (sandboxed iframe) und teilweise auch in PWA-Kontexten **stumm scheitert**, weil das Browser-Sandbox-Attribut den automatischen Download blockt.
+2. **Stille Early-Returns**: Wenn `filteredData` leer ist oder `selectedMonth` (noch) nicht gesetzt, kehrt die Funktion ohne Rückmeldung zurück — der User sieht nichts.
+3. Keine **Fehler-Toasts** falls die XLSX-Generierung intern fehlschlägt (z. B. durch ungültige Daten).
 
-### 1. Datenquelle erweitern (`src/hooks/useCashBalanceData.ts`)
-- `sonstige_einnahme` wird bereits aus der Session geladen, aber nicht im `CashBalanceRow` ausgegeben → als neues Feld `sonstigeEinnahme: number` durchreichen.
-- `transferEffect` ist bereits vorhanden und wird nur weiterverwendet.
+## Lösung
 
-### 2. Tabelle erweitern (`src/pages/CashBalance.tsx`)
-Zwei neue, **bedingt sichtbare** Spalten in der Tagestabelle:
+### 1. Zuverlässiger Download via Blob (`src/utils/excelExport.ts`)
+`XLSX.writeFile(wb, fileName)` ersetzen durch den browser-sicheren Blob-Pfad — identisch zu dem Muster, das schon der PDF-Export nutzt:
 
-| Spalte | Sichtbar wenn | Farblogik |
-|---|---|---|
-| **Sonst. Einn.** | mind. ein Tag des Monats hat `sonstigeEinnahme ≠ 0` | grün (positiv) |
-| **Kassentransfer** | mind. ein Tag des Monats hat `transferEffect ≠ 0` | grün/rot je nach Vorzeichen |
-
-- Beide Spalten erhalten eine **GESAMT-Zelle** im Footer.
-- Spaltenposition: direkt vor „Bargeld" (passt zur Lese-Reihenfolge der Formel).
-- Wenn beide Spalten in einem Monat 0 sind → Tabelle bleibt unverändert schlank.
-
-### 3. Tooltip auf GESAMT-„Bargeld" (`src/pages/CashBalance.tsx`)
-Hover über die GESAMT-Zelle der Bargeld-Spalte zeigt einen kompakten Breakdown:
-
-```
-+ Tagesumsätze            12.345,67
-+ Gutsch. VK                 250,00
-+ Sonst. Einnahmen            35,00
-+ Kassentransfers            100,00
-− Kreditkarten             6.890,12
-− OrderSmart                 412,30
-− Wolt                       180,00
-− Gutsch. EL                  50,00
-− Finedine                     0,00
-− Einladung                    0,00
-− Offene RE                  120,00
-− Vorschuss                  200,00
-− Ausgaben                   461,89
-─────────────────────────────────
-= Bargeld GESAMT           4.417,36
+```ts
+const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+const blob = new Blob([wbout], {
+  type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+});
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = fileName;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+setTimeout(() => URL.revokeObjectURL(url), 1000);
 ```
 
-- Nutzt den bestehenden `Tooltip`-Baustein (`@/components/ui/tooltip`).
-- Werte werden aus den bereits berechneten GESAMT-Summen pro Spalte gebildet (kein zusätzlicher Fetch).
+Funktioniert auch im sandboxed Preview-iframe und in der installierten PWA.
+
+### 2. Sichtbares Feedback (`src/pages/CashBalance.tsx`)
+Im Handler `handleExcelExport`:
+- Wenn `!filteredData?.length` → **Toast: „Keine Daten für den ausgewählten Monat"** statt stillem Return.
+- Erfolgreicher Export → **Toast: „Excel-Datei wurde heruntergeladen"** mit Dateinamen.
+- `try/catch` um den Aufruf → bei Fehler **Toast destructive** mit Fehlermeldung, plus `console.error` für Debugging.
+
+### 3. Defensive Datenprüfung (`src/utils/excelExport.ts`)
+- Beim Iterieren `Number(value) || 0` verwenden, damit `null`/`undefined` aus den Datenzeilen die Generierung nicht crashen.
+- `restaurantName` & `labels` defensiv mit `??`-Defaults.
 
 ## Erwartetes Ergebnis
-- Die horizontale Summe der sichtbaren GESAMT-Zellen entspricht **exakt** der GESAMT-„Bargeld"-Zahl — keine versteckten Posten mehr.
-- Der Tooltip liefert zusätzlich eine kompakte Komplettansicht der Formel mit konkreten Monatswerten.
+- Klick auf **„Excel Export"** → Datei `Bargeldbestand_2026-04_YUM.xlsx` wird zuverlässig heruntergeladen (Preview, Production, PWA).
+- Toast bestätigt Erfolg oder erklärt das Problem.
+- Keine stillen Failures mehr.
 
 ## Betroffene Dateien
-- `src/hooks/useCashBalanceData.ts` — `sonstigeEinnahme` ins Row-Objekt aufnehmen
-- `src/pages/CashBalance.tsx` — zwei neue Spalten (bedingt) + Footer-Summen + Tooltip auf GESAMT-„Bargeld"
+- `src/utils/excelExport.ts` — Download über Blob + defensive Number-Casts
+- `src/pages/CashBalance.tsx` — Toasts + try/catch im `handleExcelExport`
 
 ## Nicht betroffen
-- Bargeldlogik selbst bleibt unverändert (keine neuen Berechnungen, nur Sichtbarmachung).
-- `useRemainingCash`, Tagesabrechnung, PDF-Export bleiben wie sie sind.
+- Excel-Inhalt, Spalten, Formate, Filename-Schema, PDF-Export.
 
