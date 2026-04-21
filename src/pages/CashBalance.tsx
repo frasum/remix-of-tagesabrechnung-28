@@ -112,6 +112,39 @@ export default function CashBalance() {
     return data.filter((row) => row.date.startsWith(selectedMonth));
   }, [data, selectedMonth]);
 
+  // Conditional column visibility for the selected month
+  const showSonstige = useMemo(
+    () => !!filteredData?.some((r) => (r.sonstigeEinnahme ?? 0) !== 0),
+    [filteredData]
+  );
+  const showTransfer = useMemo(
+    () => !!filteredData?.some((r) => (r.transferEffect ?? 0) !== 0),
+    [filteredData]
+  );
+
+  // Pre-computed totals for footer + tooltip breakdown
+  const totals = useMemo(() => {
+    const rows = filteredData ?? [];
+    const sum = (key: keyof typeof rows[number]) =>
+      rows.reduce((s, r) => s + (Number(r[key]) || 0), 0);
+    return {
+      kellnerUmsatz: sum('kellnerUmsatz'),
+      kreditkarten: sum('kreditkarten'),
+      ordersmart: sum('ordersmart'),
+      wolt: sum('wolt'),
+      gutscheineEL: sum('gutscheineEL'),
+      finedine: sum('finedine'),
+      gutscheineVK: sum('gutscheineVK'),
+      einladung: sum('einladung'),
+      offeneRE: sum('offeneRE'),
+      vorschuss: sum('vorschuss'),
+      ausgaben: sum('ausgaben'),
+      sonstigeEinnahme: sum('sonstigeEinnahme'),
+      transferEffect: sum('transferEffect'),
+      rawBargeld: sum('rawBargeld'),
+    };
+  }, [filteredData]);
+
   // Handle PDF preview
   const handlePreview = useCallback(() => {
     if (!filteredData || filteredData.length === 0 || !selectedMonth) return;
