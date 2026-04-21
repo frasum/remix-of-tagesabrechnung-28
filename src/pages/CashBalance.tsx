@@ -312,23 +312,27 @@ export default function CashBalance() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        {Array.from({ length: isFieldHidden('finedine_vouchers') ? 12 : 13 }).map((_, j) => (
-                          <TableCell key={j}>
-                            <Skeleton className="h-4 w-16" />
-                          </TableCell>
-                        ))}
+                  {(() => {
+                    const colCount = (isFieldHidden('finedine_vouchers') ? 12 : 13)
+                      + (showSonstige ? 1 : 0)
+                      + (showTransfer ? 1 : 0);
+                    return isLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          {Array.from({ length: colCount }).map((_, j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-16" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : error ? (
+                      <TableRow>
+                        <TableCell colSpan={colCount} className="text-center text-destructive">
+                          Fehler beim Laden der Daten
+                        </TableCell>
                       </TableRow>
-                    ))
-                  ) : error ? (
-                    <TableRow>
-                      <TableCell colSpan={isFieldHidden('finedine_vouchers') ? 12 : 13} className="text-center text-destructive">
-                        Fehler beim Laden der Daten
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredData && filteredData.length > 0 ? (
+                    ) : filteredData && filteredData.length > 0 ? (
                     filteredData.map((row) => (
                       <TableRow key={row.date}>
                         <TableCell className="sticky left-0 bg-background z-10 font-medium">
