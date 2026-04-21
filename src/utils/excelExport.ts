@@ -31,8 +31,13 @@ const formatDateFull = (dateStr: string): string => {
   return format(date, 'dd.MM.yyyy', { locale: de });
 };
 
+const n = (value: unknown): number => {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : 0;
+};
+
 export function generateCashBalanceExcel({ rows, deposits, month, year, restaurantName, labels, hiddenFields }: ExcelExportParams): void {
-  const l = (key: string, fallback: string) => labels?.[key] || fallback;
+  const l = (key: string, fallback: string) => labels?.[key] ?? fallback;
   const isHidden = (key: string) => hiddenFields?.includes(key) ?? false;
   const showFinedine = !isHidden('finedine_vouchers');
   const monthDate = new Date(year, month);
