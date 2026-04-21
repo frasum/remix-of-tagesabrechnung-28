@@ -367,6 +367,19 @@ export default function CashBalance() {
                         <TableCell className="text-right tabular-nums text-destructive">
                           {formatCurrency(row.ausgaben)}
                         </TableCell>
+                        {showSonstige && (
+                          <TableCell className="text-right tabular-nums text-success">
+                            {formatCurrency(row.sonstigeEinnahme)}
+                          </TableCell>
+                        )}
+                        {showTransfer && (
+                          <TableCell className={cn(
+                            'text-right tabular-nums',
+                            row.transferEffect >= 0 ? 'text-success' : 'text-destructive'
+                          )}>
+                            {formatCurrency(row.transferEffect)}
+                          </TableCell>
+                        )}
                         <TableCell
                           className={cn(
                             'text-right tabular-nums font-bold',
