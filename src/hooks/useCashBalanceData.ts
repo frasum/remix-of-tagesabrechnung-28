@@ -15,6 +15,8 @@ export interface CashBalanceRow {
   offeneRE: number;
   vorschuss: number;
   ausgaben: number;
+  /** Sonstige Einnahmen (other income) for the day */
+  sonstigeEinnahme: number;
   /** Pure daily cash for the day (without any carry-over), including transferEffect */
   rawBargeld: number;
   /**
@@ -188,6 +190,7 @@ export function useCashBalanceData(restaurantId: string | null, fromDate?: strin
           offeneRE: totalOpenInvoices,
           vorschuss,
           ausgaben: totalExpenses,
+          sonstigeEinnahme,
           rawBargeld,
           // Keep legacy `bargeld` semantics for exports = pure daily (no carry)
           bargeld: rawBargeld,

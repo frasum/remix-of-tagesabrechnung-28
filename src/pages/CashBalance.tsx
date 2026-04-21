@@ -27,6 +27,7 @@ import { PdfPreview } from '@/components/shared/PdfPreview';
 import { CashBalanceSummary } from '@/components/cash-balance/CashBalanceSummary';
 import { BankDepositDialog } from '@/components/cash-balance/BankDepositDialog';
 import { BankDepositList } from '@/components/cash-balance/BankDepositList';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('de-DE', {
@@ -110,6 +111,39 @@ export default function CashBalance() {
     if (!data || !selectedMonth) return data;
     return data.filter((row) => row.date.startsWith(selectedMonth));
   }, [data, selectedMonth]);
+
+  // Conditional column visibility for the selected month
+  const showSonstige = useMemo(
+    () => !!filteredData?.some((r) => (r.sonstigeEinnahme ?? 0) !== 0),
+    [filteredData]
+  );
+  const showTransfer = useMemo(
+    () => !!filteredData?.some((r) => (r.transferEffect ?? 0) !== 0),
+    [filteredData]
+  );
+
+  // Pre-computed totals for footer + tooltip breakdown
+  const totals = useMemo(() => {
+    const rows = filteredData ?? [];
+    const sum = (key: keyof typeof rows[number]) =>
+      rows.reduce((s, r) => s + (Number(r[key]) || 0), 0);
+    return {
+      kellnerUmsatz: sum('kellnerUmsatz'),
+      kreditkarten: sum('kreditkarten'),
+      ordersmart: sum('ordersmart'),
+      wolt: sum('wolt'),
+      gutscheineEL: sum('gutscheineEL'),
+      finedine: sum('finedine'),
+      gutscheineVK: sum('gutscheineVK'),
+      einladung: sum('einladung'),
+      offeneRE: sum('offeneRE'),
+      vorschuss: sum('vorschuss'),
+      ausgaben: sum('ausgaben'),
+      sonstigeEinnahme: sum('sonstigeEinnahme'),
+      transferEffect: sum('transferEffect'),
+      rawBargeld: sum('rawBargeld'),
+    };
+  }, [filteredData]);
 
   // Handle PDF preview
   const handlePreview = useCallback(() => {
@@ -272,27 +306,33 @@ export default function CashBalance() {
                     <TableHead className="text-right min-w-[90px]">Offene RE</TableHead>
                     <TableHead className="text-right min-w-[90px]">Vorschuss</TableHead>
                     <TableHead className="text-right min-w-[90px]">Ausgaben</TableHead>
+                    {showSonstige && <TableHead className="text-right min-w-[100px]">Sonst. Einn.</TableHead>}
+                    {showTransfer && <TableHead className="text-right min-w-[110px]">Kassentransfer</TableHead>}
                     <TableHead className="text-right min-w-[110px] font-bold">Bargeld</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {isLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <TableRow key={i}>
-                        {Array.from({ length: isFieldHidden('finedine_vouchers') ? 12 : 13 }).map((_, j) => (
-                          <TableCell key={j}>
-                            <Skeleton className="h-4 w-16" />
-                          </TableCell>
-                        ))}
+                  {(() => {
+                    const colCount = (isFieldHidden('finedine_vouchers') ? 12 : 13)
+                      + (showSonstige ? 1 : 0)
+                      + (showTransfer ? 1 : 0);
+                    return isLoading ? (
+                      Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}>
+                          {Array.from({ length: colCount }).map((_, j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-16" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : error ? (
+                      <TableRow>
+                        <TableCell colSpan={colCount} className="text-center text-destructive">
+                          Fehler beim Laden der Daten
+                        </TableCell>
                       </TableRow>
-                    ))
-                  ) : error ? (
-                    <TableRow>
-                      <TableCell colSpan={isFieldHidden('finedine_vouchers') ? 12 : 13} className="text-center text-destructive">
-                        Fehler beim Laden der Daten
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredData && filteredData.length > 0 ? (
+                    ) : filteredData && filteredData.length > 0 ? (
                     filteredData.map((row) => (
                       <TableRow key={row.date}>
                         <TableCell className="sticky left-0 bg-background z-10 font-medium">
@@ -331,6 +371,19 @@ export default function CashBalance() {
                         <TableCell className="text-right tabular-nums text-destructive">
                           {formatCurrency(row.ausgaben)}
                         </TableCell>
+                        {showSonstige && (
+                          <TableCell className="text-right tabular-nums text-success">
+                            {formatCurrency(row.sonstigeEinnahme)}
+                          </TableCell>
+                        )}
+                        {showTransfer && (
+                          <TableCell className={cn(
+                            'text-right tabular-nums',
+                            row.transferEffect >= 0 ? 'text-success' : 'text-destructive'
+                          )}>
+                            {formatCurrency(row.transferEffect)}
+                          </TableCell>
+                        )}
                         <TableCell
                           className={cn(
                             'text-right tabular-nums font-bold',
@@ -341,13 +394,14 @@ export default function CashBalance() {
                         </TableCell>
                       </TableRow>
                     ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={13} className="text-center text-muted-foreground">
-                        Keine Daten vorhanden
-                      </TableCell>
-                    </TableRow>
-                  )}
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={colCount} className="text-center text-muted-foreground">
+                          Keine Daten vorhanden
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })()}
                 </TableBody>
                 {filteredData && filteredData.length > 0 && !isLoading && (
                   <TableFooter>
@@ -388,19 +442,64 @@ export default function CashBalance() {
                         {formatCurrency(filteredData.reduce((sum, row) => sum + row.vorschuss, 0))}
                       </TableCell>
                       <TableCell className="text-right tabular-nums font-bold text-destructive">
-                        {formatCurrency(filteredData.reduce((sum, row) => sum + row.ausgaben, 0))}
+                        {formatCurrency(totals.ausgaben)}
                       </TableCell>
-                      {(() => {
-                        const totalBargeld = filteredData.reduce((sum, row) => sum + row.rawBargeld, 0);
-                        return (
-                          <TableCell className={cn(
-                            'text-right tabular-nums font-bold',
-                            totalBargeld >= 0 ? 'text-success' : 'text-destructive'
-                          )}>
-                            {formatCurrency(totalBargeld)}
-                          </TableCell>
-                        );
-                      })()}
+                      {showSonstige && (
+                        <TableCell className="text-right tabular-nums font-bold text-success">
+                          {formatCurrency(totals.sonstigeEinnahme)}
+                        </TableCell>
+                      )}
+                      {showTransfer && (
+                        <TableCell className={cn(
+                          'text-right tabular-nums font-bold',
+                          totals.transferEffect >= 0 ? 'text-success' : 'text-destructive'
+                        )}>
+                          {formatCurrency(totals.transferEffect)}
+                        </TableCell>
+                      )}
+                      <TableCell className={cn(
+                        'text-right tabular-nums font-bold',
+                        totals.rawBargeld >= 0 ? 'text-success' : 'text-destructive'
+                      )}>
+                        <TooltipProvider delayDuration={150}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help underline decoration-dotted underline-offset-4">
+                                {formatCurrency(totals.rawBargeld)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="left" className="max-w-sm">
+                              <div className="text-xs font-mono space-y-0.5">
+                                <div className="font-semibold mb-1 text-sm">Bargeld {selectedMonthLabel}</div>
+                                {([
+                                  ['+ Tagesumsätze', totals.kellnerUmsatz],
+                                  ['+ Gutsch. VK', totals.gutscheineVK],
+                                  ['+ Sonst. Einnahmen', totals.sonstigeEinnahme],
+                                  ['+ Kassentransfers', totals.transferEffect],
+                                  ['− Kreditkarten', totals.kreditkarten],
+                                  ['− ' + getLabel('ordersmart_revenue'), totals.ordersmart],
+                                  ['− ' + getLabel('wolt_revenue'), totals.wolt],
+                                  ['− Gutsch. EL', totals.gutscheineEL],
+                                  ...(!isFieldHidden('finedine_vouchers') ? [['− ' + getLabel('finedine_vouchers'), totals.finedine]] : []),
+                                  ['− ' + getLabel('einladung'), totals.einladung],
+                                  ['− Offene RE', totals.offeneRE],
+                                  ['− Vorschuss', totals.vorschuss],
+                                  ['− Ausgaben', totals.ausgaben],
+                                ] as Array<[string, number]>).map(([label, value]) => (
+                                  <div key={label} className="flex justify-between gap-4">
+                                    <span>{label}</span>
+                                    <span className="tabular-nums">{formatCurrency(value)}</span>
+                                  </div>
+                                ))}
+                                <div className="border-t border-border mt-1 pt-1 flex justify-between gap-4 font-semibold">
+                                  <span>= Bargeld GESAMT</span>
+                                  <span className="tabular-nums">{formatCurrency(totals.rawBargeld)}</span>
+                                </div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </TableCell>
                     </TableRow>
                   </TableFooter>
                 )}
