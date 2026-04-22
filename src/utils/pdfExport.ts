@@ -525,6 +525,7 @@ interface CashBalanceRow {
   vorschuss: number;
   ausgaben: number;
   bargeld: number;
+  displayBargeld?: number;
 }
 
 interface BankDeposit {
@@ -682,7 +683,7 @@ export const generateCashBalancePDF = (data: CashBalancePDFData, options?: { pre
       '-' + formatCurrency(row.offeneRE),
       '-' + formatCurrency(row.vorschuss),
       '-' + formatCurrency(row.ausgaben),
-      formatCurrency(row.bargeld),
+      formatCurrency(row.displayBargeld ?? row.bargeld),
     ];
     return cols;
   });
