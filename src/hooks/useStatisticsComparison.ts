@@ -30,7 +30,7 @@ async function fetchPeriodStats(startDate: Date, endDate: Date, restaurantId?: s
   const effectiveIds = restaurantIds ?? (restaurantId ? [restaurantId] : []);
   let query = supabase
     .from('sessions')
-    .select('id, session_date, ordersmart_revenue, wolt_revenue, takeaway_total')
+    .select('id, session_date, pos_total, ordersmart_revenue, wolt_revenue, takeaway_total')
     .gte('session_date', format(startDate, 'yyyy-MM-dd'))
     .lte('session_date', format(endDate, 'yyyy-MM-dd'));
   
