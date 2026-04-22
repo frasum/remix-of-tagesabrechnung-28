@@ -72,6 +72,8 @@ export function CashBalanceSummary({
   const physical = wechselgeldbestand;
   const operative = physical - pettyCash;
   const monthEndBalance = previousMonthCarryOver + totalCash - totalDeposits;
+  // Maximum amount that can be deposited without touching the change fund
+  const possibleDeposit = Math.max(0, physical - pettyCash);
 
   return (
     <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
