@@ -46,6 +46,7 @@ const formatDate = (dateStr: string) => {
 
 export default function CashBalance() {
   const { restaurantId, restaurantName } = useRestaurant();
+  const { selectedDate } = useSelectedDate();
   const { data, isLoading, error } = useCashBalanceData(restaurantId);
   const { deposits, totalDeposits, latestDeposit, createDeposit, deleteDeposit, isCreating, isDeleting } = useBankDeposits(restaurantId);
   const { pettyCash, updatePettyCash } = usePettyCash(restaurantId);
@@ -261,6 +262,8 @@ export default function CashBalance() {
           monthLabel={selectedMonthLabel}
           previousMonthLabel={previousMonthLabel}
           previousMonthCarryOver={previousMonthCarryOver}
+          restaurantName={restaurantName}
+          referenceDate={selectedDate}
           onAddDeposit={() => setDepositDialogOpen(true)}
         />
 
