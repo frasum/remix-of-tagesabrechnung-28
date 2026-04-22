@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -32,7 +33,7 @@ interface CashBalanceSummaryProps {
 }
 
 interface InfoLabelProps {
-  label: string;
+  label: React.ReactNode;
   hint: string;
   className?: string;
 }
@@ -199,7 +200,7 @@ export function CashBalanceSummary({
                 label={
                   <span className="inline-flex items-center gap-1">
                     <Landmark className="h-3 w-3" /> Bankeinzahlungen
-                  </span> as unknown as string
+                  </span>
                 }
                 hint="Summe der Bankeinzahlungen des laufenden Monats."
               />
