@@ -1,53 +1,101 @@
 
+# Tagesabrechnung: Fehlbetrag Vortag von Bargeldbestand entkoppeln
 
-# Bargeldbestand: Vortagsfehlbetrag in Tagesspalte sichtbar machen
+## Was gerade schief läuft
+Der angezeigte Wert `-6.078,42 €` passt nicht zur isolierten Tageslogik. Für den gezeigten Fall wäre der operative Vortagsfehlbetrag nur der **unmittelbare Vortageswert**, nicht ein kumulierter Alt-Saldo.
 
-## Ursache der Verwirrung
-Beide Zahlen sind technisch korrekt, messen aber Unterschiedliches:
+Die Ursache ist sehr wahrscheinlich, dass die Tagesabrechnung ihren `previousDeficit` noch indirekt aus der Bargeldbestand-Datenkette ableitet. Damit kann ein alter kumulierter Übertrag in die Tagesabrechnung „durchsickern“, obwohl diese fachlich separat sein soll.
 
-| Ansicht | Wert für 21.04. | Bedeutung |
-|---|---|---|
-| Tagesabrechnung „in den Tresor legen" | **193,21 €** | Tageseffekt **nach** Verrechnung des Vortagsfehlbetrags (230,43 − 37,22) |
-| Bargeldbestand Spalte „Bargeld" | **230,43 €** | reiner Tageseffekt 21.04., **ohne** Vortag |
+## Ziel
+Die Tagesabrechnung soll den **Fehlbetrag des direkten vorherigen Tages mit Daten** berechnen — unabhängig von:
+- kumuliertem Bargeldbestand
+- Bankeinzahlungen
+- Tresor-/Kassentransfers
+- historischen Überträgen aus früheren Wochen
 
-Das vom 20.04. übrige Minus (−37,22 €) wird auf der Bargeldbestand-Seite zwar in der laufenden Kette berücksichtigt, ist in der Tageszeile selbst aber **unsichtbar** — daher der Eindruck, der Bargeldbestand stimme nicht.
-
-## Lösung
-Die Spalte „Bargeld" in der Bargeldbestand-Tabelle wird so erweitert, dass sie **denselben Wert wie der Tresor in der Tagesabrechnung** zeigt:
-
+Formel für Tagesabrechnung:
+```text
+previousDeficit = min(0, rawTagesBargeld(vorheriger Tag mit Daten))
 ```
-Bargeld(Tag) = rawBargeld(Tag) + min(0, rawBargeld(Vortag))
+
+## Umsetzung
+
+### 1) `usePreviousDayDeficit` fachlich neu aufbauen
+Datei: `src/hooks/usePreviousDayDeficit.ts`
+
+Den Hook nicht mehr auf `useCashBalanceData()` aufsetzen, sondern direkt aus den Tagesabrechnungs-Daten berechnen:
+
+- vorherigen Tag mit Session für das Restaurant ermitteln
+- für genau diesen Tag laden:
+  - `sessions`
+  - `waiter_shifts.open_invoices`
+  - `expenses.amount`
+  - `advances.amount`
+- daraus **standalone raw Tages-Bargeld** berechnen:
+```text
+pos_total
++ vouchers_sold
++ sonstige_einnahme
+- terminal_1_total
+- terminal_2_total
+- ordersmart_revenue
+- wolt_revenue
+- vouchers_redeemed
+- finedine_vouchers
+- einladung
+- offene_rechnungen
+- vorschuesse
+- ausgaben
+```
+- Rückgabe nur als negativer Wert, sonst `0`
+
+Zusätzlich Rückgabe erweitern um:
+- `sourceDate` des verwendeten Vortags
+- optional `rawPreviousDay`
+
+Damit ist transparent, welcher Tag wirklich herangezogen wurde.
+
+### 2) Daily Summary auf die neue Hook-Semantik umstellen
+Datei: `src/pages/DailySummary.tsx`
+
+- `previousDeficit` weiter für `bargeld`, `diffWechselgeld`, `todaySkimAmount` verwenden
+- Variable/Kommentare sprachlich bereinigen, damit klar ist:
+  - das ist **kein kumulativer Carry**
+  - das ist **nur der isolierte operative Vortagsfehlbetrag**
+
+### 3) Anzeige verständlicher machen
+Datei: `src/components/daily-summary/layouts/ExcelLayout.tsx`
+
+Die Zeile klarer beschriften, z. B.:
+```text
+Fehlbetrag Vortag (20.04.)
+```
+oder kleiner Zusatztext:
+```text
+bezogen auf letzten Tag mit Daten
 ```
 
-Konkret für den 21.04.:
-- rawBargeld 21.04. = 230,43 €
-- Vortagsfehlbetrag (20.04.) = −37,22 €
-- Anzeige neu: **193,21 €**
+So ist sofort sichtbar:
+- welcher Tag gemeint ist
+- dass nicht ein alter Monatssaldo angezeigt wird
 
-Wenn der Vortag im Plus war oder kein Vortag existiert, ändert sich nichts (z. B. 19.04. bleibt unverändert).
-
-## UI-Detail
-- Bei Tagen mit Vortagsfehlbetrag: kleines Tooltip/Subtext mit Aufschlüsselung: „230,43 € Tageskasse − 37,22 € Vortag = 193,21 €". So bleibt nachvollziehbar, woher die Zahl kommt.
-- Farbe: weiterhin rot bei < 0, grün bei > 0, neutral bei 0.
-
-## Auswirkungen auf andere Werte
-- **GESAMT-Spalte „Bargeld"** in der Monatssumme: bleibt unverändert (kumuliert weiterhin die rohen Tageswerte, weil die Vortagsfehlbeträge sich innerhalb des Monats ohnehin verkettet aufheben — Doppelzählung würde sonst entstehen). Nur die einzelne **Tageszelle** zeigt den ausgeglichenen Wert.
-- **Übertrag/kumulative Kette** (interne `previousCarry`, `chainedBargeld`, `remainingCash`): unverändert, da sie auf `rawBargeld` basieren.
-- **Excel/PDF-Export**: bekommen denselben Anzeige-Wert, damit Bildschirm und Export übereinstimmen.
+## Optional sinnvolle Absicherung
+Wenn kein Vortag gefunden wird:
+- kein Fehler
+- `previousDeficit = 0`
+- Zeile bleibt ausgeblendet
 
 ## Betroffene Dateien
-- `src/hooks/useCashBalanceData.ts` — neues Feld `displayBargeld = rawBargeld + min(0, prevRawBargeld)` pro Zeile (additive Erweiterung, keine bestehenden Felder umdefinieren).
-- `src/pages/CashBalance.tsx` — Tagesspalte „Bargeld" zeigt `displayBargeld`; Tooltip mit Aufschlüsselung bei Vortagsfehlbetrag; GESAMT-Zelle bleibt Summe der `rawBargeld`.
-- `src/utils/excelExport.ts` — Tageszeilen nutzen `displayBargeld`, Summenzeile `rawBargeld`.
-- `src/lib/exportBuchhaltungPdf.ts` — analog (falls dort die Tagesspalte gerendert wird; sonst entfällt).
+- `src/hooks/usePreviousDayDeficit.ts`
+- `src/pages/DailySummary.tsx`
+- `src/components/daily-summary/layouts/ExcelLayout.tsx`
 
 ## Nicht betroffen
-- Tagesabrechnung (`DailySummary.tsx`, `ExcelLayout.tsx`) — funktioniert bereits korrekt.
-- `useRemainingCash`, `usePreviousDayDeficit` — bleiben wie sind.
-- Server-Funktion `compute_carry_over` — unverändert.
+- `src/pages/CashBalance.tsx`
+- `src/hooks/useCashBalanceData.ts`
+- `compute_carry_over`
+- Bankeinzahlungen / Kassentransfers im Bargeldbestand
 
 ## Erwartetes Ergebnis
-- Spalte „Bargeld" am 21.04. zeigt **193,21 €** (mit Tooltip zur Erklärung) statt 230,43 €.
-- Tagesabrechnung und Bargeldbestand zeigen damit denselben Wert für „heute in den Tresor".
-- Monatssumme im Footer bleibt mathematisch korrekt.
-
+Für den gezeigten Fall erscheint **nicht mehr** `-6.078,42 €`, sondern nur der echte isolierte Fehlbetrag des direkten Vortags mit Daten.  
+Die Tagesabrechnung bleibt damit fachlich sauber getrennt vom kumulierten Bargeldbestand.
