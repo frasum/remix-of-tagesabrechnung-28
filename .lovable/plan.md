@@ -1,43 +1,26 @@
 
 
-# Karten-Header: Restaurant + Stichdatum anzeigen
+# Statistik „Gesamtumsatz" auf `sessions.pos_total` umstellen
 
 ## Ziel
-Im Header der Karte „Aktueller Bargeldbestand" wird zusätzlich angezeigt, **für welches Restaurant** und **bis einschließlich welches Datum** der Bestand gilt — damit auf einen Blick klar ist, worauf sich die Zahlen beziehen.
+Der „Gesamtumsatz" in der Statistik nutzt künftig `sessions.pos_total` statt der Summe `waiter_shifts.pos_sales` — damit stimmen Bargeldübersicht und Statistik exakt überein.
 
-## Anzeige
+## Änderungen
 
-```text
-┌──────────────────────────────────────────────────────────
-│ 💼  Aktueller Bargeldbestand · Spicery
-│     Stand: bis einschließlich 22.04.2026
-└──────────────────────────────────────────────────────────
-```
+### `src/hooks/useStatistics.ts`
+- `kellnerUmsatz` pro Tag: statt `sum(shifts.pos_sales)` → `session.pos_total ?? 0`
+- Filter „nur Tage mit Kellnerschichten" bleibt bestehen (verhindert Verzerrung der Durchschnitte)
+- `summary.totalRevenue` und `summary.avgDailyRevenue` ergeben sich automatisch aus den neuen `dailyStats`
+- Trinkgeld-/Pool-Berechnungen bleiben **unverändert** (basieren weiter korrekt auf den Kellner-Eingaben)
 
-- **Titel-Zeile**: „Aktueller Bargeldbestand · {Restaurant-Name}"
-- **Untertitel**: „Stand: bis einschließlich {dd.MM.yyyy}" (statt bisher „Physisch in der Kasse + Aufschlüsselung")
-- Datum = aktuell ausgewähltes Datum aus dem `DateContext` (das gleiche Datum, das bereits die Berechnung steuert)
-- Restaurant-Name = aktiv ausgewähltes Restaurant aus dem `RestaurantContext`
-
-## Technische Umsetzung
-
-In `src/components/cash-balance/CashBalanceSummary.tsx`:
-- Zwei neue optionale Props: `restaurantName: string` und `referenceDate: Date | string`
-- Header-Block anpassen: Restaurant-Name hinter den Titel mit Trenner „·", Untertitel auf „Stand: bis einschließlich …" ändern
-- Datum mit `format(date, 'dd.MM.yyyy', { locale: de })` (date-fns ist bereits importiert)
-
-In `src/pages/CashBalance.tsx`:
-- `restaurantName` aus `useRestaurant()` und `referenceDate` aus `useDateContext()` an `<CashBalanceSummary>` durchreichen
-
-## Betroffene Dateien
-- `src/components/cash-balance/CashBalanceSummary.tsx`
-- `src/pages/CashBalance.tsx`
+### `src/hooks/useStatisticsComparison.ts`
+- Gleiche Umstellung auf `session.pos_total`, damit Vergleichszeiträume und Restaurant-Vergleich konsistent bleiben
 
 ## Nicht betroffen
-- Datenmodell, Berechnungslogik, alle anderen Karten/Tabellen
+- Lieferumsatz, Kreditkarten, Ausgaben, Trinkgeld-Pool, Charts-Logik
+- Bargeldübersicht, Datenmodell, Migrationen
 
 ## Erwartetes Ergebnis
-- Sofort erkennbar: „Das ist der Bestand für **Spicery**, Stand **22.04.2026**"
-- Verwechslungsgefahr beim Restaurant-Wechsel deutlich reduziert
-- Konsistent mit dem ohnehin im Header sichtbaren Restaurant-Switcher
+- Statistik-„Gesamtumsatz" für 01.–21.04. = Summe der `pos_total`-Werte derselben Tage in der Bargeldübersicht
+- Differenz zwischen den Modulen verschwindet
 
