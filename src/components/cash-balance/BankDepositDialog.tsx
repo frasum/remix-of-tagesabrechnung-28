@@ -32,10 +32,14 @@ export function BankDepositDialog({
   const [notes, setNotes] = useState<string>('');
   const [calendarOpen, setCalendarOpen] = useState(false);
 
-  // Pre-fill amount with the suggested default when dialog opens
+  // Reset all form fields whenever the dialog opens — guarantees a clean state
+  // regardless of how it was previously closed (button, overlay click, ESC).
   useEffect(() => {
     if (open) {
       setAmount(defaultAmount);
+      setDate(new Date());
+      setNotes('');
+      setCalendarOpen(false);
     }
   }, [open, defaultAmount]);
 
@@ -48,22 +52,14 @@ export function BankDepositDialog({
       amount,
       notes: notes.trim() || undefined,
     });
-
-    // Reset form
-    setDate(new Date());
-    setAmount(defaultAmount);
-    setNotes('');
   };
 
   const handleClose = () => {
     onOpenChange(false);
-    setDate(new Date());
-    setAmount(defaultAmount);
-    setNotes('');
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
