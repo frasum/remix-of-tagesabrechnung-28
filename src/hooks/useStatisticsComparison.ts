@@ -65,8 +65,8 @@ async function fetchPeriodStats(startDate: Date, endDate: Date, restaurantId?: s
   // Filter to only sessions that have waiter shifts
   const activeSessions = (sessions || []).filter(s => (shiftsBySession[s.id] || []).length > 0);
 
-  // Calculate totals
-  const totalRevenue = waiterShifts.reduce((sum, w) => sum + (w.pos_sales || 0), 0);
+  // Calculate totals — revenue from session.pos_total (consistent with cash balance overview)
+  const totalRevenue = activeSessions.reduce((sum, s: any) => sum + (s.pos_total || 0), 0);
   const totalKitchenTip = waiterShifts.reduce((sum, w) => sum + (w.kitchen_tip || 0), 0);
   
   // Calculate waiter tip using pool system
