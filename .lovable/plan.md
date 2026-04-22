@@ -1,83 +1,52 @@
 
 
-# Bargeldbestand-Karte: Übersichtlicher + Vormonats-Saldo integrieren
+# Bankeinzahlungen: Hinweis „mögliche Einzahlung" hinzufügen
 
 ## Ziel
-Die Karte „Aktueller Bargeldbestand" wird visuell aufgeräumt **und** zeigt zusätzlich den Übertrag aus dem Vormonat (Überschuss oder Defizit), damit die Monatsbewegung im Kontext des kumulierten Saldos sichtbar ist.
+Neben dem Label „Bankeinzahlungen" in der Karte „Aktueller Bargeldbestand" wird ein Klammer-Vermerk ergänzt, der den **maximal möglichen Einzahlungsbetrag** anzeigt — so, dass der Wechselgeld-Sockel von 2.000 € **nicht angetastet** wird.
 
-## Neuer Aufbau
+## Logik
 
 ```text
-┌────────────────────────────────────────────────────────────────────────┐
-│  💼 Aktueller Bargeldbestand                                            │
-│                                                                         │
-│  ┌──────────────────────────┐   ┌──────────────────────────────────┐  │
-│  │ PHYSISCH IN DER KASSE    │   │ Aufschlüsselung                  │  │
-│  │                          │   │ Wechselgeld-Sockel    2.000,00 € │  │
-│  │   5.198,13 €             │   │ Operativer Saldo     +3.198,13 € │  │
-│  │   (Hero, groß, farbig)   │   │ ────────────────────────────────│  │
-│  │                          │   │ Physisch               5.198,13 € │  │
-│  └──────────────────────────┘   └──────────────────────────────────┘  │
-│                                                                         │
-│  ▾ Monatsbewegung April 2026                                           │
-│     Übertrag aus März 2026        +2.866,00 €  ← NEU                   │
-│     Bargeldzufluss April          +2.332,13 €                          │
-│     Bankeinzahlungen April             0,00 €                          │
-│     ──────────────────────────────────────────                         │
-│     Saldo Ende April              +5.198,13 €                          │
-│                                                                         │
-│     Letzte Einzahlung: 31.03.2026 · 8.940,93 €     [+ BANKEINZAHLUNG] │
-└────────────────────────────────────────────────────────────────────────┘
+Mögliche Einzahlung = max(0, Physisch in der Kasse − Wechselgeld-Sockel)
+                    = max(0, operativer Saldo)
 ```
 
-## Konkrete Änderungen
+Beispiel Spicery (aktuell):
+- Physisch: 5.198,13 €
+- Wechselgeld-Sockel: 2.000,00 €
+- → **Mögliche Einzahlung: 3.198,13 €**
 
-### 1. `CashBalanceSummary.tsx` — UI-Refactor
-- **Hero-Zahl** (groß, prominent): physischer Kassenbestand (`pettyCash + wechselgeldbestand`), grün/rot je nach Vorzeichen
-- **Aufschlüsselungs-Mini-Tabelle** rechts daneben: Wechselgeld-Sockel + Operativer Saldo = Physisch
-- **Monatsbewegungs-Block** als sekundärer Bereich darunter mit 4 Zeilen:
-  - Übertrag Vormonat (NEU, mit Vormonatsname)
-  - Bargeldzufluss aktueller Monat
-  - Bankeinzahlungen aktueller Monat
-  - Saldo Ende Monat (Summenzeile)
-- **Verwirrenden Wert** „Saldo April 2026 (vereinfacht)" entfernen
-- **Wechselgeld-Editor** (`PettyCashSetting`) inline in der Aufschlüsselung
-- **Tooltips** auf jede Zeile für fachliche Erklärung
-- **Button** „BANKEINZAHLUNG" rechts unten im Monatsbewegungs-Block
+Beispiel YUM (Defizit):
+- Physisch: 1.859,00 € (operativer Saldo −141 €)
+- Wechselgeld-Sockel: 2.000,00 €
+- → **Mögliche Einzahlung: 0,00 €** (es darf nichts eingezahlt werden, sonst fehlt Wechselgeld)
 
-### 2. `useCashBalanceData` — Vormonats-Saldo bereitstellen
-Neue Werte berechnen und zurückgeben:
-- `previousMonthCarryOver`: physischer Bestand am letzten Tag des Vormonats (via `compute_carry_over` für Vormonats-Enddatum, plus `pettyCash`)
-- `previousMonthLabel`: z. B. „März 2026" für die Anzeige
+## Anzeige
 
-Damit ist die Zeile „Übertrag aus [Vormonat]" datentechnisch versorgt, ohne neue Server-Logik.
+```text
+🏛 Bankeinzahlungen (mögl. Einzahlung: 3.198,13 €) ⓘ        0,00 €
+```
 
-### 3. Props-Erweiterung
-`CashBalanceSummary` erhält neue Props:
-- `previousMonthCarryOver: number`
-- `previousMonthLabel: string`
+- Klammer-Vermerk in kleinerer, gedämpfter Schrift direkt hinter „Bankeinzahlungen"
+- Tooltip auf das ⓘ-Icon erweitert: „Maximaler Betrag, der zur Bank gebracht werden kann, ohne den Wechselgeld-Sockel von [Betrag] € anzutasten."
+- Wenn `mögliche Einzahlung = 0`, wird der Vermerk in **rot/destructive** dargestellt als Warnung („mögl. Einzahlung: 0,00 €"), damit auf einen Blick klar ist: aktuell ist keine Einzahlung möglich.
 
-`CashBalance.tsx` reicht diese aus dem Hook durch.
-
-## Tooltips
-- **Physisch in der Kasse** → „Tatsächlich in der Kassenschublade vorhandenes Bargeld"
-- **Wechselgeld-Sockel** → „Fester Bargeldbestand, der immer in der Kasse verbleibt"
-- **Operativer Saldo** → „Kumulierter Tageskassen-Überschuss/-Defizit seit Aufzeichnungsbeginn"
-- **Übertrag Vormonat** → „Physischer Kassenbestand am letzten Tag des Vormonats"
-- **Saldo Ende Monat** → „Übertrag + Zuflüsse − Einzahlungen"
+## Optional: Vorbelegung im Dialog
+Beim Klick auf „BANKEINZAHLUNG" wird der `BankDepositDialog` mit der **möglichen Einzahlung** als Default-Betrag vorbelegt (statt leer). Der Nutzer kann ihn natürlich überschreiben.
 
 ## Betroffene Dateien
-- `src/components/cash-balance/CashBalanceSummary.tsx` (UI-Refactor)
-- `src/hooks/useCashBalanceData.ts` (Vormonats-Saldo berechnen)
-- `src/pages/CashBalance.tsx` (neue Props durchreichen)
+- `src/components/cash-balance/CashBalanceSummary.tsx` — Klammer-Vermerk + Tooltip-Anpassung
+- `src/pages/CashBalance.tsx` — Default-Betrag an `BankDepositDialog` durchreichen
+- `src/components/cash-balance/BankDepositDialog.tsx` — neuer optionaler Prop `defaultAmount`, Vorbelegung im Form-State
 
 ## Nicht betroffen
-- `compute_carry_over`, Datenmodell, Tagesabrechnung, `usePreviousDayDeficit`
-- Bestehende Tabelle/Spalten im Bargeldbestand-Verlauf
+- `useCashBalanceData`, `compute_carry_over`, Datenmodell — der neue Wert wird rein aus bereits vorhandenen Props (`physical`, `pettyCash`) abgeleitet.
+- Tagesabrechnung bleibt unberührt.
 
 ## Erwartetes Ergebnis
-- Klare Hauptzahl statt 4 konkurrierender Werte
-- Vormonats-Übertrag explizit sichtbar (Überschuss **oder** Minus)
-- Monat im Kontext: Übertrag + Bewegung = aktueller Saldo
-- Kein verwirrendes „Saldo (vereinfacht)" mehr
+- Sofort sichtbar, wie viel heute zur Bank gebracht werden darf
+- Wechselgeld-Sockel von 2.000 € wird systemisch geschützt (visuelle Leitplanke)
+- Bei Defizit klare Warnung „0,00 € möglich"
+- Komfort: Dialog mit sinnvollem Vorschlag vorbelegt
 
