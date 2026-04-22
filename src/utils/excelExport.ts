@@ -92,7 +92,7 @@ export function generateCashBalanceExcel({ rows, deposits, month, year, restaura
       n(row.offeneRE),
       n(row.vorschuss),
       n(row.ausgaben),
-      n(row.rawBargeld),
+      n(row.displayBargeld),
     ]);
   });
 

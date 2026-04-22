@@ -403,10 +403,39 @@ export default function CashBalance() {
                         <TableCell
                           className={cn(
                             'text-right tabular-nums font-bold',
-                            row.rawBargeld >= 0 ? 'text-success' : 'text-destructive'
+                            row.displayBargeld >= 0 ? 'text-success' : 'text-destructive'
                           )}
                         >
-                          {formatCurrency(row.rawBargeld)}
+                          {row.displayBargeld !== row.rawBargeld ? (
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help underline decoration-dotted underline-offset-4">
+                                    {formatCurrency(row.displayBargeld)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="max-w-sm">
+                                  <div className="text-xs font-mono space-y-0.5">
+                                    <div className="font-semibold mb-1 text-sm">Bargeld {formatDate(row.date)}</div>
+                                    <div className="flex justify-between gap-4">
+                                      <span>Tageskasse</span>
+                                      <span className="tabular-nums">{formatCurrency(row.rawBargeld)}</span>
+                                    </div>
+                                    <div className="flex justify-between gap-4">
+                                      <span>− Fehlbetrag Vortag</span>
+                                      <span className="tabular-nums">{formatCurrency(row.displayBargeld - row.rawBargeld)}</span>
+                                    </div>
+                                    <div className="border-t border-border mt-1 pt-1 flex justify-between gap-4 font-semibold">
+                                      <span>= in den Tresor</span>
+                                      <span className="tabular-nums">{formatCurrency(row.displayBargeld)}</span>
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            formatCurrency(row.displayBargeld)
+                          )}
                         </TableCell>
                       </TableRow>
                     ))

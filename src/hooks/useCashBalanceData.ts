@@ -24,6 +24,14 @@ export interface CashBalanceRow {
    * Used by exports that sum daily values without chaining.
    */
   bargeld: number;
+  /**
+   * Display value for the daily "Bargeld" column:
+   * = rawBargeld + min(0, rawBargeld of immediately preceding day with data).
+   * Mirrors the "in den Tresor legen" amount shown in Tagesabrechnung,
+   * so that a previous-day deficit is visibly netted in today's row.
+   * Surpluses from the previous day are NOT carried (they belong to the bank-deposit pipeline).
+   */
+  displayBargeld: number;
   /** Net effect of register transfers on this day */
   transferEffect: number;
   /** Net effect of bank deposits on this day (always >= 0, subtracted from cash) */
@@ -125,6 +133,8 @@ export function useCashBalanceData(restaurantId: string | null, fromDate?: strin
 
       let carryOver = initialCarryOver;
 
+      let prevRawBargeld = 0;
+
       return allDates.map((date) => {
         const session = sessionMap.get(date);
         const shifts = session ? allShifts.filter((s) => s.session_id === session.id) : [];
@@ -174,6 +184,10 @@ export function useCashBalanceData(restaurantId: string | null, fromDate?: strin
         const chainedBargeld = rawBargeld + previousCarry;
         const remainingCash = chainedBargeld - depositEffect;
 
+        // Display value: net previous day's deficit only (surplus stays out)
+        const displayBargeld = rawBargeld + Math.min(0, prevRawBargeld);
+        prevRawBargeld = rawBargeld;
+
         // Chain forward (positive AND negative)
         carryOver = remainingCash;
 
@@ -194,6 +208,7 @@ export function useCashBalanceData(restaurantId: string | null, fromDate?: strin
           rawBargeld,
           // Keep legacy `bargeld` semantics for exports = pure daily (no carry)
           bargeld: rawBargeld,
+          displayBargeld,
           transferEffect,
           depositEffect,
           previousCarry,
