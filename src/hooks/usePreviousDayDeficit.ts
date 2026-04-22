@@ -3,10 +3,15 @@ import { format } from 'date-fns';
 import { useCashBalanceData } from './useCashBalanceData';
 
 /**
- * Returns the carry-over from the day before the selected date.
- * Negative = deficit, positive = surplus, 0 = none.
- * Sourced from the unified cash chain in useCashBalanceData (includes
- * sessions, register transfers AND bank deposits).
+ * Returns the previous business day's standalone cash result, capped at 0
+ * (only deficits). This is intentionally NOT the cumulative carry-over —
+ * the daily settlement (Tagesabrechnung) treats each day's float as 2.000 €
+ * and only inherits a deficit from the immediate previous day, while
+ * surpluses belong to the bank deposit pipeline shown in the Bargeldbestand.
+ *
+ * - Previous day rawBargeld < 0 → returns that negative value
+ * - Previous day rawBargeld ≥ 0 → returns 0
+ * - No previous day with data → returns 0
  */
 export function usePreviousDayDeficit(date: Date, restaurantId: string | null) {
   const { data: cashRows, isLoading, error } = useCashBalanceData(restaurantId);
@@ -15,14 +20,12 @@ export function usePreviousDayDeficit(date: Date, restaurantId: string | null) {
   const carry = useMemo(() => {
     if (!cashRows || cashRows.length === 0) return 0;
 
-    // If today exists in the chain, use its previousCarry directly
-    const today = cashRows.find(r => r.date === dateStr);
-    if (today) return today.previousCarry;
-
-    // Otherwise: take the remainingCash of the latest row strictly before today
+    // Find the latest day strictly before today that has data
     const previousRows = cashRows.filter(r => r.date < dateStr);
     if (previousRows.length === 0) return 0;
-    return previousRows[previousRows.length - 1].remainingCash;
+
+    const lastDay = previousRows[previousRows.length - 1];
+    return lastDay.rawBargeld < 0 ? lastDay.rawBargeld : 0;
   }, [cashRows, dateStr]);
 
   return {
