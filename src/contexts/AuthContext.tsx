@@ -19,6 +19,7 @@ interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
+  isSyncingPermissions: boolean;
   isLocked: boolean;
   login: (name: string, pinCode: string) => Promise<boolean>;
   logout: () => void;
@@ -36,6 +37,7 @@ const AUTH_STORAGE_KEY = 'spicery_auth_user';
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSyncingPermissions, setIsSyncingPermissions] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
 
   // Convert Supabase OAuth user to AuthUser with profile data - single API call
@@ -213,8 +215,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(parsed);
             setIsLoading(false);
           }
-          // Background refresh of permission level
+          // Background refresh of permission level — Sidebar wartet darauf
           if (parsed.staffId) {
+            if (isMounted) setIsSyncingPermissions(true);
             try {
               const response = await fetch(
                 `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-user-role?staff_id=${parsed.staffId}`,
@@ -234,6 +237,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
               }
             } catch { /* silent - cached data is still usable */ }
+            finally {
+              if (isMounted) setIsSyncingPermissions(false);
+            }
           }
           return;
         }
@@ -451,7 +457,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isLocked, login, logout, linkAccount, hasPermission, refreshPermissions, lockSession, unlockSession }}>
+    <AuthContext.Provider value={{ user, isLoading, isSyncingPermissions, isLocked, login, logout, linkAccount, hasPermission, refreshPermissions, lockSession, unlockSession }}>
       {children}
     </AuthContext.Provider>
   );

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRestaurant, useRestaurants } from '@/hooks/useRestaurant';
 import { useManagerNavPermissions } from '@/hooks/useManagerNavPermissions';
@@ -85,7 +86,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading: isAuthLoading, isSyncingPermissions } = useAuth();
   const { restaurantName, restaurantSlug } = useRestaurant();
   const { data: restaurants = [] } = useRestaurants();
   
@@ -97,6 +98,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     isManager ? user?.staffId : undefined
   );
   const hasCustomPermissions = isManager && managerPaths.length > 0;
+
+  // Navigation erst rendern, wenn Berechtigungen vollständig geladen sind.
+  // Admins müssen NICHT auf Manager-Permissions warten.
+  const isNavReady =
+    !isAuthLoading &&
+    !isSyncingPermissions &&
+    (!isManager || !isLoadingPermissions);
   const alwaysVisibleForManager = [''];
 
   // Combine all items and filter by permissions
@@ -165,29 +173,45 @@ export function AppLayout({ children }: AppLayoutProps) {
     cn("w-5 h-5", isActive(path) && "text-primary");
 
   // Shared nav renderer for both desktop and mobile
-  const renderNavGroups = (onClickLink?: () => void) => (
-    <>
-      {groupedNav.map((group, idx) => (
-        <div key={group.label}>
-          {idx > 0 && <div className="h-px bg-sidebar-border my-3" />}
-          <p className="text-xs uppercase tracking-wider text-muted-foreground px-3 mb-2">
-            {group.label}
-          </p>
-          {group.items.map((item) => (
-            <Link
-              key={item.path}
-              to={getNavHref(item.path)}
-              onClick={onClickLink}
-              className={linkClasses(item.path)}
-            >
-              <item.icon className={iconClasses(item.path)} />
-              {item.label}
-            </Link>
-          ))}
-        </div>
+  const renderNavSkeleton = () => (
+    <div className="space-y-2 px-3 py-2" aria-label="Navigation wird geladen">
+      <Skeleton className="h-3 w-20 mb-2" />
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Skeleton key={`s1-${i}`} className="h-9 w-full rounded-lg" />
       ))}
-    </>
+      <Skeleton className="h-3 w-16 mt-4 mb-2" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <Skeleton key={`s2-${i}`} className="h-9 w-full rounded-lg" />
+      ))}
+    </div>
   );
+
+  const renderNavGroups = (onClickLink?: () => void) => {
+    if (!isNavReady) return renderNavSkeleton();
+    return (
+      <>
+        {groupedNav.map((group, idx) => (
+          <div key={group.label}>
+            {idx > 0 && <div className="h-px bg-sidebar-border my-3" />}
+            <p className="text-xs uppercase tracking-wider text-muted-foreground px-3 mb-2">
+              {group.label}
+            </p>
+            {group.items.map((item) => (
+              <Link
+                key={item.path}
+                to={getNavHref(item.path)}
+                onClick={onClickLink}
+                className={linkClasses(item.path)}
+              >
+                <item.icon className={iconClasses(item.path)} />
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        ))}
+      </>
+    );
+  };
 
   const renderRestaurantSwitcher = () =>
     restaurants.length > 1 ? (

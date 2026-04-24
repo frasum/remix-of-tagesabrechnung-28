@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { useSfnMode } from "@/hooks/useSfnMode";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const allTabs = [
   { label: "Wochenplan", path: "", permPath: "zeiterfassung", adminOnly: false },
@@ -31,10 +32,11 @@ export default function ZtLayout() {
   const isAdmin = hasPermission(userLevel, 'admin');
   const isManager = userLevel === 'manager';
 
-  const { data: managerPaths = [] } = useManagerNavPermissions(
+  const { data: managerPaths = [], isLoading: isLoadingPermissions } = useManagerNavPermissions(
     isManager ? user?.staffId : undefined
   );
   const hasCustomPermissions = isManager && managerPaths.length > 0;
+  const tabsReady = !isManager || !isLoadingPermissions;
 
   // "Zusammenfassung" is always visible for managers (like Kellnerabrechnung)
   const alwaysVisiblePaths = ["zeiterfassung/zusammenfassung"];
@@ -61,7 +63,13 @@ export default function ZtLayout() {
     <AppLayout>
       <ZtProvider>
         <div className="space-y-4">
-          {tabs.length > 1 && (
+          {!tabsReady ? (
+            <div className="flex gap-2 border-b border-border pb-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-28 rounded" />
+              ))}
+            </div>
+          ) : tabs.length > 1 && (
             <nav className="flex gap-1 border-b border-border pb-0">
               {tabs.map((tab) => (
                 <button
