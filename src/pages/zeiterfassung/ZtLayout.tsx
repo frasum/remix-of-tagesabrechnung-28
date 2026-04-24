@@ -63,7 +63,13 @@ export default function ZtLayout() {
     <AppLayout>
       <ZtProvider>
         <div className="space-y-4">
-          {tabs.length > 1 && (
+          {!tabsReady ? (
+            <div className="flex gap-2 border-b border-border pb-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-28 rounded" />
+              ))}
+            </div>
+          ) : tabs.length > 1 && (
             <nav className="flex gap-1 border-b border-border pb-0">
               {tabs.map((tab) => (
                 <button
