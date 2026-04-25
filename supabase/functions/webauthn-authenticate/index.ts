@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
       // Verify signature using Web Crypto API
       const authDataBytes = base64urlDecode(authenticator_data);
       const clientDataHash = new Uint8Array(
-        await crypto.subtle.digest("SHA-256", clientDataBytes)
+        await crypto.subtle.digest("SHA-256", clientDataBytes as BufferSource)
       );
 
       // signedData = authData || hash(clientDataJSON)
