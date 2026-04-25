@@ -30,7 +30,7 @@ async function importPublicKey(publicKeyBase64: string, alg: number): Promise<Cr
     // ES256 - the key is raw 65-byte uncompressed EC point
     return crypto.subtle.importKey(
       "raw",
-      keyBytes,
+      keyBytes as BufferSource,
       { name: "ECDSA", namedCurve: "P-256" },
       false,
       ["verify"]
@@ -39,7 +39,7 @@ async function importPublicKey(publicKeyBase64: string, alg: number): Promise<Cr
     // RS256 - SPKI format
     return crypto.subtle.importKey(
       "spki",
-      keyBytes,
+      keyBytes as BufferSource,
       { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
       false,
       ["verify"]
@@ -207,7 +207,7 @@ Deno.serve(async (req) => {
       // Verify signature using Web Crypto API
       const authDataBytes = base64urlDecode(authenticator_data);
       const clientDataHash = new Uint8Array(
-        await crypto.subtle.digest("SHA-256", clientDataBytes)
+        await crypto.subtle.digest("SHA-256", clientDataBytes as BufferSource)
       );
 
       // signedData = authData || hash(clientDataJSON)
@@ -224,8 +224,8 @@ Deno.serve(async (req) => {
         const valid = await crypto.subtle.verify(
           { name: "ECDSA", hash: "SHA-256" },
           publicKey,
-          rawSig,
-          signedData
+          rawSig as BufferSource,
+          signedData as BufferSource
         );
 
         if (!valid) {
