@@ -30,7 +30,7 @@ async function importPublicKey(publicKeyBase64: string, alg: number): Promise<Cr
     // ES256 - the key is raw 65-byte uncompressed EC point
     return crypto.subtle.importKey(
       "raw",
-      keyBytes,
+      keyBytes as BufferSource,
       { name: "ECDSA", namedCurve: "P-256" },
       false,
       ["verify"]
