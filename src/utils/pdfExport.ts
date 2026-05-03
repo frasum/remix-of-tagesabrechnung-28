@@ -683,7 +683,7 @@ export const generateCashBalancePDF = (data: CashBalancePDFData, options?: { pre
       '-' + formatCurrency(row.offeneRE),
       '-' + formatCurrency(row.vorschuss),
       '-' + formatCurrency(row.ausgaben),
-      formatCurrency(row.displayBargeld ?? row.bargeld),
+      formatCurrency(row.bargeld),
     ];
     return cols;
   });
