@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Users, ChefHat, UtensilsCrossed, Search, Trophy, ChevronDown, UserPlus, Eye, EyeOff } from 'lucide-react';
+import { Users, ChefHat, UtensilsCrossed, Search, Trophy, ChevronDown, UserPlus, Eye, EyeOff, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import { exportStaffToCsv } from '@/utils/staffCsvExport';
 import { GlobalLayout } from '@/components/layout/GlobalLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,6 +122,26 @@ export default function StaffManagement() {
             </div>
             
             <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  if (filteredStaff.length === 0) {
+                    toast.error('Keine Mitarbeiter zum Exportieren');
+                    return;
+                  }
+                  try {
+                    exportStaffToCsv(filteredStaff);
+                    toast.success(`${filteredStaff.length} Mitarbeiter exportiert`);
+                  } catch (e) {
+                    toast.error('Export fehlgeschlagen');
+                  }
+                }}
+                size="lg"
+                variant="outline"
+                className="gap-2"
+              >
+                <Download className="w-4 h-4" />
+                CSV Export
+              </Button>
               <Button onClick={handleOpenNew} size="lg" className="gap-2 shadow-md">
                 <UserPlus className="w-4 h-4" />
                 Neuer Mitarbeiter
