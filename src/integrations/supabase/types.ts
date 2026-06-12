@@ -1818,6 +1818,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_session_locked_now: {
+        Args: { p_session_id: string }
+        Returns: boolean
+      }
       update_telegram_cron_schedule: {
         Args: { p_time: string }
         Returns: undefined
