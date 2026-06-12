@@ -1808,6 +1808,7 @@ export type Database = {
         Args: { p_before_date: string; p_restaurant_id: string }
         Returns: number
       }
+      current_business_date: { Args: never; Returns: string }
       current_staff_id: { Args: never; Returns: string }
       get_staff_permission: {
         Args: { p_staff_id: string }
