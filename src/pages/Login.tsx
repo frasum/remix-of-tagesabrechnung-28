@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Lock, Fingerprint } from 'lucide-react';
+import { ChefHat, Lock, Fingerprint, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useWebAuthn } from '@/hooks/useWebAuthn';
 import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { RoleSelectionDialog, getRoleOptions, type ActiveRole } from '@/components/auth/RoleSelectionDialog';
+
 
 export default function Login() {
   const [name, setName] = useState('');
@@ -21,6 +23,50 @@ export default function Login() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { isSupported: webAuthnSupported, hasCredential, authenticate: webAuthnAuthenticate, isLoading: webAuthnLoading } = useWebAuthn();
+
+  // E-Mail/Passwort-Anmeldung & Registrierung
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailMode, setEmailMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || password.length < 6) {
+      toast({ title: 'Fehler', description: 'E-Mail und Passwort (min. 6 Zeichen) erforderlich.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      if (emailMode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/select-restaurant` },
+        });
+        if (error) throw error;
+        toast({
+          title: 'Registrierung erfolgreich',
+          description: 'Falls E-Mail-Bestätigung aktiv ist, bitte Postfach prüfen. Sonst direkt anmelden.',
+        });
+        setEmailMode('signin');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+        toast({ title: 'Willkommen!', description: 'Anmeldung erfolgreich.' });
+        window.location.href = '/select-restaurant';
+      }
+    } catch (err) {
+      toast({
+        title: emailMode === 'signup' ? 'Registrierung fehlgeschlagen' : 'Anmeldung fehlgeschlagen',
+        description: err instanceof Error ? err.message : 'Unbekannter Fehler',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   // Role selection state for dual-role staff
   const [pendingRoleSelection, setPendingRoleSelection] = useState<{
@@ -297,6 +343,78 @@ export default function Login() {
               </svg>
               Mit Apple anmelden
             </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setShowEmailForm((v) => !v)}
+              disabled={isLoading}
+            >
+              <Mail className="w-5 h-5 mr-2" />
+              {showEmailForm ? 'E-Mail-Login ausblenden' : 'Mit E-Mail anmelden / registrieren'}
+            </Button>
+
+            {showEmailForm && (
+              <div className="space-y-3 border-t pt-4 mt-2">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={emailMode === 'signin' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setEmailMode('signin')}
+                  >
+                    Anmelden
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={emailMode === 'signup' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setEmailMode('signup')}
+                  >
+                    Registrieren
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-Mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@beispiel.de"
+                    autoComplete="email"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Passwort</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mindestens 6 Zeichen"
+                    autoComplete={emailMode === 'signup' ? 'new-password' : 'current-password'}
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={handleEmailAuth}
+                  disabled={isLoading || !email.trim() || password.length < 6}
+                >
+                  {isLoading
+                    ? 'Bitte warten...'
+                    : emailMode === 'signup'
+                      ? 'Registrieren'
+                      : 'Anmelden'}
+                </Button>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
