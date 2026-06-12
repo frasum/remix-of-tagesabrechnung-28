@@ -255,7 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Then check Supabase session for OAuth (no localStorage data)
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
+        if (session?.user && !/^staff-[0-9a-f-]+@internal\.invalid$/i.test(session.user.email ?? '')) {
           try {
             const authUser = await convertOAuthUserWithTimeout(session.user);
             if (isMounted) {
