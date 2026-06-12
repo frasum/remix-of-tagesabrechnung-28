@@ -270,6 +270,32 @@ Deno.serve(async (req: Request) => {
       permission_level: permissionLevel,
     };
 
+    // Additive: try to establish a real Supabase session for the shadow auth user.
+    // Any failure here is logged but does NOT block the login.
+    try {
+      const shadowEmail = `staff-${staffData.id}@internal.invalid`;
+      const userId = await ensureShadowAuthUser(supabase, staffData.id, shadowEmail);
+      if (userId) {
+        const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+          type: "magiclink",
+          email: shadowEmail,
+        });
+        if (linkErr) {
+          console.error("[validate-pin] generateLink error", linkErr);
+        } else {
+          // deno-lint-ignore no-explicit-any
+          const hashed = (linkData as any)?.properties?.hashed_token;
+          if (typeof hashed === "string" && hashed.length > 0) {
+            response.session_token_hash = hashed;
+          } else {
+            console.error("[validate-pin] hashed_token missing from generateLink response");
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[validate-pin] shadow session establishment failed", e);
+    }
+
     return new Response(JSON.stringify(response), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
