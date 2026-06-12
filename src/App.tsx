@@ -28,6 +28,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const ConfirmLoginPage = lazy(() => import("./pages/ConfirmLoginPage").then(m => ({ default: m.ConfirmLoginPage })));
 const PermissionManagement = lazy(() => import("./pages/PermissionManagement"));
+const RestaurantManagement = lazy(() => import("./pages/RestaurantManagement"));
 const RestaurantSelect = lazy(() => import("./pages/RestaurantSelect"));
 const TelegramSettings = lazy(() => import("./pages/TelegramSettings"));
 const ZtLayout = lazy(() => import("./pages/zeiterfassung/ZtLayout"));
