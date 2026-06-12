@@ -20,7 +20,48 @@ interface ValidatePinResponse {
     staff_role: string;
   };
   permission_level?: "staff" | "manager" | "admin";
+  session_token_hash?: string;
   error?: string;
+}
+
+// Idempotent shadow auth user creation (mirrors ensure-staff-auth-user).
+async function ensureShadowAuthUser(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  staffId: string,
+  email: string
+): Promise<string | null> {
+  const { data: existingProfile, error: profileLookupErr } = await admin
+    .from("profiles")
+    .select("user_id")
+    .eq("staff_id", staffId)
+    .maybeSingle();
+  if (profileLookupErr) {
+    console.error("[validate-pin] profile lookup error", profileLookupErr);
+    return null;
+  }
+  if (existingProfile?.user_id) return existingProfile.user_id as string;
+
+  const password = crypto.randomUUID() + "-" + crypto.randomUUID();
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    app_metadata: { staff_id: staffId, source: "pin-shadow" },
+  });
+  if (createErr || !created?.user) {
+    console.error("[validate-pin] createUser error", createErr);
+    return null;
+  }
+  const userId = created.user.id as string;
+  const { error: upsertErr } = await admin
+    .from("profiles")
+    .upsert({ user_id: userId, staff_id: staffId, email }, { onConflict: "user_id" });
+  if (upsertErr) {
+    console.error("[validate-pin] profile upsert error", upsertErr);
+    return null;
+  }
+  return userId;
 }
 
 // Rate limiting configuration
@@ -228,6 +269,32 @@ Deno.serve(async (req: Request) => {
       },
       permission_level: permissionLevel,
     };
+
+    // Additive: try to establish a real Supabase session for the shadow auth user.
+    // Any failure here is logged but does NOT block the login.
+    try {
+      const shadowEmail = `staff-${staffData.id}@internal.invalid`;
+      const userId = await ensureShadowAuthUser(supabase, staffData.id, shadowEmail);
+      if (userId) {
+        const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+          type: "magiclink",
+          email: shadowEmail,
+        });
+        if (linkErr) {
+          console.error("[validate-pin] generateLink error", linkErr);
+        } else {
+          // deno-lint-ignore no-explicit-any
+          const hashed = (linkData as any)?.properties?.hashed_token;
+          if (typeof hashed === "string" && hashed.length > 0) {
+            response.session_token_hash = hashed;
+          } else {
+            console.error("[validate-pin] hashed_token missing from generateLink response");
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[validate-pin] shadow session establishment failed", e);
+    }
 
     return new Response(JSON.stringify(response), {
       status: 200,

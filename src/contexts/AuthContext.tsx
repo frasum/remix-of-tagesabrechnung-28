@@ -140,6 +140,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
 
+        // Ignore shadow PIN sessions here — PIN flow manages its own AuthUser state.
+        const isShadowSession = !!session?.user?.email && /^staff-[0-9a-f-]+@internal\.invalid$/i.test(session.user.email);
+        if (isShadowSession) {
+          if (event === 'SIGNED_OUT' && isMounted) {
+            // PIN logout already cleared state; nothing to do.
+          }
+          return;
+        }
+
         if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
           try {
             const authUser = await convertOAuthUserWithTimeout(session.user);
@@ -246,7 +255,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Then check Supabase session for OAuth (no localStorage data)
         const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
+        if (session?.user && !/^staff-[0-9a-f-]+@internal\.invalid$/i.test(session.user.email ?? '')) {
           try {
             const authUser = await convertOAuthUserWithTimeout(session.user);
             if (isMounted) {
@@ -289,6 +298,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (name: string, pinCode: string): Promise<boolean> => {
     try {
+      // Before establishing a new shadow session, end any previous one (user switch).
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {
+        console.error('Pre-login signOut failed (non-blocking):', e);
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validate-pin`,
         {
@@ -325,6 +341,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser(authUser);
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(authUser));
+
+      // Additive: try to also establish a real Supabase session via the magiclink
+      // token hash returned by validate-pin. Any failure is logged and ignored.
+      if (typeof result.session_token_hash === 'string' && result.session_token_hash.length > 0) {
+        try {
+          const { error: otpErr } = await supabase.auth.verifyOtp({
+            type: 'magiclink',
+            token_hash: result.session_token_hash,
+          });
+          if (otpErr) {
+            console.error('verifyOtp for shadow session failed:', otpErr);
+          }
+        } catch (e) {
+          console.error('verifyOtp threw for shadow session:', e);
+        }
+      } else {
+        console.error('PIN login: session_token_hash missing in response');
+      }
+
       return true;
     } catch {
       return false;
@@ -336,8 +371,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     // Clear React Query cache so next user gets fresh data
     queryClient.clear();
-    // Sign out from Supabase (for OAuth users)
-    await supabase.auth.signOut();
+    // Sign out from Supabase (OAuth + shadow PIN sessions). Tolerate errors.
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error('Supabase signOut failed (non-blocking):', e);
+    }
     setUser(null);
     localStorage.removeItem(AUTH_STORAGE_KEY);
   };
