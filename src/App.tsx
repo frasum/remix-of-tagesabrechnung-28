@@ -140,6 +140,7 @@ function AppContent() {
           <Route path="/lohnbuero" element={<PayrollPortal />} />
           <Route path="/staff" element={<ProtectedRoute requiredLevel="admin"><StaffManagement /></ProtectedRoute>} />
           <Route path="/permissions" element={<ProtectedRoute requiredLevel="admin"><PermissionManagement /></ProtectedRoute>} />
+          <Route path="/admin/restaurants" element={<ProtectedRoute requiredLevel="admin"><RestaurantManagement /></ProtectedRoute>} />
           <Route path="/telegram" element={<ProtectedRoute requiredLevel="admin"><TelegramSettings /></ProtectedRoute>} />
           
           <Route path="/skill-settings" element={<ProtectedRoute requiredLevel="admin"><SkillSettings /></ProtectedRoute>} />
