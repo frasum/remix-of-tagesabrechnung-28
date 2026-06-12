@@ -139,7 +139,7 @@ export default function RestaurantManagement() {
           .eq("id", editing.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("restaurants").insert(values);
+        const { error } = await supabase.from("restaurants").insert([values]);
         if (error) throw error;
       }
     },
