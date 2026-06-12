@@ -1808,9 +1808,14 @@ export type Database = {
         Args: { p_before_date: string; p_restaurant_id: string }
         Returns: number
       }
+      current_staff_id: { Args: never; Returns: string }
       get_staff_permission: {
         Args: { p_staff_id: string }
         Returns: Database["public"]["Enums"]["app_permission_level"]
+      }
+      has_min_permission: {
+        Args: { _min: Database["public"]["Enums"]["app_permission_level"] }
+        Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       update_telegram_cron_schedule: {
