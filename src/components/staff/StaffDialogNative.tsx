@@ -260,7 +260,11 @@ export function StaffDialog({ open, onOpenChange, staff, onSave, isLoading }: St
     // Derive role from all department assignments
     const allDepts = new Set<string>();
     Object.values(restaurantDepts).forEach(depts => depts.forEach(d => allDepts.add(d)));
-    if (allDepts.size === 0) return;
+    if (allDepts.size === 0) {
+      const { toast } = await import('sonner');
+      toast.error('Bitte mindestens eine Abteilung auswählen (Service, Küche oder GL) – beim ausgewählten Restaurant.');
+      return;
+    }
 
     const role = rolesToEnum(allDepts.has('Service'), allDepts.has('Küche'), allDepts.has('GL'));
 
