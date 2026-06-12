@@ -140,6 +140,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         if (!isMounted) return;
 
+        // Ignore shadow PIN sessions here — PIN flow manages its own AuthUser state.
+        const isShadowSession = !!session?.user?.email && /^staff-[0-9a-f-]+@internal\.invalid$/i.test(session.user.email);
+        if (isShadowSession) {
+          if (event === 'SIGNED_OUT' && isMounted) {
+            // PIN logout already cleared state; nothing to do.
+          }
+          return;
+        }
+
         if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') && session?.user) {
           try {
             const authUser = await convertOAuthUserWithTimeout(session.user);
