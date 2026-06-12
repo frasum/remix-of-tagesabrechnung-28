@@ -20,7 +20,48 @@ interface ValidatePinResponse {
     staff_role: string;
   };
   permission_level?: "staff" | "manager" | "admin";
+  session_token_hash?: string;
   error?: string;
+}
+
+// Idempotent shadow auth user creation (mirrors ensure-staff-auth-user).
+async function ensureShadowAuthUser(
+  // deno-lint-ignore no-explicit-any
+  admin: any,
+  staffId: string,
+  email: string
+): Promise<string | null> {
+  const { data: existingProfile, error: profileLookupErr } = await admin
+    .from("profiles")
+    .select("user_id")
+    .eq("staff_id", staffId)
+    .maybeSingle();
+  if (profileLookupErr) {
+    console.error("[validate-pin] profile lookup error", profileLookupErr);
+    return null;
+  }
+  if (existingProfile?.user_id) return existingProfile.user_id as string;
+
+  const password = crypto.randomUUID() + "-" + crypto.randomUUID();
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    app_metadata: { staff_id: staffId, source: "pin-shadow" },
+  });
+  if (createErr || !created?.user) {
+    console.error("[validate-pin] createUser error", createErr);
+    return null;
+  }
+  const userId = created.user.id as string;
+  const { error: upsertErr } = await admin
+    .from("profiles")
+    .upsert({ user_id: userId, staff_id: staffId, email }, { onConflict: "user_id" });
+  if (upsertErr) {
+    console.error("[validate-pin] profile upsert error", upsertErr);
+    return null;
+  }
+  return userId;
 }
 
 // Rate limiting configuration
