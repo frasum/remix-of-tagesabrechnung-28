@@ -24,6 +24,50 @@ export default function Login() {
   const isMobile = useIsMobile();
   const { isSupported: webAuthnSupported, hasCredential, authenticate: webAuthnAuthenticate, isLoading: webAuthnLoading } = useWebAuthn();
 
+  // E-Mail/Passwort-Anmeldung & Registrierung
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [emailMode, setEmailMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || password.length < 6) {
+      toast({ title: 'Fehler', description: 'E-Mail und Passwort (min. 6 Zeichen) erforderlich.', variant: 'destructive' });
+      return;
+    }
+    setIsLoading(true);
+    try {
+      if (emailMode === 'signup') {
+        const { error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: { emailRedirectTo: `${window.location.origin}/select-restaurant` },
+        });
+        if (error) throw error;
+        toast({
+          title: 'Registrierung erfolgreich',
+          description: 'Falls E-Mail-Bestätigung aktiv ist, bitte Postfach prüfen. Sonst direkt anmelden.',
+        });
+        setEmailMode('signin');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        if (error) throw error;
+        toast({ title: 'Willkommen!', description: 'Anmeldung erfolgreich.' });
+        window.location.href = '/select-restaurant';
+      }
+    } catch (err) {
+      toast({
+        title: emailMode === 'signup' ? 'Registrierung fehlgeschlagen' : 'Anmeldung fehlgeschlagen',
+        description: err instanceof Error ? err.message : 'Unbekannter Fehler',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   // Role selection state for dual-role staff
   const [pendingRoleSelection, setPendingRoleSelection] = useState<{
     staffName: string;
