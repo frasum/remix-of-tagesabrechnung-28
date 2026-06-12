@@ -1,0 +1,1 @@
+UPDATE auth.users SET email_confirmed_at = now() WHERE lower(email) = 'verwaltung@yum-thai.de' AND email_confirmed_at IS NULL;
