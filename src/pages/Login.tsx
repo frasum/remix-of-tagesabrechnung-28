@@ -343,6 +343,78 @@ export default function Login() {
               </svg>
               Mit Apple anmelden
             </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => setShowEmailForm((v) => !v)}
+              disabled={isLoading}
+            >
+              <Mail className="w-5 h-5 mr-2" />
+              {showEmailForm ? 'E-Mail-Login ausblenden' : 'Mit E-Mail anmelden / registrieren'}
+            </Button>
+
+            {showEmailForm && (
+              <div className="space-y-3 border-t pt-4 mt-2">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={emailMode === 'signin' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setEmailMode('signin')}
+                  >
+                    Anmelden
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={emailMode === 'signup' ? 'default' : 'outline'}
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => setEmailMode('signup')}
+                  >
+                    Registrieren
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-Mail</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@beispiel.de"
+                    autoComplete="email"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Passwort</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Mindestens 6 Zeichen"
+                    autoComplete={emailMode === 'signup' ? 'new-password' : 'current-password'}
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  className="w-full"
+                  onClick={handleEmailAuth}
+                  disabled={isLoading || !email.trim() || password.length < 6}
+                >
+                  {isLoading
+                    ? 'Bitte warten...'
+                    : emailMode === 'signup'
+                      ? 'Registrieren'
+                      : 'Anmelden'}
+                </Button>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
