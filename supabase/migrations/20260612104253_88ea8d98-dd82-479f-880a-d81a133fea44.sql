@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD CONSTRAINT profiles_staff_id_unique UNIQUE (staff_id);
