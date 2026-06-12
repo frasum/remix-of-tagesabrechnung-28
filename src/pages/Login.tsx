@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChefHat, Lock, Fingerprint } from 'lucide-react';
+import { ChefHat, Lock, Fingerprint, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useWebAuthn } from '@/hooks/useWebAuthn';
 import { lovable } from '@/integrations/lovable/index';
+import { supabase } from '@/integrations/supabase/client';
 import { RoleSelectionDialog, getRoleOptions, type ActiveRole } from '@/components/auth/RoleSelectionDialog';
+
 
 export default function Login() {
   const [name, setName] = useState('');
