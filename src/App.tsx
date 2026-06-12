@@ -28,6 +28,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const ConfirmLoginPage = lazy(() => import("./pages/ConfirmLoginPage").then(m => ({ default: m.ConfirmLoginPage })));
 const PermissionManagement = lazy(() => import("./pages/PermissionManagement"));
+const RestaurantManagement = lazy(() => import("./pages/RestaurantManagement"));
 const RestaurantSelect = lazy(() => import("./pages/RestaurantSelect"));
 const TelegramSettings = lazy(() => import("./pages/TelegramSettings"));
 const ZtLayout = lazy(() => import("./pages/zeiterfassung/ZtLayout"));
@@ -139,6 +140,7 @@ function AppContent() {
           <Route path="/lohnbuero" element={<PayrollPortal />} />
           <Route path="/staff" element={<ProtectedRoute requiredLevel="admin"><StaffManagement /></ProtectedRoute>} />
           <Route path="/permissions" element={<ProtectedRoute requiredLevel="admin"><PermissionManagement /></ProtectedRoute>} />
+          <Route path="/admin/restaurants" element={<ProtectedRoute requiredLevel="admin"><RestaurantManagement /></ProtectedRoute>} />
           <Route path="/telegram" element={<ProtectedRoute requiredLevel="admin"><TelegramSettings /></ProtectedRoute>} />
           
           <Route path="/skill-settings" element={<ProtectedRoute requiredLevel="admin"><SkillSettings /></ProtectedRoute>} />

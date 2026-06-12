@@ -8,7 +8,8 @@ import {
   Home,
   Shield,
   ChefHat,
-  Palette
+  Palette,
+  Store
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -69,6 +70,14 @@ export function GlobalLayout({ children }: GlobalLayoutProps) {
       >
         <Shield className={iconClasses('/permissions')} />
       Berechtigungen
+      </Link>
+      <Link
+        to="/admin/restaurants"
+        onClick={onClickLink}
+        className={linkClasses('/admin/restaurants')}
+      >
+        <Store className={iconClasses('/admin/restaurants')} />
+        Restaurants
       </Link>
       <div className="h-px bg-sidebar-border my-3" />
       <p className="text-xs uppercase tracking-wider text-muted-foreground px-3 mb-2">
